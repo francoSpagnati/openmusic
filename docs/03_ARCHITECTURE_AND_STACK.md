@@ -96,6 +96,13 @@ Per offrire un'esperienza al livello di Discord e supportare più account e app 
   - `GET /api/videos/feed`: Feed video-contenuti ed editoriali musicali con paginazione.
   - `POST /api/videos`: Pubblicazione di video-recensioni, video-saggi o interviste collegate ad album/tracce.
   - `GET /api/videos/release/:releaseId`: Video correlati a uno specifico album/EP.
+- **Modulo Spotify & Sync Engine (`/api/spotify`):**
+  - `GET /api/spotify/currently-playing`: Recupera il brano in riproduzione attiva su Spotify e aggiorna lo stato real-time.
+  - `POST /api/spotify/sync-playback`: Sincronizza Now Playing con Redis, Socket.io e registra `ScrobbleLog` (badge Ascolto Verificato con deduplicazione).
+  - `GET /api/spotify/heavy-rotation`: Top 5 brani dell'ultimo mese per il profilo utente con cache Redis (TTL 3600s).
+  - `GET /api/spotify/recently-played`: Cronologia recente degli ascolti con codici ISRC.
+  - `GET /api/spotify/top-artists`: Top artisti del profilo per affinità musicale.
+  - `POST /api/spotify/export-playlist`: Esporta una playlist vinilica creata su OpenMusic (Lato A / Lato B) direttamente sull'account Spotify dell'utente tramite risoluzione ISRC.
 - **WebSocket Gateway (`now-playing.gateway.ts`):**
   - Evento `CLIENT_UPDATE_TRACK`: Aggiorna presenza in Redis (`setex` con TTL 300s) e broadcast ad amici.
   - Evento `CLIENT_TOGGLE_GHOST`: Attiva/disattiva Ghost Mode e rimuove broadcast.
@@ -121,6 +128,7 @@ Per offrire un'esperienza al livello di Discord e supportare più account e app 
 - **`<LiveFriendsTicker />`:** Barra real-time orizzontale web con indicatore pulsante di ascolto condiviso e supporto per Ghost Mode.
 - **`<DualScoreBadge />`:** Tachimetro reattivo Rotten Tomatoes per il confronto visivo immediato tra Voto della Critica e Voto del Pubblico.
 - **`<ReleaseCard />`:** Card album con hover dinamico, ambient tint color e trigger audio anteprima 30s.
+- **`<SpotifyConnectCard />`:** Widget interattivo per la sincronizzazione real-time della riproduzione Spotify, status ascolto verificato e visualizzazione della rotazione pesante.
 - **`<GenreRouletteInteractive />`:** Roulette dei generi interattiva con disco vinile rotante animato e starter pack di 3 brani fuori dalla propria bolla.
 - **Pagine & Piattaforma:**
   - `src/app/page.tsx` (`/`): Landing page editoriale con ticker amici, classifiche release, roulette e manifesto anti-AI-slop.

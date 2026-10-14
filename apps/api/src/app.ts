@@ -31,6 +31,8 @@ import { CriticService } from './modules/critic/critic.service';
 import { createCriticRoutes } from './modules/critic/critic.routes';
 import { VideosService } from './modules/videos/videos.service';
 import { createVideosRoutes } from './modules/videos/videos.routes';
+import { SpotifySyncService } from './modules/spotify/spotify-sync.service';
+import { createSpotifyRoutes } from './modules/spotify/spotify.routes';
 
 export interface AppContext {
   app: FastifyInstance;
@@ -47,6 +49,7 @@ export interface AppContext {
   notificationPresenceService: NotificationPresenceService;
   criticService: CriticService;
   videosService: VideosService;
+  spotifySyncService: SpotifySyncService;
 }
 
 export async function buildApp(): Promise<AppContext> {
@@ -76,7 +79,7 @@ export async function buildApp(): Promise<AppContext> {
     maxRetriesPerRequest: 3,
   });
 
-  // 3. Servizi Core (Milestones 1..5)
+  // 3. Servizi Core (Milestones 1..5 + Spotify Sync Engine)
   const nowPlayingService = new NowPlayingService(redis, prisma);
   const spotifyService = new SpotifyService();
   const lastFmService = new LastFmService();
@@ -94,6 +97,7 @@ export async function buildApp(): Promise<AppContext> {
 
   const criticService = new CriticService(prisma);
   const videosService = new VideosService(prisma);
+  const spotifySyncService = new SpotifySyncService(prisma, redis, spotifyService, nowPlayingService);
 
   // 4. Socket.io Server collegato all'istanza HTTP di Fastify
   const io = new SocketIOServer(app.server, {
@@ -124,6 +128,7 @@ export async function buildApp(): Promise<AppContext> {
   });
   await app.register(createCriticRoutes(criticService), { prefix: '/api/critic' });
   await app.register(createVideosRoutes(videosService), { prefix: '/api/videos' });
+  await app.register(createSpotifyRoutes(spotifySyncService), { prefix: '/api/spotify' });
 
   return {
     app,
@@ -140,5 +145,6 @@ export async function buildApp(): Promise<AppContext> {
     notificationPresenceService,
     criticService,
     videosService,
+    spotifySyncService,
   };
 }

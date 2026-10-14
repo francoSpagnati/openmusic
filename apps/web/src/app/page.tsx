@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { LiveFriendsTicker } from '../components/LiveFriendsTicker';
 import { ReleaseCard, ReleaseCardData } from '../components/ReleaseCard';
 import { GenreRouletteInteractive } from '../components/GenreRouletteInteractive';
+import { SpotifyConnectCard } from '../components/SpotifyConnectCard';
 import {
   Disc,
   SealCheck,
@@ -253,6 +254,11 @@ export default function HomePage() {
             <ReleaseCard key={release.id} release={release} />
           ))}
         </div>
+      </section>
+
+      {/* Spotify Live Integration & Heavy Rotation Section */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <SpotifyConnectCard />
       </section>
 
       {/* Interactive Genre Roulette Discovery Section */}

@@ -6,3 +6,4 @@ export * from './review';
 export * from './discovery';
 export * from './social';
 export * from './critic-video';
+export * from './spotify';

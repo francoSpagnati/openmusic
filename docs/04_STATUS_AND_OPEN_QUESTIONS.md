@@ -60,13 +60,19 @@
 ---
 
 ## 4. Next Session Handoff
-- **Cosa è stato completato nella sessione attuale (Sviluppo Web Next.js & GitHub):**
+- **Cosa è stato completato nella sessione attuale (Sviluppo Web Next.js, GitHub & Spotify API Suite):**
   - Setup completo di `apps/web`: Next.js 14 App Router, TypeScript, Tailwind CSS, Phosphor Icons, Google Fonts (`Fraunces`, `Plus Jakarta Sans`, `JetBrains Mono`).
   - Architettura audio globale `AudioPlayerContext` e `<AudioPlayerBar />` dock fisso con riproduzione 30s preview.
-  - Pagina iniziale `/`: Hero editoriale, `<LiveFriendsTicker />` con indicatori real-time e Ghost Mode, classifica release con `<DualScoreBadge />`, e `<GenreRouletteInteractive />` con vinile rotante animato.
+  - Pagina iniziale `/`: Hero editoriale, `<LiveFriendsTicker />` con indicatori real-time e Ghost Mode, classifica release con `<DualScoreBadge />`, `<SpotifyConnectCard />` per la sincronizzazione real-time, e `<GenreRouletteInteractive />` con vinile rotante animato.
   - Scheda release `/releases/[id]`: Server-Side Rendering (SSR) e generazione dinamica dei metadati OpenGraph/SEO, tracklist a doppio lato (Lato A / Lato B in `ReleaseTracklistClient`), recensioni accreditate affiancate a recensioni del pubblico con reazioni costruttive.
   - Portale accredito critica `/critics`: Modulo di candidatura per giornalisti/webzine, spiegazione del Critic Score e showcase testate accreditate.
   - Spazio video-contenuti `/videos`: Feed video saggi, analisi armoniche e documentari musicali collegati agli album.
+  - **Motore Spotify API Completo (`SpotifySyncService` & `/api/spotify/*`):**
+    - Scopes estesi per OAuth2 (`user-read-currently-playing`, `user-read-playback-state`, `user-read-recently-played`, `user-top-read`, `playlist-modify-public`, `playlist-modify-private`).
+    - Rinnovo silenzioso del token (`refresh_token`) con aggiornamento automatico su PostgreSQL (`ConnectedAccount`).
+    - Sincronizzazione playback in tempo reale con Redis e Socket.io, e calcolo automatico per il badge **Ascolto Verificato** (`ScrobbleLog`) con deduplicazione a 3 minuti.
+    - Caching in Redis (TTL 1h) per la "Rotazione Pesante" (Top 5 brani dell'ultimo mese).
+    - Esportazione automatica di playlist viniliche OpenMusic (Lato A / Lato B) sull'account Spotify dell'utente tramite risoluzione codici ISRC e fallback per metadati.
   - Verifica typecheck ed esecuzione build:
     - `npm run typecheck` (`turbo run typecheck`): 5/5 package passati con 0 errori.
     - `next build`: build di produzione completato con successo (generazione statica e dinamica delle rotte).
