@@ -23,7 +23,7 @@ export const Footer: React.FC = () => {
             </p>
             <div className="flex items-center gap-2 text-xs text-om-muted font-mono">
               <ShieldCheck className="h-4 w-4 text-om-fresh" />
-              <span>Conforme alle 10 Euristiche di Nielsen & Standard Anti-AI-Slop</span>
+              <span>Piattaforma musicale indipendente guidata dalla community</span>
             </div>
           </div>
 

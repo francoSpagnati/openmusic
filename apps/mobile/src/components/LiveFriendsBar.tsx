@@ -233,18 +233,15 @@ const styles = StyleSheet.create({
   },
   trackTitle: {
     color: THEME.colors.textPrimary,
-    fontFamily: THEME.typography.fontSans,
     fontSize: 12,
     fontWeight: '600',
   },
   artistName: {
     color: THEME.colors.textSecondary,
-    fontFamily: THEME.typography.fontSans,
     fontSize: 11,
   },
   idleText: {
     color: THEME.colors.textSecondary,
-    fontFamily: THEME.typography.fontSans,
     fontSize: 12,
   },
 });
