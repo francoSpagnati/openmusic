@@ -12,6 +12,8 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { Ghost, Broadcast, Disc } from 'phosphor-react-native';
 import { THEME, type FriendPresence } from '@openmusic/shared';
 
 interface LiveFriendsBarProps {
@@ -34,20 +36,31 @@ export const LiveFriendsBar: React.FC<LiveFriendsBarProps> = ({
   }));
 
   const handleGhostPress = useCallback(() => {
-    ghostScale.value = withSpring(0.92, THEME.spring.snappy, () => {
+    // Feedback tattile istantaneo (Legge di Fitts + Nielsen #1)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+
+    ghostScale.value = withSpring(0.90, THEME.spring.snappy, () => {
       ghostScale.value = withSpring(1, THEME.spring.snappy);
     });
     onToggleGhostMode(!isMyGhostModeActive);
   }, [ghostScale, isMyGhostModeActive, onToggleGhostMode]);
 
+  const handleFriendPress = useCallback(
+    (friend: FriendPresence) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      onPressFriendTrack(friend);
+    },
+    [onPressFriendTrack]
+  );
+
   const renderFriendItem = useCallback(
     ({ item }: { item: FriendPresence }) => {
       const track = item.currentlyPlaying;
-      const cardAccent = track?.dominantColor ?? THEME.colors.bgInteractive;
+      const cardAccent = track?.dominantColor ?? THEME.colors.borderSubtle;
 
       return (
         <Pressable
-          onPress={() => onPressFriendTrack(item)}
+          onPress={() => handleFriendPress(item)}
           style={[
             styles.friendPill,
             { borderColor: cardAccent },
@@ -63,7 +76,9 @@ export const LiveFriendsBar: React.FC<LiveFriendsBarProps> = ({
             {item.avatarUrl ? (
               <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
             ) : (
-              <View style={[styles.avatar, styles.avatarFallback]} />
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Disc size={16} color={THEME.colors.textMuted} weight="duotone" />
+              </View>
             )}
             <View
               style={[
@@ -94,12 +109,12 @@ export const LiveFriendsBar: React.FC<LiveFriendsBarProps> = ({
         </Pressable>
       );
     },
-    [onPressFriendTrack]
+    [handleFriendPress]
   );
 
   return (
     <View style={styles.container}>
-      {/* Euristica #1 e #3 di Nielsen: Stato del proprio Scrobbling + Ghost Mode 1-tap */}
+      {/* Euristica #1 e #3 di Nielsen: Stato Scrobbling + Ghost Mode 1-tap con Phosphor Icons & Haptics */}
       <Animated.View style={animatedGhostStyle}>
         <Pressable
           onPress={handleGhostPress}
@@ -107,24 +122,27 @@ export const LiveFriendsBar: React.FC<LiveFriendsBarProps> = ({
             styles.ghostToggle,
             isMyGhostModeActive && styles.ghostToggleActive,
           ]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: isMyGhostModeActive }}
+          accessibilityLabel="Attiva o disattiva Ghost Mode"
         >
-          <View
+          {isMyGhostModeActive ? (
+            <Ghost size={16} color={THEME.colors.accentWarm} weight="fill" />
+          ) : (
+            <Broadcast size={16} color={THEME.colors.accentFresh} weight="duotone" />
+          )}
+          <Text
             style={[
-              styles.statusIndicator,
-              {
-                backgroundColor: isMyGhostModeActive
-                  ? THEME.colors.textMuted
-                  : THEME.colors.accentFresh,
-              },
+              styles.ghostLabel,
+              isMyGhostModeActive && styles.ghostLabelActive,
             ]}
-          />
-          <Text style={styles.ghostLabel}>
+          >
             {isMyGhostModeActive ? 'Ghost' : 'Live'}
           </Text>
         </Pressable>
       </Animated.View>
 
-      {/* Lista Orizzontale degli Amici in Ascolto */}
+      {/* Lista Orizzontale Amici in Ascolto (Nielsen #6: Riconoscimento anziché ricordo) */}
       <FlatList
         horizontal
         data={friends}
@@ -150,6 +168,7 @@ const styles = StyleSheet.create({
   ghostToggle: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: THEME.colors.bgElevated,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -160,20 +179,20 @@ const styles = StyleSheet.create({
   },
   ghostToggleActive: {
     borderColor: THEME.colors.accentWarm,
-  },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
+    backgroundColor: THEME.colors.bgInteractive,
   },
   ghostLabel: {
     color: THEME.colors.textPrimary,
+    fontFamily: THEME.typography.fontSans,
     fontSize: 12,
     fontWeight: '600',
   },
+  ghostLabelActive: {
+    color: THEME.colors.accentWarm,
+  },
   listContent: {
     gap: 10,
+    alignItems: 'center',
   },
   friendPill: {
     flexDirection: 'row',
@@ -183,7 +202,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    maxWidth: 190,
+    maxWidth: 200,
   },
   avatarContainer: {
     position: 'relative',
@@ -196,6 +215,8 @@ const styles = StyleSheet.create({
   },
   avatarFallback: {
     backgroundColor: THEME.colors.bgInteractive,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   liveDot: {
     position: 'absolute',
@@ -212,15 +233,18 @@ const styles = StyleSheet.create({
   },
   trackTitle: {
     color: THEME.colors.textPrimary,
+    fontFamily: THEME.typography.fontSans,
     fontSize: 12,
     fontWeight: '600',
   },
   artistName: {
     color: THEME.colors.textSecondary,
+    fontFamily: THEME.typography.fontSans,
     fontSize: 11,
   },
   idleText: {
     color: THEME.colors.textSecondary,
+    fontFamily: THEME.typography.fontSans,
     fontSize: 12,
   },
 });

@@ -48,3 +48,82 @@ Per offrire un'esperienza al livello di Discord e supportare più account e app 
 5. **`<DiscoveryReelsFeed />`:** Scroller verticale a schermo intero a 60/120fps con pre-caricamento dell'audio di 30s del brano successivo, tasto rapido "Salva nella mia libreria" e "Annulla ultimo swipe".
 6. **`<GenreRouletteWheel />`:** Interfaccia ludica ma minimale per pescare un genere sconosciuto e ascoltare subito 3 brani rappresentativi.
 7. **`<MusicChatBubble />`:** Card messaggio specifica per le canzoni consigliate in chat, con player di anteprima integrato e pulsante "Apri nella tua app" + reazione rapida ("🔥", "❤️", "Non fa per me").
+
+---
+
+## 5. Mappa delle API e Contratti Realizzati
+
+### Backend Fastify (`apps/api`)
+- `GET /health`: Healthcheck, stato uptime e timestamp.
+- **Modulo Autenticazione (`/api/auth`):**
+  - `GET /api/auth/spotify/login`: Genera URL di autorizzazione OAuth2 con scope di scrobbling.
+  - `GET /api/auth/spotify/callback`: Scambio codice, salvataggio token in `ConnectedAccount`, emissione JWT sessione.
+  - `GET /api/auth/lastfm/login`: Genera URL di login Last.fm.
+  - `GET /api/auth/lastfm/callback`: Recupero sessione con firma crittografica MD5 e associazione profilo.
+  - `GET /api/auth/me`: Profilo utente autenticato e lista account collegati.
+- **Modulo Catalogo (`/api/catalog`):**
+  - `GET /api/catalog/search?q=...`: Ricerca album e brani nel DB locale con arricchimento ed indicizzazione on-the-fly.
+  - `GET /api/catalog/releases/:id`: Recupero release con tracce e punteggi aggregati.
+  - `GET /api/catalog/preview?title=...&artist=...&isrc=...`: Risoluzione a cascata dell'anteprima audio 30s (Deezer -> iTunes).
+- **Modulo Recensioni (`/api/reviews`):**
+  - `POST /api/reviews`: Creazione/aggiornamento recensione con verifica scrobble e ricalcolo Audience Score.
+  - `GET /api/reviews/release/:releaseId`: Elenco recensioni della release con conteggi reazioni.
+  - `POST /api/reviews/reaction`: Toggle reazione costruttiva (`AGREE`, `WELL_WRITTEN`, `DISCOVERED`, `HEART`).
+- **Modulo Profilo (`/api/profile`):**
+  - `GET /api/profile/me`: Profilo dell'utente corrente con statistiche e rotazione pesante.
+  - `GET /api/profile/:userId`: Profilo pubblico con diario recensioni e top 5 brani più ascoltati.
+- **Modulo Discovery (`/api/discovery`):**
+  - `GET /api/discovery/reels`: Feed verticale di tracce/album con anteprima 30s e snippet della miglior recensione.
+  - `GET /api/discovery/roulette`: Roulette Russa dei generi (algoritmo "Out-of-the-bubble" con starter pack di 3 brani).
+- **Modulo Chat Musicale (`/api/chat`):**
+  - `POST /api/chat/messages`: Invio brano consigliato con traduzione universale deep-link ISRC.
+  - `GET /api/chat/conversation/:otherUserId`: Conversazione 1-to-1 con storico brani e stato "Ascoltato".
+  - `POST /api/chat/reaction`: Reazione rapida (`FIRE`, `HEART`, `NOT_FOR_ME`) a un brano.
+  - `POST /api/chat/listened`: Segna il brano come ascoltato.
+- **Modulo Playlist (`/api/playlists`):**
+  - `POST /api/playlists`: Creazione playlist tematica.
+  - `POST /api/playlists/track`: Aggiunta traccia sul Lato A o Lato B (vinile analogico).
+  - `GET /api/playlists/:id`: Dettaglio playlist con tracce divise per lato e durata totale.
+  - `GET /api/playlists/user/:userId`: Elenco playlist create dall'utente.
+- **Modulo Notifiche OS (`/api/notifications`):**
+  - `GET /api/notifications/presence-summary`: Riassunto amici attivi in ascolto per Ongoing Notification (Android) e Live Activity (iOS).
+- **Modulo Critica & Dual Score (`/api/critic`):**
+  - `POST /api/critic/apply`: Candidatura per accreditamento giornalista / testata musicale.
+  - `POST /api/critic/verify`: Approvazione badge critico accreditato con data di verifica.
+  - `POST /api/critic/reviews`: Pubblicazione recensione della critica con testata (`outletName`) e link articolo originale (`originalReviewUrl`).
+  - `GET /api/critic/dual-score/:releaseId`: Calcolo parallelo di Voto del Pubblico (Audience Score) e Voto della Critica (Critic Score) stile Rotten Tomatoes.
+- **Modulo Spazio Video Musicale (`/api/videos`):**
+  - `GET /api/videos/feed`: Feed video-contenuti ed editoriali musicali con paginazione.
+  - `POST /api/videos`: Pubblicazione di video-recensioni, video-saggi o interviste collegate ad album/tracce.
+  - `GET /api/videos/release/:releaseId`: Video correlati a uno specifico album/EP.
+- **WebSocket Gateway (`now-playing.gateway.ts`):**
+  - Evento `CLIENT_UPDATE_TRACK`: Aggiorna presenza in Redis (`setex` con TTL 300s) e broadcast ad amici.
+  - Evento `CLIENT_TOGGLE_GHOST`: Attiva/disattiva Ghost Mode e rimuove broadcast.
+  - Evento `SERVER_INITIAL_FRIENDS_STATE`: Invio immediato lista amici tramite Redis `MGET` O(N).
+
+### Mobile Components & Hooks (`apps/mobile`)
+- `useNowPlayingSocket`: Hook per connessione automatica Socket.io, gestione riconnessioni, sync `FriendPresence[]` e trigger per cambio traccia e Ghost Mode a 1-tap.
+- `<ReleaseHeaderCard />`: Card testata album con colore dinamico estratto dalla cover, Audience Score stile Rotten Tomatoes e play anteprima.
+- `<ReviewComposer />`: Modale editoriale per recensioni con rating a 0.5 stelle (salvato 10..100), vibe tags, badge ascolto verificato e auto-save.
+- `<UserProfileView />`: Vista profilo completa con statistiche tabular-nums, classifica "In Rotazione Pesante" e diario recensioni.
+- `<DiscoveryReelsFeed />`: Feed verticale snap a schermo intero con pre-buffering (Soglia di Doherty), pulsante Undo Swipe (Euristica #3) e Thumb Zone (Legge di Fitts).
+- `<GenreRouletteWheel />`: Disco vinile analogico rotante a 60/120fps con Reanimated v3, feedback tattile e starter pack con 3 anteprime audio.
+- `<MusicChatBubble />`: Card messaggio specifica per consigli musicali con mini-player 30s, pulsante "Apri nella tua app" via ISRC e reazioni rapide (`Fire`, `Heart`, `ThumbsDown`).
+- `<ThemedPlaylistView />`: Playlist a vinile con switcher a molla per Lato A / Lato B, contatore durata ed export ISRC.
+- `<NotificationPresenceWidget />`: Widget nativo per Lock Screen / barra notifiche con amici attivi e preview in tempo reale.
+- `<DualScoreCard />`: Doppio indicatore stile Rotten Tomatoes (Critic Score vs Audience Score) con percentuali freschezza/marciume, conteggio recensioni e tipografia monospazio tabulare.
+- `<CriticReviewCard />`: Scheda editoriale per recensioni dei critici con badge testata verificata, estratto citazione, data formattata e link esterno all'articolo originale.
+- `<MusicVideoPlayerCard />`: Scheda multimediale per video saggi e recensioni musicali con thumbnail, badge durata in overlay, indicatore piattaforma (YouTube/Vimeo) e tag di genere.
+
+### Web Components & Pages (`apps/web` - Next.js 14 App Router)
+- **Architettura & Styling:** Next.js 14 (App Router) + Tailwind CSS con token analogici `THEME` (`#121214`, `#1C1C1F`, `#F3F0E6`, `#D97736`, `#4E9F6E`, `#C85A4B`) e Google Fonts editoriali (`Fraunces`, `Plus Jakarta Sans`, `JetBrains Mono`).
+- **`AudioPlayerContext` & `<AudioPlayerBar />`:** Dock audio fisso per l'ascolto delle anteprime 30s senza barriere, con progress bar analogica e cifre tabulari.
+- **`<LiveFriendsTicker />`:** Barra real-time orizzontale web con indicatore pulsante di ascolto condiviso e supporto per Ghost Mode.
+- **`<DualScoreBadge />`:** Tachimetro reattivo Rotten Tomatoes per il confronto visivo immediato tra Voto della Critica e Voto del Pubblico.
+- **`<ReleaseCard />`:** Card album con hover dinamico, ambient tint color e trigger audio anteprima 30s.
+- **`<GenreRouletteInteractive />`:** Roulette dei generi interattiva con disco vinile rotante animato e starter pack di 3 brani fuori dalla propria bolla.
+- **Pagine & Piattaforma:**
+  - `src/app/page.tsx` (`/`): Landing page editoriale con ticker amici, classifiche release, roulette e manifesto anti-AI-slop.
+  - `src/app/releases/[id]/page.tsx` (`/releases/[id]`): Scheda release con Server-Side Rendering (SSR), metadati OpenGraph/SEO, tracklist a doppio lato (Lato A / Lato B in `ReleaseTracklistClient.tsx`), e recensioni della critica affiancate a quelle del pubblico.
+  - `src/app/critics/page.tsx` (`/critics`): Portale dedicato a giornalisti e webzine per la richiesta di accredito ufficiale e vetrina delle testate verificate.
+  - `src/app/videos/page.tsx` (`/videos`): Galleria multimediale di video saggi musicali, analisi armoniche e recensioni con filtri per categoria.
