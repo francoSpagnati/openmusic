@@ -6,6 +6,7 @@ import { RightSidebar } from '../components/RightSidebar';
 import { StoriesListeningBar } from '../components/StoriesListeningBar';
 import { CreatePostBox } from '../components/CreatePostBox';
 import { SocialPostCard, SocialPostData } from '../components/SocialPostCard';
+import { ShareSongModal } from '../components/ShareSongModal';
 import { Sparkle, SlidersHorizontal } from '@phosphor-icons/react';
 
 const INITIAL_POSTS: SocialPostData[] = [
@@ -110,6 +111,7 @@ const INITIAL_POSTS: SocialPostData[] = [
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'FOR_YOU' | 'FOLLOWING'>('FOR_YOU');
   const [posts, setPosts] = useState<SocialPostData[]>(INITIAL_POSTS);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const handlePostCreated = (newPost: SocialPostData) => {
     setPosts([newPost, ...posts]);
@@ -117,8 +119,8 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-7xl justify-center">
-      {/* 1. Left Sidebar Navigation (Desktop) */}
-      <Sidebar />
+      {/* 1. Left Sidebar Navigation */}
+      <Sidebar onOpenCreatePost={() => setIsShareModalOpen(true)} />
 
       {/* 2. Center Column: Social Media Feed */}
       <main className="w-full max-w-2xl flex-1 border-r border-om-border min-h-screen">
@@ -159,10 +161,10 @@ export default function HomePage() {
           </button>
         </header>
 
-        {/* Stories / Live Friends Listening Strip (Instagram Style) */}
+        {/* Stories / Live Friends Listening Strip (Instagram Style with Popup) */}
         <StoriesListeningBar />
 
-        {/* Create Post Input Box (X / Facebook / Letterboxd Style) */}
+        {/* Create Post Input Box */}
         <CreatePostBox onPostCreated={handlePostCreated} />
 
         {/* Social Feed List */}
@@ -173,8 +175,15 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* 3. Right Sidebar: Trending & Who to follow */}
+      {/* 3. Right Sidebar */}
       <RightSidebar />
+
+      {/* "Condividi una Canzone" Modal */}
+      <ShareSongModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        onShare={handlePostCreated}
+      />
     </div>
   );
 }

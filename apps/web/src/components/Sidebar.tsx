@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   House,
+  FilmStrip,
   Compass,
   Bell,
   ChatCircleDots,
-  Sparkle,
   Newspaper,
   User,
   PlusCircle,
@@ -28,12 +28,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
 
   const navItems = [
     { label: 'Home Feed', href: '/', icon: House },
-    { label: 'Esplora', href: '/#explore', icon: Compass },
-    { label: 'Notifiche', href: '/#notifications', icon: Bell, badge: 3 },
-    { label: 'Chat Musicale', href: '/#chat', icon: ChatCircleDots },
-    { label: 'Roulette Generi', href: '/#roulette', icon: Sparkle },
+    { label: 'Reels Musicali', href: '/reels', icon: FilmStrip },
+    { label: 'Esplora Gusti', href: '/explore', icon: Compass },
+    { label: 'Notifiche', href: '/notifications', icon: Bell, badge: 3 },
+    { label: 'Chat Musicale', href: '/chat', icon: ChatCircleDots },
     { label: 'Critic Score', href: '/critics', icon: Newspaper },
     { label: 'Video Saggi', href: '/videos', icon: Waveform },
+    { label: 'Il Tuo Profilo', href: '/profile', icon: User },
   ];
 
   return (
@@ -60,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.href === '/' && pathname === '/');
+            const isActive = pathname === item.href;
 
             return (
               <Link
@@ -68,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
                 href={item.href}
                 className={`flex items-center justify-between rounded-xl px-3.5 py-3 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-om-card text-om-amber font-semibold border border-om-border'
+                    ? 'bg-om-card text-om-amber font-semibold border border-om-border shadow-sm'
                     : 'text-om-secondary hover:bg-om-card hover:text-om-text'
                 }`}
               >
@@ -90,35 +91,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
           })}
         </nav>
 
-        {/* Create Post Action Button */}
+        {/* Primary Action Button: "Condividi una Canzone" */}
         <button
           onClick={onOpenCreatePost}
           className="w-full flex items-center justify-center gap-2 rounded-xl bg-om-amber hover:bg-om-amber/90 text-om-bg font-sans font-semibold py-3 text-sm transition-all shadow-glow hover:scale-[1.02] active:scale-98"
         >
           <PlusCircle weight="bold" className="h-5 w-5" />
-          <span>Condividi Ascolto</span>
+          <span>Condividi una Canzone</span>
         </button>
       </div>
 
       {/* Bottom Profile & Ghost Mode Toggle */}
       <div className="rounded-xl border border-om-border bg-om-card p-3 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
-              alt="Profilo utente"
-              className="h-9 w-9 rounded-full object-cover border border-om-border"
-            />
-            <div className="min-w-0">
-              <h5 className="font-sans text-sm font-semibold text-om-text truncate">
-                Franco Spagnati
-              </h5>
-              <p className="text-[11px] font-mono text-om-secondary truncate">
-                @francospagnati
-              </p>
-            </div>
+        <Link href="/profile" className="flex items-center gap-2.5 min-w-0 group">
+          <img
+            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
+            alt="Profilo utente"
+            className="h-9 w-9 rounded-full object-cover border border-om-border group-hover:border-om-amber transition-colors"
+          />
+          <div className="min-w-0">
+            <h5 className="font-sans text-sm font-semibold text-om-text group-hover:text-om-amber transition-colors truncate">
+              Franco Spagnati
+            </h5>
+            <p className="text-[11px] font-mono text-om-secondary truncate">
+              @francospagnati
+            </p>
           </div>
-        </div>
+        </Link>
 
         {/* 1-tap Ghost Mode switch */}
         <button
