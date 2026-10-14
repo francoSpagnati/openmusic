@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
-import { Plus, Disc, Waveform } from '@phosphor-icons/react';
+import { Plus, Disc, Waveform, EyeSlash, Eye } from '@phosphor-icons/react';
 import { StoryListeningModal, FriendStoryData } from './StoryListeningModal';
 
 const FRIEND_STORIES: FriendStoryData[] = [
@@ -21,6 +21,10 @@ const FRIEND_STORIES: FriendStoryData[] = [
     durationMs: 318000,
     previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
     provider: 'SPOTIFY',
+    criticScore: 98,
+    communityScore: 96,
+    userRating: 5.0,
+    userReviewSnippet: 'Gli arpeggi poliritmici di chitarra e la batteria di Phil Selway creano un abisso emotivo insuperabile.',
   },
   {
     id: 'st_2',
@@ -37,6 +41,10 @@ const FRIEND_STORIES: FriendStoryData[] = [
     durationMs: 248000,
     previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
     provider: 'SPOTIFY',
+    criticScore: 88,
+    communityScore: 92,
+    userRating: 4.5,
+    userReviewSnippet: 'La linea di basso di Nathan East e la chitarra di Nile Rodgers sono pura storia funk registrata su nastro.',
   },
   {
     id: 'st_3',
@@ -53,6 +61,10 @@ const FRIEND_STORIES: FriendStoryData[] = [
     durationMs: 234000,
     previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
     provider: 'SPOTIFY',
+    criticScore: 97,
+    communityScore: 95,
+    userRating: 5.0,
+    userReviewSnippet: 'Un capolavoro assoluto che fonde jazz, funk anni 70 e impegno civile con una potenza lirica disarmante.',
   },
   {
     id: 'st_4',
@@ -69,6 +81,10 @@ const FRIEND_STORIES: FriendStoryData[] = [
     durationMs: 272000,
     previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
     provider: 'APPLE_MUSIC',
+    criticScore: 82,
+    communityScore: 90,
+    userRating: 4.0,
+    userReviewSnippet: 'Riff di chitarra a 12 corde sporco e produzione moderna che ha definito il sound rock dei 2010.',
   },
   {
     id: 'st_5',
@@ -85,6 +101,10 @@ const FRIEND_STORIES: FriendStoryData[] = [
     durationMs: 413000,
     previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
     provider: 'SPOTIFY',
+    criticScore: 99,
+    communityScore: 98,
+    userRating: 5.0,
+    userReviewSnippet: 'L\'assolo di David Gilmour è il vertice assoluto della chitarra rock. Filosofia in musica.',
   },
   {
     id: 'st_6',
@@ -101,45 +121,100 @@ const FRIEND_STORIES: FriendStoryData[] = [
     durationMs: 256000,
     previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
     provider: 'LASTFM',
+    criticScore: 89,
+    communityScore: 92,
   },
 ];
 
 export const StoriesListeningBar: React.FC = () => {
   const { currentTrack, isPlaying } = useAudioPlayer();
   const [selectedFriend, setSelectedFriend] = useState<FriendStoryData | null>(null);
+  const [ghostMode, setGhostMode] = useState<boolean>(false);
+
+  // User's own listening data
+  const myListeningData: FriendStoryData = {
+    id: 'my_story',
+    name: 'Tu (Franco Spagnati)',
+    handle: '@francospagnati',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop',
+    isPlaying: !ghostMode,
+    trackTitle: 'Reckoner',
+    artist: 'Radiohead',
+    album: 'In Rainbows',
+    year: 2007,
+    albumCover: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&h=300&fit=crop',
+    progressMs: 142000,
+    durationMs: 290000,
+    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
+    provider: 'SPOTIFY',
+    criticScore: 98,
+    communityScore: 96,
+    userRating: 5.0,
+    userReviewSnippet: 'La sezione ritmica e il falsetto di Thom Yorke su Reckoner sono pura trascendenza.',
+  };
 
   return (
     <>
       <div className="w-full border-b border-om-border bg-om-card/40 py-3.5 px-4 overflow-hidden">
         <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-0.5">
-          {/* Your Story / Connect bubble */}
-          <div
-            onClick={() =>
-              setSelectedFriend({
-                id: 'my_story',
-                name: 'Tu (Franco Spagnati)',
-                handle: '@francospagnati',
-                avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop',
-                isPlaying: true,
-                trackTitle: 'Weird Fishes/Arpeggi',
-                artist: 'Radiohead',
-                album: 'In Rainbows',
-                year: 2007,
-                albumCover: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&h=300&fit=crop',
-                progressMs: 142000,
-                durationMs: 318000,
-                previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-                provider: 'SPOTIFY',
-              })
-            }
-            className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
-          >
-            <div className="relative h-14 w-14 rounded-full border-2 border-dashed border-om-amber flex items-center justify-center bg-om-card group-hover:scale-105 transition-transform">
-              <Plus weight="bold" className="h-5 w-5 text-om-amber" />
+          {/* Your Story / Listening Bubble with Avatar + Playing badge + Ghost Mode */}
+          <div className="flex flex-col items-center gap-1.5 flex-shrink-0 group">
+            <div className="relative">
+              <div
+                onClick={() => setSelectedFriend(myListeningData)}
+                className="cursor-pointer"
+                title={ghostMode ? 'Ghost Mode attiva (ascolto privato)' : 'In ascolto su Spotify (clicca per dettagli)'}
+              >
+                {/* Outer ring */}
+                <div
+                  className={`h-14 w-14 rounded-full p-[2px] transition-all duration-300 group-hover:scale-105 ${
+                    ghostMode
+                      ? 'border-2 border-dashed border-om-muted bg-om-card/60'
+                      : 'bg-gradient-to-tr from-om-amber via-yellow-400 to-[#1DB954] shadow-glow'
+                  }`}
+                >
+                  <img
+                    src={myListeningData.avatar}
+                    alt="Il tuo profilo"
+                    className="h-full w-full rounded-full object-cover border-2 border-om-bg"
+                  />
+                </div>
+
+                {/* Mini Playing Album Artwork Badge */}
+                <div className="absolute -bottom-1 -left-1 h-5 w-5 rounded-full border border-om-border overflow-hidden bg-om-bg shadow-sm">
+                  <img
+                    src={myListeningData.albumCover}
+                    alt={myListeningData.trackTitle}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* Ghost Mode Toggle Pill / Icon */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setGhostMode(!ghostMode);
+                }}
+                className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-om-border text-[10px] transition-all ${
+                  ghostMode
+                    ? 'bg-om-card text-om-muted hover:text-om-text'
+                    : 'bg-[#1DB954] text-black hover:scale-110'
+                }`}
+                title={ghostMode ? 'Disattiva Ghost Mode' : 'Attiva Ghost Mode (Ascolto privato)'}
+              >
+                {ghostMode ? <EyeSlash size={11} weight="bold" /> : <Eye size={11} weight="bold" />}
+              </button>
             </div>
-            <span className="text-[11px] font-sans font-medium text-om-secondary group-hover:text-om-text">
-              Il tuo ascolto
-            </span>
+
+            <div className="flex flex-col items-center">
+              <span className="text-[11px] font-sans font-medium text-om-text truncate max-w-[64px]">
+                Tu
+              </span>
+              <span className={`text-[9px] font-mono leading-none ${ghostMode ? 'text-om-muted' : 'text-[#1DB954]'}`}>
+                {ghostMode ? 'Incognito' : 'In onda'}
+              </span>
+            </div>
           </div>
 
           {/* Friends Stories */}

@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { VideoCamera, Play, Clock, YoutubeLogo, Tag, ArrowSquareOut } from '@phosphor-icons/react';
+import { Sidebar } from '../../components/Sidebar';
+import { ShareSongModal } from '../../components/ShareSongModal';
 
 interface VideoEssay {
   id: string;
@@ -69,6 +71,7 @@ const SAMPLE_VIDEOS: VideoEssay[] = [
 
 export default function VideosPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('TUTTI');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const categories = ['TUTTI', 'Video Saggio', 'Produzione Audio', 'Masterclass', 'Monografia Storica'];
 
@@ -78,8 +81,16 @@ export default function VideosPage() {
       : SAMPLE_VIDEOS.filter((v) => v.category === selectedCategory);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 space-y-12">
-      {/* Header */}
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Navigation Sidebar */}
+        <aside className="hidden lg:block lg:col-span-3">
+          <Sidebar onOpenCreatePost={() => setIsShareModalOpen(true)} />
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="lg:col-span-9 space-y-8">
+          {/* Header */}
       <section className="space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-om-amber/40 bg-om-amber/10 px-3.5 py-1 text-xs font-mono text-om-amber">
           <VideoCamera weight="duotone" className="h-4 w-4" />
@@ -191,6 +202,13 @@ export default function VideosPage() {
           </div>
         ))}
       </div>
+        </main>
+      </div>
+
+      <ShareSongModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </div>
   );
 }

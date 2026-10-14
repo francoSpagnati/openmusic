@@ -71,13 +71,13 @@ export const Navbar: React.FC = () => {
             <span>4 amici in ascolto</span>
           </div>
 
-          <button
-            onClick={() => alert('Autenticazione Spotify & Last.fm attiva via OAuth /apps/api/auth/spotify')}
+          <Link
+            href="/auth"
             className="flex items-center gap-2 rounded-lg bg-om-amber hover:bg-om-amber/90 text-om-bg font-sans text-xs font-semibold px-3.5 py-2 transition-all shadow-glow hover:scale-[1.02]"
           >
             <Waveform weight="bold" className="h-4 w-4" />
-            <span>Connetti Streaming</span>
-          </button>
+            <span>Accedi / Registrati</span>
+          </Link>
         </div>
 
         {/* Mobile menu button */}

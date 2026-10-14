@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Article,
 } from '@phosphor-icons/react';
+import { Sidebar } from '../../components/Sidebar';
+import { ShareSongModal } from '../../components/ShareSongModal';
 
 const ACCREDITED_OUTLETS = [
   { name: 'Pitchfork', country: 'US', focus: 'Indie / Electronic / Hip-Hop', reviewsCount: 1420 },
@@ -25,6 +27,7 @@ export default function CriticsPage() {
   const [criticName, setCriticName] = useState('');
   const [portfolioUrl, setPortfolioUrl] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +37,16 @@ export default function CriticsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 space-y-16">
-      {/* Header */}
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Navigation Sidebar */}
+        <aside className="hidden lg:block lg:col-span-3">
+          <Sidebar onOpenCreatePost={() => setIsShareModalOpen(true)} />
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="lg:col-span-9 space-y-12">
+          {/* Header */}
       <section className="text-center max-w-3xl mx-auto space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-om-fresh/40 bg-om-fresh/10 px-3.5 py-1 text-xs font-mono text-om-fresh">
           <SealCheck weight="duotone" className="h-4 w-4" />
@@ -211,6 +222,13 @@ export default function CriticsPage() {
           </form>
         )}
       </section>
+        </main>
+      </div>
+
+      <ShareSongModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </div>
   );
 }

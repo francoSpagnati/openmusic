@@ -13,6 +13,9 @@ import {
   Disc,
   Waveform,
   CheckCircle,
+  Star,
+  SealCheck,
+  Users,
 } from '@phosphor-icons/react';
 
 export interface FriendStoryData {
@@ -30,6 +33,10 @@ export interface FriendStoryData {
   durationMs: number;
   previewUrl: string;
   provider: 'SPOTIFY' | 'APPLE_MUSIC' | 'LASTFM';
+  criticScore?: number;
+  communityScore?: number;
+  userRating?: number;
+  userReviewSnippet?: string;
 }
 
 interface StoryListeningModalProps {
@@ -166,6 +173,72 @@ export const StoryListeningModal: React.FC<StoryListeningModalProps> = ({ friend
             <span>{formatTime(friend.progressMs)}</span>
             <span>{formatTime(friend.durationMs)}</span>
           </div>
+        </div>
+
+        {/* Dual Score & Personal Friend Rating */}
+        <div className="rounded-xl border border-om-border bg-om-bg/70 p-3 space-y-2.5">
+          {/* Dual Score row */}
+          <div className="flex items-center justify-between border-b border-om-border/50 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-om-fresh/10 border border-om-fresh/30 text-om-fresh">
+                <SealCheck weight="fill" className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-mono text-om-muted uppercase tracking-wider">Critica Accreditata</span>
+                <span className="font-mono text-xs font-bold text-om-fresh">
+                  {friend.criticScore ? `${friend.criticScore}% Fresh` : '94% Fresh'}
+                </span>
+              </div>
+            </div>
+
+            <div className="h-6 w-px bg-om-border" />
+
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-om-amber/10 border border-om-amber/30 text-om-amber">
+                <Users weight="fill" className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col text-right">
+                <span className="text-[10px] font-mono text-om-muted uppercase tracking-wider">Voto Community</span>
+                <span className="font-mono text-xs font-bold text-om-amber">
+                  {friend.communityScore ? `${friend.communityScore}%` : '89%'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Friend's personal rating */}
+          <div className="flex items-center justify-between pt-0.5">
+            <span className="text-xs font-sans text-om-secondary">
+              Voto di <strong className="text-om-text font-semibold">{friend.name.split(' ')[0]}</strong>:
+            </span>
+
+            {friend.userRating ? (
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center text-om-amber">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      weight={i < Math.floor(friend.userRating!) ? 'fill' : 'regular'}
+                      className="h-3.5 w-3.5"
+                    />
+                  ))}
+                </div>
+                <span className="text-xs font-mono font-bold text-om-text tabular-nums">
+                  {friend.userRating.toFixed(1)}/5.0
+                </span>
+              </div>
+            ) : (
+              <span className="text-[11px] font-mono text-om-muted italic">
+                Non ha ancora recensito questo brano
+              </span>
+            )}
+          </div>
+
+          {friend.userReviewSnippet && (
+            <p className="text-xs font-sans italic text-om-secondary bg-om-card/60 p-2 rounded-lg border border-om-border/40">
+              "{friend.userReviewSnippet}"
+            </p>
+          )}
         </div>
 
         {/* Social Fast Reactions / Actions */}

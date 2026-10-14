@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   House,
-  FilmStrip,
   Compass,
   Bell,
   ChatCircleDots,
@@ -16,6 +15,7 @@ import {
   EyeSlash,
   Eye,
   Waveform,
+  Gear,
 } from '@phosphor-icons/react';
 
 interface SidebarProps {
@@ -28,13 +28,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
 
   const navItems = [
     { label: 'Home Feed', href: '/', icon: House },
-    { label: 'Reels Musicali', href: '/reels', icon: FilmStrip },
     { label: 'Esplora Gusti', href: '/explore', icon: Compass },
-    { label: 'Notifiche', href: '/notifications', icon: Bell, badge: 3 },
-    { label: 'Chat Musicale', href: '/chat', icon: ChatCircleDots },
     { label: 'Critic Score', href: '/critics', icon: Newspaper },
     { label: 'Video Saggi', href: '/videos', icon: Waveform },
+    { label: 'Chat Musicale', href: '/chat', icon: ChatCircleDots },
+    { label: 'Notifiche', href: '/notifications', icon: Bell, badge: 3 },
     { label: 'Il Tuo Profilo', href: '/profile', icon: User },
+    { label: 'Impostazioni', href: '/settings', icon: Gear },
   ];
 
   return (

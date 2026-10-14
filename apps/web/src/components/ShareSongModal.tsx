@@ -72,7 +72,7 @@ const PRESET_TRACKS: PresetTrack[] = [
 interface ShareSongModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onShare: (post: any) => void;
+  onShare?: (post: any) => void;
 }
 
 export const ShareSongModal: React.FC<ShareSongModalProps> = ({ isOpen, onClose, onShare }) => {
@@ -94,28 +94,35 @@ export const ShareSongModal: React.FC<ShareSongModalProps> = ({ isOpen, onClose,
     e.preventDefault();
     if (!comment.trim()) return;
 
-    onShare({
-      id: `post_${Date.now()}`,
-      author: {
-        name: 'Franco Spagnati',
-        handle: '@francospagnati',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
-      },
-      timeAgo: 'Adesso',
-      content: comment,
-      vibeTag: vibe,
-      album: {
-        id: 'rel_in_rainbows',
-        title: selectedTrack.title,
-        artist: selectedTrack.artist,
-        coverUrl: selectedTrack.coverUrl,
-        year: selectedTrack.year,
-        previewUrl: selectedTrack.previewUrl,
-      },
-      rating,
-      likesCount: 0,
-      commentsCount: 0,
-    });
+    if (onShare) {
+      onShare({
+        id: `post_${Date.now()}`,
+        author: {
+          name: 'Franco Spagnati',
+          handle: '@francospagnati',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
+        },
+        timeAgo: 'Adesso',
+        content: comment,
+        vibeTag: vibe,
+        album: {
+          id: 'rel_in_rainbows',
+          title: selectedTrack.title,
+          artist: selectedTrack.artist,
+          coverUrl: selectedTrack.coverUrl,
+          year: selectedTrack.year,
+          criticScore: 94,
+          userScore: 92,
+        },
+        userRating: rating,
+        likesCount: 1,
+        commentsCount: 0,
+        hasLiked: false,
+        trackPreviewUrl: selectedTrack.previewUrl,
+      });
+    } else {
+      alert(`Hai condiviso "${selectedTrack.title}" con voto ${rating}/5.0!`);
+    }
 
     setComment('');
     onClose();
