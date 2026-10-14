@@ -81,16 +81,13 @@ export default function VideosPage() {
       : SAMPLE_VIDEOS.filter((v) => v.category === selectedCategory);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Navigation Sidebar */}
-        <aside className="hidden lg:block lg:col-span-3">
-          <Sidebar onOpenCreatePost={() => setIsShareModalOpen(true)} />
-        </aside>
+    <div className="mx-auto flex min-h-screen max-w-7xl justify-center">
+      {/* 1. Left Navigation Sidebar */}
+      <Sidebar onOpenCreatePost={() => setIsShareModalOpen(true)} />
 
-        {/* Main Content Area */}
-        <main className="lg:col-span-9 space-y-8">
-          {/* Header */}
+      {/* 2. Main Content Area */}
+      <main className="w-full flex-1 border-r border-om-border min-h-screen p-4 sm:p-8 space-y-8">
+        {/* Header */}
       <section className="space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-om-amber/40 bg-om-amber/10 px-3.5 py-1 text-xs font-mono text-om-amber">
           <VideoCamera weight="duotone" className="h-4 w-4" />
@@ -202,8 +199,7 @@ export default function VideosPage() {
           </div>
         ))}
       </div>
-        </main>
-      </div>
+      </main>
 
       <ShareSongModal
         isOpen={isShareModalOpen}

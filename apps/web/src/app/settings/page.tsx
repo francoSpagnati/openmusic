@@ -36,16 +36,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Navigation Sidebar */}
-        <aside className="hidden lg:block lg:col-span-3">
-          <Sidebar onOpenCreatePost={() => setIsShareModalOpen(true)} />
-        </aside>
+    <div className="mx-auto flex min-h-screen max-w-7xl justify-center">
+      {/* 1. Left Navigation Sidebar */}
+      <Sidebar onOpenCreatePost={() => setIsShareModalOpen(true)} />
 
-        {/* Main Content Area */}
-        <main className="lg:col-span-9 space-y-8">
-          {/* Header */}
+      {/* 2. Main Content Area */}
+      <main className="w-full flex-1 border-r border-om-border min-h-screen p-4 sm:p-8 space-y-8">
+        {/* Header */}
           <div className="border-b border-om-border pb-4">
             <div className="flex items-center gap-2 text-om-amber text-xs font-mono mb-1">
               <Gear weight="fill" className="h-4 w-4" />
@@ -285,12 +282,11 @@ export default function SettingsPage() {
             </div>
           </form>
         </main>
-      </div>
 
-      <ShareSongModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-      />
-    </div>
-  );
-}
+        <ShareSongModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+        />
+      </div>
+    );
+  }
