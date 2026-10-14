@@ -1,0 +1,173 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  CRITIC
+  MODERATOR
+}
+
+enum ReleaseType {
+  ALBUM
+  SINGLE
+  EP
+}
+
+// ADR-004: Solo reazioni costruttive, nessun commento tossico libero
+enum ReactionType {
+  AGREE           // "Condivido al 100%"
+  WELL_WRITTEN    // "Bella penna / Recensione curata"
+  DISCOVERED      // "Scoperto grazie a te"
+  HEART           // Apprezzamento generale
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  displayName   String?
+  email         String    @unique
+  avatarUrl     String?
+  bio           String?
+  role          Role      @default(USER)
+  isGhostMode   Boolean   @default(false) // Euristica 3: Ascolto privato a 1-tap
+  createdAt     DateTime  @default(now())
+
+  connectedAccounts ConnectedAccount[]
+  reviews           Review[]
+  reactions         ReviewReaction[]
+  scrobbleLogs      ScrobbleLog[]
+  playlists         Playlist[]
+  following         Follows[]          @relation("following")
+  followedBy        Follows[]          @relation("followedBy")
+}
+
+model ConnectedAccount {
+  id           String    @id @default(uuid())
+  userId       String
+  provider     String    // "SPOTIFY", "LASTFM", "APPLE_MUSIC"
+  providerId   String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+}
+
+model Follows {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("followedBy", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+}
+
+model Release {
+  id              String      @id @default(uuid())
+  musicbrainzId   String?     @unique
+  spotifyId       String?     @unique
+  title           String
+  artistName      String
+  releaseType     ReleaseType @default(ALBUM)
+  coverUrl        String?
+  dominantColor   String?     @default("#26262B")
+  genres          String[]
+  releaseDate     DateTime?
+
+  // ADR-001: Sistema di Rating Duale (Pubblico + Critica)
+  audienceAvg     Float?      // Media 0.5 - 5.0
+  audienceFreshPct Int?       // % di voti >= 3.5 (70/100) stile Rotten Tomatoes
+  audienceCount   Int         @default(0)
+  criticAvg       Float?
+  criticFreshPct  Int?
+  criticCount     Int         @default(0)
+
+  tracks          Track[]
+  reviews         Review[]
+  scrobbleLogs    ScrobbleLog[]
+}
+
+model Track {
+  id            String   @id @default(uuid())
+  isrc          String?  @unique // Chiave universale per traduzione link e fallback audio
+  spotifyId     String?  @unique
+  deezerId      String?  @unique
+  title         String
+  artistName    String
+  durationMs    Int
+  previewUrl    String?  // Clip 30s risolta tramite ADR-003 (Spotify -> Deezer -> iTunes)
+  releaseId     String
+  release       Release  @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  reviews       Review[]
+  scrobbleLogs  ScrobbleLog[]
+}
+
+model Review {
+  id               String           @id @default(uuid())
+  userId           String
+  releaseId        String?
+  trackId          String?
+  rating           Int              // Salvato 10..100 (es. 3.5 stelle = 70)
+  content          String?
+  vibeTags         String[]
+  isCritic         Boolean          @default(false)
+  isVerifiedListen Boolean          @default(false) // ADR-004: True se l'utente ha davvero ascoltato l'opera
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  release          Release?         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  track            Track?           @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  reactions        ReviewReaction[]
+
+  @@unique([userId, releaseId])
+}
+
+model ReviewReaction {
+  id        String       @id @default(uuid())
+  reviewId  String
+  userId    String
+  type      ReactionType
+  createdAt DateTime     @default(now())
+
+  review    Review       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId, type])
+}
+
+// Storico ascolti per calcolare "Cosa mi sta piacendo ultimamente" e il badge "Ascolto Verificato"
+model ScrobbleLog {
+  id         String   @id @default(uuid())
+  userId     String
+  trackId    String
+  releaseId  String?
+  provider   String
+  playedAt   DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  release    Release? @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, playedAt(sort: Desc)])
+  @@index([userId, releaseId])
+}
+
+model Playlist {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  coverUrl    String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
