@@ -21,8 +21,8 @@ const config: Config = {
         'om-border': '#2A2A2E',
       },
       fontFamily: {
-        editorial: ['var(--font-fraunces)', 'Fraunces', 'Georgia', 'serif'],
-        sans: ['var(--font-plus-jakarta)', 'Plus Jakarta Sans', '-apple-system', 'sans-serif'],
+        editorial: ['var(--font-syne)', 'Syne', 'sans-serif'],
+        sans: ['var(--font-outfit)', 'Outfit', '-apple-system', 'sans-serif'],
         mono: ['var(--font-jetbrains-mono)', 'JetBrains Mono', 'monospace'],
       },
       boxShadow: {

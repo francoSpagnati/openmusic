@@ -1,20 +1,20 @@
 import type { Metadata } from 'next';
-import { Fraunces, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
+import { Syne, Outfit, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { AudioPlayerProvider } from '../context/AudioPlayerContext';
 import { AudioPlayerBar } from '../components/AudioPlayerBar';
 
-const fraunces = Fraunces({
+const syne = Syne({
   subsets: ['latin'],
-  variable: '--font-fraunces',
+  variable: '--font-syne',
   display: 'swap',
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
+const outfit = Outfit({
   subsets: ['latin'],
-  variable: '--font-plus-jakarta',
+  variable: '--font-outfit',
   display: 'swap',
 });
 
@@ -64,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="it"
-      className={`${fraunces.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} dark`}
+      className={`${syne.variable} ${outfit.variable} ${jetbrainsMono.variable} dark`}
     >
       <body className="min-h-screen bg-om-bg text-om-text flex flex-col selection:bg-om-amber selection:text-om-bg font-sans">
         <AudioPlayerProvider>
