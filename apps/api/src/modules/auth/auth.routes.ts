@@ -2,7 +2,6 @@ import type { FastifyPluginAsync } from 'fastify';
 import {
   SpotifyAuthCallbackQuerySchema,
   LastFmAuthCallbackQuerySchema,
-  UpdateProfileSchema,
 } from '@openmusic/shared';
 import type { AuthService } from './auth.service';
 

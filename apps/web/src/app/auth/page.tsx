@@ -197,7 +197,7 @@ export default function AuthPage() {
               {mode === 'REGISTER' && (
                 <div className="space-y-2 pt-2 border-t border-om-border/50">
                   <label className="block text-xs font-mono text-om-secondary">
-                    I tuoi generi preferiti (per calibrare l'algoritmo)
+                    I tuoi generi preferiti (per calibrare l’algoritmo)
                   </label>
                   <div className="flex flex-wrap gap-1.5">
                     {GENRES.map((genre) => {

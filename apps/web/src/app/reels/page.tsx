@@ -225,7 +225,7 @@ export default function ReelsPage() {
             </div>
 
             <p className="text-xs text-om-text/90 leading-relaxed italic bg-black/40 backdrop-blur-sm p-2.5 rounded-xl border border-white/5">
-              "{currentReel.curatorNote}"
+              “{currentReel.curatorNote}”
             </p>
 
             {/* Interaction Bar (Fitts's Law Thumb Zone) */}

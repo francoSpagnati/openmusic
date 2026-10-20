@@ -5,7 +5,7 @@ import type {
   GenreRouletteResult,
   CatalogTrack,
 } from '@openmusic/shared';
-import { AudioPreviewResolverService } from '../catalog/audio-preview-resolver.service';
+import type { AudioPreviewResolverService } from '../catalog/audio-preview-resolver.service';
 
 interface CuratedGenre {
   name: string;

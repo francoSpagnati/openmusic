@@ -72,7 +72,7 @@ export default function CriticsPage() {
           </h3>
           <p className="text-xs text-om-secondary leading-relaxed">
             I giornalisti e i redattori inviano il link alla propria testata e al portfolio di articoli.
-            Il team editoriale verifica l'autenticità prima di rilasciare il badge verified.
+            Il team editoriale verifica l’autenticità prima di rilasciare il badge verified.
           </p>
         </div>
 
@@ -85,7 +85,7 @@ export default function CriticsPage() {
           </h3>
           <p className="text-xs text-om-secondary leading-relaxed">
             Ogni recensione della critica ospita un estratto sintetico (pull quote) e reindirizza con un
-            link diretto all'articolo completo sul sito della testata, valorizzando il giornalismo.
+            link diretto all’articolo completo sul sito della testata, valorizzando il giornalismo.
           </p>
         </div>
 

@@ -250,8 +250,8 @@ export default function ProfilePage() {
                 <span className="font-mono text-xs font-bold text-om-amber">★★★★★ 5.0</span>
               </div>
               <p className="text-xs text-om-secondary leading-relaxed">
-                "Un disco che non invecchia mai. Weird Fishes e Reckoner rappresentano la perfezione
-                sonora degli anni 2000."
+                “Un disco che non invecchia mai. Weird Fishes e Reckoner rappresentano la perfezione
+                sonora degli anni 2000.”
               </p>
             </div>
           </div>

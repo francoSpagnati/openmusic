@@ -1,9 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import type Redis from 'ioredis';
-import { SpotifyService } from '../auth/spotify.service';
-import { NowPlayingService } from '../now-playing/now-playing.service';
+import type { SpotifyService } from '../auth/spotify.service';
+import type { NowPlayingService } from '../now-playing/now-playing.service';
 import type {
-  SpotifyCurrentlyPlaying,
   SpotifyTrackItem,
   SpotifyTopArtist,
   SpotifyRecentlyPlayedItem,

@@ -239,7 +239,7 @@ export default function ReleaseDetailPage({ params }: Props) {
                 </div>
 
                 <p className="text-sm text-om-secondary italic font-serif leading-relaxed">
-                  "{cr.quote}"
+                  “{cr.quote}”
                 </p>
 
                 <div className="flex items-center justify-between text-xs text-om-muted font-mono pt-2 border-t border-om-border/40">

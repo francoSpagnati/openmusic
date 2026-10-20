@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
-import type { AuthSessionResponse, AuthUser, ConnectedAccountInfo } from '@openmusic/shared';
-import { SpotifyService } from './spotify.service';
-import { LastFmService } from './lastfm.service';
+import type { AuthUser, ConnectedAccountInfo } from '@openmusic/shared';
+import type { SpotifyService } from './spotify.service';
+import type { LastFmService } from './lastfm.service';
 
 export class AuthService {
   constructor(

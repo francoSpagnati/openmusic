@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AuthUserSchema } from './auth';
-import { CatalogTrackSchema, CatalogReleaseSchema } from './catalog';
+import { CatalogTrackSchema } from './catalog';
 
 export const ReactionTypeSchema = z.enum([
   'AGREE',        // "Condivido al 100%"

@@ -1,10 +1,6 @@
 import type { Redis } from 'ioredis';
 import type { PrismaClient } from '@prisma/client';
-import {
-  type NowPlayingTrack,
-  type FriendPresence,
-  NowPlayingTrackSchema,
-} from '@openmusic/shared';
+import { type FriendPresence, NowPlayingTrackSchema } from '@openmusic/shared';
 
 const PRESENCE_TTL_SECONDS = 300; // 5 minuti di TTL automatico in Redis
 

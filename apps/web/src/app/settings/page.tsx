@@ -49,7 +49,7 @@ export default function SettingsPage() {
               <span>Preferenze & Connessioni</span>
             </div>
             <h1 className="font-editorial text-3xl font-bold text-om-text">
-              Impostazioni dell'Account
+              Impostazioni dell’Account
             </h1>
             <p className="text-sm text-om-secondary mt-1">
               Gestisci la sincronizzazione streaming in tempo reale, la privacy e le tue preferenze analogiche.

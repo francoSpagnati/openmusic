@@ -37,7 +37,7 @@ export class AudioPreviewResolverService {
           };
         }
       }
-    } catch (err) {
+    } catch {
       // Ignora e passa al fallback successivo
     }
 
@@ -66,7 +66,7 @@ export class AudioPreviewResolverService {
           };
         }
       }
-    } catch (err) {
+    } catch {
       // Fallback terminato senza successo
     }
 

@@ -10,9 +10,9 @@ export function createSpotifyRoutes(spotifySyncService: SpotifySyncService): Fas
         const decoded = await request.jwtVerify<{ userId: string }>();
         const result = await spotifySyncService.syncUserPlayback(decoded.userId);
         return reply.send(result);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return reply.status(400).send({
-          error: err.message ?? 'Impossibile recuperare la riproduzione Spotify corrente',
+          error: err instanceof Error ? err.message : 'Impossibile recuperare la riproduzione Spotify corrente',
         });
       }
     });
@@ -23,9 +23,9 @@ export function createSpotifyRoutes(spotifySyncService: SpotifySyncService): Fas
         const decoded = await request.jwtVerify<{ userId: string }>();
         const result = await spotifySyncService.syncUserPlayback(decoded.userId);
         return reply.send(result);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return reply.status(400).send({
-          error: err.message ?? 'Errore durante la sincronizzazione con Spotify',
+          error: err instanceof Error ? err.message : 'Errore durante la sincronizzazione con Spotify',
         });
       }
     });
@@ -40,9 +40,9 @@ export function createSpotifyRoutes(spotifySyncService: SpotifySyncService): Fas
           query.timeRange ?? 'short_term'
         );
         return reply.send({ tracks });
-      } catch (err: any) {
+      } catch (err: unknown) {
         return reply.status(400).send({
-          error: err.message ?? 'Impossibile recuperare la rotazione pesante da Spotify',
+          error: err instanceof Error ? err.message : 'Impossibile recuperare la rotazione pesante da Spotify',
         });
       }
     });
@@ -53,9 +53,9 @@ export function createSpotifyRoutes(spotifySyncService: SpotifySyncService): Fas
         const decoded = await request.jwtVerify<{ userId: string }>();
         const items = await spotifySyncService.getRecentlyPlayed(decoded.userId);
         return reply.send({ items });
-      } catch (err: any) {
+      } catch (err: unknown) {
         return reply.status(400).send({
-          error: err.message ?? 'Impossibile recuperare gli ascolti recenti',
+          error: err instanceof Error ? err.message : 'Impossibile recuperare gli ascolti recenti',
         });
       }
     });
@@ -66,9 +66,9 @@ export function createSpotifyRoutes(spotifySyncService: SpotifySyncService): Fas
         const decoded = await request.jwtVerify<{ userId: string }>();
         const artists = await spotifySyncService.getTopArtists(decoded.userId);
         return reply.send({ artists });
-      } catch (err: any) {
+      } catch (err: unknown) {
         return reply.status(400).send({
-          error: err.message ?? 'Impossibile recuperare i top artists',
+          error: err instanceof Error ? err.message : 'Impossibile recuperare i top artists',
         });
       }
     });
@@ -80,9 +80,9 @@ export function createSpotifyRoutes(spotifySyncService: SpotifySyncService): Fas
         const input = ExportPlaylistInputSchema.parse(request.body);
         const result = await spotifySyncService.exportPlaylistToSpotify(decoded.userId, input);
         return reply.send(result);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return reply.status(400).send({
-          error: err.message ?? 'Errore durante l\'esportazione della playlist su Spotify',
+          error: err instanceof Error ? err.message : 'Errore durante l\'esportazione della playlist su Spotify',
         });
       }
     });

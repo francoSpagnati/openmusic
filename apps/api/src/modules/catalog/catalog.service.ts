@@ -4,7 +4,7 @@ import type {
   CatalogTrack,
   SearchResult,
 } from '@openmusic/shared';
-import { AudioPreviewResolverService } from './audio-preview-resolver.service';
+import type { AudioPreviewResolverService } from './audio-preview-resolver.service';
 
 export class CatalogService {
   constructor(
@@ -119,7 +119,7 @@ export class CatalogService {
           };
         }
       }
-    } catch (err) {
+    } catch {
       // Ignora errori di rete esterni
     }
 

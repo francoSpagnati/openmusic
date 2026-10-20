@@ -236,7 +236,7 @@ export const StoryListeningModal: React.FC<StoryListeningModalProps> = ({ friend
 
           {friend.userReviewSnippet && (
             <p className="text-xs font-sans italic text-om-secondary bg-om-card/60 p-2 rounded-lg border border-om-border/40">
-              "{friend.userReviewSnippet}"
+              “{friend.userReviewSnippet}”
             </p>
           )}
         </div>

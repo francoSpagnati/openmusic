@@ -95,7 +95,7 @@ export default function VideosPage() {
         </div>
 
         <h1 className="font-editorial text-4xl sm:text-5xl font-bold text-om-text">
-          L'Approfondimento che la Musica Merita
+          L’Approfondimento che la Musica Merita
         </h1>
 
         <p className="text-base text-om-secondary max-w-2xl leading-relaxed">

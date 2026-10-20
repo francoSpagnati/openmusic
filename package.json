@@ -12,11 +12,24 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "db:generate": "npm --workspace=@openmusic/db run generate",
-    "db:push": "npm --workspace=@openmusic/db run push"
+    "db:push": "npm --workspace=@openmusic/db run push",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "npm --workspace=@openmusic/db run migrate",
+    "db:migrate:deploy": "npm --workspace=@openmusic/db run migrate:deploy",
+    "db:seed": "npm --workspace=@openmusic/db run seed",
+    "db:test:prepare": "node scripts/prepare-test-db.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^8.57.1",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "globals": "^15.15.0",
+    "prettier": "^3.9.10",
     "turbo": "^2.1.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.72.0"
   },
   "engines": {
     "node": ">=20.0.0"
