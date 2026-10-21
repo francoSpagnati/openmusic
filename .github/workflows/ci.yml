@@ -45,6 +45,9 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openmusic_test?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+      # Catalog provider/import tests run on recorded fixtures through an injected fetch; the
+      # API also refuses live provider calls when NODE_ENV=test. Never hit Deezer/iTunes/MB here.
+      CATALOG_EXTERNAL_ENABLED: 'false'
       NEXT_TELEMETRY_DISABLED: 1
       TURBO_TELEMETRY_DISABLED: 1
 
@@ -53,7 +56,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -71,11 +74,47 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
+      # Mobile typecheck runs above with the other packages; its Jest suite runs in the `mobile` job.
+      - name: Test (shared, api incl. catalog fixtures, web)
+        run: npx turbo run test --filter=!@openmusic/mobile
 
       - name: Build web
         run: npx turbo run build --filter=@openmusic/web
+
+  mobile:
+    name: Mobile (typecheck, Jest, bundle export)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      CI: true
+      # Offline: no api.expo.dev dependency validation, only local bundling.
+      EXPO_OFFLINE: 1
+      EXPO_NO_TELEMETRY: 1
+      TURBO_TELEMETRY_DISABLED: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx turbo run typecheck --filter=@openmusic/mobile
+
+      - name: Jest
+        run: npm --workspace=@openmusic/mobile test -- --ci
+
+      - name: Export iOS and Android bundles
+        working-directory: apps/mobile
+        run: |
+          npx expo export --platform ios --output-dir "$RUNNER_TEMP/expo-ios"
+          npx expo export --platform android --output-dir "$RUNNER_TEMP/expo-android"
 
   e2e:
     name: E2E smoke (Playwright)
@@ -114,6 +153,9 @@ jobs:
       JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
       CORS_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:4000
+      # Deterministic e2e data: no real-catalog upgrade of the seed, no live provider calls.
+      CATALOG_SEED_IMPORT: 'false'
+      CATALOG_EXTERNAL_ENABLED: 'false'
       NEXT_TELEMETRY_DISABLED: 1
       TURBO_TELEMETRY_DISABLED: 1
 
@@ -122,7 +164,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies

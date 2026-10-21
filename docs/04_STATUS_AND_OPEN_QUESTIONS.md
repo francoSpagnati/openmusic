@@ -8,17 +8,21 @@
 
 ## 1. Verifiche (stato del branch)
 
-| Controllo                                  | Esito locale                           |
-| ------------------------------------------ | -------------------------------------- |
-| `npm run lint`                             | passa (api, db, shared, web + e2e)     |
-| `npm run typecheck`                        | passa su 5/5 pacchetti, mobile incluso |
-| `npm test` (dopo `db:test:prepare`)        | shared 33/33, api 72/72                |
-| Build web (`next build`)                   | passa                                  |
-| `npm run e2e` (Playwright, 5 test)         | passa in locale                        |
-| CI GitHub (`ci.yml`, job `verify` + `e2e`) | **non ancora eseguita su GitHub**      |
+| Controllo                                             | Esito locale                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------- |
+| `npm ci` (copia pulita dei manifest + lockfile)       | passa, lockfile allineato                                     |
+| `npm run lint`                                        | passa (api, db, shared, web + e2e)                            |
+| `npm run typecheck`                                   | passa su 5/5 pacchetti, mobile incluso                        |
+| `npm test` (dopo `db:test:prepare`)                   | shared 41/41, api 125/125 (catalogo su fixture), mobile 58/58 |
+| Build web (`next build`)                              | passa                                                         |
+| `npm run e2e` (Playwright, 10 test, DB nuovo + seed)  | passa in locale                                               |
+| `expo export` iOS + Android (`EXPO_OFFLINE=1`)        | passa (bundle Hermes ~5 MB per piattaforma)                   |
+| CI GitHub (`ci.yml`, job `verify` + `mobile` + `e2e`) | round 1 verde su GitHub; questo round non ancora eseguito     |
 
-Non verificabili nell'ambiente di sviluppo usato (senza rete esterna): copertine reali, Google
-Fonts, anteprime Deezer/iTunes, OAuth Spotify/Last.fm reali.
+Non verificabili nell'ambiente di sviluppo usato (senza rete esterna): chiamate live a Deezer,
+iTunes, MusicBrainz e Cover Art Archive (provider e import testati con fixture registrate sulla
+forma documentata; `npm run catalog:smoke` le verifica dal vivo), copertine reali, Google Fonts,
+OAuth Spotify/Last.fm reali.
 
 ## 2. Cosa è reale
 
@@ -39,8 +43,13 @@ Fonts, anteprime Deezer/iTunes, OAuth Spotify/Last.fm reali.
   pubblico e critica.
 - Critica: richiesta di accredito, coda e approvazione **solo ADMIN**, recensioni della critica,
   dual score. Video: pubblicazione per CRITIC/MODERATOR/ADMIN, feed e video per release.
-- Catalogo: ricerca locale + import on-the-fly da Deezer/iTunes, elenco per genere, anteprime 30 s
-  (Deezer → iTunes).
+- Catalogo da database esterni (`06` §8): provider Deezer (primario), iTunes (fallback),
+  MusicBrainz (arricchimento, 1 req/s con User-Agent), Cover Art Archive (cover di riserva), con
+  cache Redis, retry/backoff, rate limit e circuit breaker per provider. Import con UUID interni e
+  id esterni, deduplica per id/UPC/ISRC/titolo + artista, tracklist completa all'apertura,
+  `GET /api/catalog/resolve`, colore dominante calcolato dalla cover senza dipendenze, script
+  `catalog:import` (46 album curati) e `catalog:smoke`. **Testato solo con fixture**: nell'ambiente
+  di sviluppo usato le API esterne sono bloccate; la verifica live è `npm run catalog:smoke`.
 - Spotify collegato: currently playing, sync playback con scrobble, heavy rotation in cache, top
   artisti, export playlist.
 
@@ -75,16 +84,15 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 
 - [ ] **Media bayesiana** (ADR-001): non applicata, `audienceAvg` è una media pesata semplice.
 - [ ] **Ordine del resolver anteprime** diverso dall'ADR-003 (vedi §5).
-- [ ] **Id Deezer** (`deezer-…`): accettati solo in chat; post, recensioni, playlist e pagine
-      release richiedono UUID, quindi un brano importato al volo da Deezer non è recensibile finché
-      non è nel catalogo.
-- [ ] **OAuth Spotify/Last.fm:** dopo il consenso l'utente atterra sul JSON dell'API invece di
-      tornare all'app.
+- [x] ~~Id Deezer (`deezer-…`)~~: ora ogni risultato esterno è importato con UUID interno; i vecchi
+      id sono stati convertiti dalla migrazione e `resolve` accetta ancora `deezer-alb/trk-<n>`.
+- [x] ~~OAuth Spotify/Last.fm su JSON~~: i callback reindirizzano a `WEB_APP_URL`
+      (`/settings?oauth=…&status=…`) e il web mostra l'esito (`OAuthReturnNotice`).
 - [ ] Endpoint mancanti: reset password, eliminazione recensione, like/salvataggio di un reel,
       paginazione dei messaggi più vecchi e dei Reels.
 - [ ] **Playlist:** API presenti, nessuna pagina web.
 - [ ] Apple Music, YouTube Music e deep-link nativi nei link universali: non implementati.
-- [ ] Estrazione automatica del colore dominante dalle copertine (oggi viene dal seed).
+- [x] ~~Colore dominante dal seed~~: calcolato all'import dalla cover (JPEG/PNG, `06` §8).
 - [ ] Undo nei Reels e nella Roulette (euristica di Nielsen #3).
 
 ### Realtime
@@ -92,8 +100,9 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - [ ] Un messaggio in chat arriva live solo al destinatario: le altre schede del mittente e le
       reazioni non si aggiornano.
 - [ ] Il badge "non lette" non scende dopo "segna tutte come lette".
-- [ ] Il socket resta autenticato dopo logout o cambio password (il token si verifica solo alla
-      connessione); gli aggiornamenti now-playing non hanno throttling.
+- [x] ~~Socket autenticato dopo logout/cambio password~~: `session:revoked` + chiusura su logout,
+      cambio password, scadenza del token e sessione non più valida agli eventi; now-playing con
+      throttling (2 s per utente). Vedi `06` §5.
 - [ ] Adapter Socket.io in memoria: una sola istanza API (serve l'adapter Redis per scalare).
 
 ### Sicurezza e privacy (decisioni da prendere)
@@ -101,50 +110,56 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - [ ] Chiunque può scrivere in chat a chiunque: nessun requisito di follow, blocco o rate limit.
 - [ ] Follow senza approvazione: chi ti segue vede l'ascolto live se Ghost Mode è spenta; la heavy
       rotation è pubblica anche con Ghost Mode attiva.
-- [ ] `next.config.mjs` permette a `next/image` qualunque host https (proxy di immagini aperto).
+- [x] ~~Proxy di immagini aperto~~: `next/image` accetta solo gli host di `apps/web/image-hosts.mjs`.
 - [ ] Salvataggio recensione e ricalcolo punteggi non sono in un'unica transazione.
 
 ### Repository
 
 - [ ] File `LICENSE` (MIT) assente.
-- [ ] Prima esecuzione della CI su GitHub.
 - [ ] Alcuni file preesistenti (mobile, 3 file API) non sono formattati con Prettier.
 
 ### Minori
 
-- [ ] Una release inesistente mostra la pagina "non trovato" ma in dev risponde 200 (non
-      ricontrollato sulla build di produzione).
+- [ ] Una release inesistente mostra la pagina "non trovato" ma risponde 200 anche nella build di
+      produzione (lo streaming del `loading` parte prima del 404).
 - [ ] Titoli troncati in "Dischi del momento" a 1280 px.
 
 ## 4. Mobile (`apps/mobile`): stato e prossimi passi
 
-**Stato:** prototipo. I componenti (`LiveFriendsBar`, `ReleaseHeaderCard`, `ReviewComposer`,
-`DiscoveryReelsFeed`, `GenreRouletteWheel`, `MusicChatBubble`, `ThemedPlaylistView`,
-`NotificationPresenceWidget`, `DualScoreCard`...) esistono e compilano, ma `App.tsx` usa dati mock
-(`MOCK_SOCIAL_POSTS`, un `userId` fisso) e non c'è login. `useNowPlayingSocket` usa ancora
-`auth: { userId }`, che **l'API ora rifiuta**: il mobile oggi non riceve presenza.
-`NotificationPresenceWidget` è un componente React Native, non un widget di sistema.
+**Stato:** Expo SDK 58 (React Native 0.88, React 19.3), Expo Router, client API tipizzato con
+Bearer in `expo-secure-store`, socket autenticato con `auth: { token }`, font e tema del design
+system. Home, Esplora, Reels (anteprime da 30 s con `expo-audio`), release (recensioni,
+reazioni, punteggi), chat, notifiche, profili e impostazioni usano l'API reale; nessun dato mock.
+Verificato con typecheck, Jest (58 test, anche sull'albero di route reale con API finta) ed
+`expo export`; **mai provato su dispositivo, simulatore o Expo Go**, né contro un'API live.
+Richiede Node >= 22.13. Dettagli in `apps/mobile/README.md`.
 
-Prossimi passi, in ordine:
+Mancano / da decidere:
 
-1. Client API condiviso o portato da `apps/web/src/lib/api` (stessi schemi Zod), con token Bearer
-   in `expo-secure-store`.
-2. Schermate login/registrazione; gestione del 401 (sessione revocata dopo cambio password).
-3. Socket con `auth: { token }` al posto di `auth: { userId }`.
-4. Navigazione (Expo Router) e sostituzione dei mock con feed, release, recensioni, chat.
-5. Font Fraunces / Plus Jakarta Sans / JetBrains Mono con `expo-font` (oggi non caricati).
-6. Solo dopo: modulo Android (ongoing notification, `NotificationListenerService`) e widget iOS /
-   Live Activity (ADR-004).
+- [ ] Collegamento Spotify/Last.fm dall'app (lo `state` OAuth vive in un cookie).
+- [ ] Rimozione di un brano da una playlist (il "Salva" dei Reels non si può annullare).
+- [ ] Paginazione dei Reels (`/api/discovery/reels` restituisce sempre `nextCursor: null`) e
+      segnale "Non fa per me" lato server.
+- [ ] Anteprima audio in chat (oggi "Apri" apre il link universale).
+- [ ] Componenti vecchi in `src/components/` non più usati (`LiveFriendsBar`, `MusicChatBubble`,
+      `UserProfileView`, `DiscoveryReelsFeed`, `GenreRouletteWheel`, `ReleaseHeaderCard`,
+      `DualScoreCard`, `ReviewComposer`, `CriticReviewCard`, `MusicVideoPlayerCard`): da eliminare.
+- [ ] Il typecheck carica sia i tipi di React 18 (web, root) sia di React 19 (mobile).
+- [ ] Solo dopo: modulo Android (ongoing notification, `NotificationListenerService`) e widget iOS /
+      Live Activity (ADR-004).
 
 ## 5. Questioni aperte
 
-1. **Ordine del resolver anteprime (ADR-003):** il codice usa Deezer → iTunes, l'ADR dice
+1. **Next.js:** `14.2.15` → l'ultima patch `14.2.35` ha le stesse dipendenze e peer
+   (React 18.2); va aggiornata insieme a `eslint-config-next` in una PR dedicata (cambia il
+   lockfile).
+2. **Ordine del resolver anteprime (ADR-003):** il codice usa Deezer → iTunes, l'ADR dice
    iTunes → Deezer → Spotify. Decidere se aggiornare l'ADR (Spotify è comunque inaffidabile per le
    nuove app) o il codice.
-2. **Media bayesiana:** attivarla ora (con `m` e `C` dell'ADR-001) o quando il catalogo ha abbastanza
+3. **Media bayesiana:** attivarla ora (con `m` e `C` dell'ADR-001) o quando il catalogo ha abbastanza
    recensioni?
-3. **Chi può scrivere in chat e vedere l'ascolto live:** solo mutual? follow con approvazione?
-4. **Hosting (ADR-005):** confermare Vercel (web) + Railway/Fly (API con WebSocket) + Neon/Supabase
-   - Upstash; richiede web e API sullo stesso dominio registrabile per il cookie
-     (`COOKIE_DOMAIN`, vedi `06` §1).
-5. **Licenza:** aggiungere `LICENSE` MIT con il titolare corretto.
+4. **Chi può scrivere in chat e vedere l'ascolto live:** solo mutual? follow con approvazione?
+5. **Hosting (ADR-005):** confermare Vercel (web) + Railway/Fly (API con WebSocket) +
+   Neon/Supabase e Upstash; richiede web e API sullo stesso dominio registrabile per il cookie
+   (`COOKIE_DOMAIN`, vedi `06` §1).
+6. **Licenza:** aggiungere `LICENSE` MIT con il titolare corretto.
