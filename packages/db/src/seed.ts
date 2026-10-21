@@ -9,8 +9,15 @@
  * ISRCs use a fictional registrant prefix (`ZZ` country + `OMS`) so they can never collide with real
  * recordings; the catalog sync replaces them with real codes when a release is matched.
  */
-import { createHash } from 'node:crypto';
-import { PrismaClient, Role, ReleaseType, ReactionType, type Prisma } from '@prisma/client';
+import { createHash, randomBytes, scryptSync } from 'node:crypto';
+import {
+  NotificationType,
+  PrismaClient,
+  Role,
+  ReleaseType,
+  ReactionType,
+  type Prisma,
+} from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -22,6 +29,19 @@ function seedId(key: string): string {
   chars[16] = ((parseInt(chars[16] ?? '0', 16) & 0x3) | 0x8).toString(16);
   const h = chars.join('');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/**
+ * Every seeded account can sign in with this password (development only). Hashed in the same
+ * `scrypt$N$r$p$salt$hash` format as apps/api/src/lib/password.ts.
+ */
+export const DEV_PASSWORD = 'openmusic-dev';
+
+function hashDevPassword(password: string): string {
+  const N = 2 ** 15;
+  const salt = randomBytes(16);
+  const key = scryptSync(password, salt, 64, { N, r: 8, p: 1, maxmem: 256 * 1024 * 1024 });
+  return ['scrypt', N, 8, 1, salt.toString('base64url'), key.toString('base64url')].join('$');
 }
 
 const daysAgo = (days: number, hours = 0): Date =>
@@ -73,6 +93,13 @@ const USERS: SeedUser[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=160&h=160&fit=crop',
     role: Role.CRITIC,
     criticOutlet: 'Rumore Bianco',
+  },
+  {
+    username: 'admin',
+    displayName: 'OpenMusic Staff',
+    bio: 'Account di amministrazione locale (verifica accrediti critici).',
+    avatarUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=160&h=160&fit=crop',
+    role: Role.ADMIN,
   },
 ];
 
@@ -406,6 +433,52 @@ const CHAT: Array<[string, string, string, string | null, [string, string] | nul
   ['c4', 'francospagnati', 'marco_beats', 'Il basso di questo pezzo è illegale.', null, 4],
 ];
 
+/** [key, author, content, releaseKey | null, rating | null, vibeTags, hoursAgo, likedBy] */
+const POSTS: Array<
+  [string, string, string, string | null, number | null, string[], number, string[]]
+> = [
+  [
+    'p1',
+    'giulia.rossi',
+    'Weird Fishes/Arpeggi resta una delle composizioni più ipnotiche mai registrate: tre chitarre pulite che si rincorrono e una batteria che non sbaglia un colpo.',
+    'in-rainbows',
+    100,
+    ['#CapolavoroAssoluto'],
+    1,
+    ['francospagnati', 'marco_beats'],
+  ],
+  [
+    'p2',
+    'marco_beats',
+    'Random Access Memories in cuffia, volume alto: i bassi suonati dal vivo hanno una dinamica che nessun plugin replica.',
+    'random-access-memories',
+    90,
+    ['#SuonoAnalogico'],
+    3,
+    ['francospagnati'],
+  ],
+  [
+    'p3',
+    'francospagnati',
+    'Stasera si ascolta Blonde dall’inizio alla fine, niente shuffle. Chi si unisce?',
+    'blonde',
+    null,
+    [],
+    6,
+    ['giulia.rossi', 'sara.vinyl'],
+  ],
+  [
+    'p4',
+    'rumorebianco',
+    'Nuova recensione in arrivo: Titanic Rising, dieci anni di un disco che guarda al soft rock senza nostalgia.',
+    'titanic-rising',
+    null,
+    ['#Recensione'],
+    20,
+    [],
+  ],
+];
+
 // ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
@@ -413,8 +486,10 @@ const LEGACY_RELEASE_IDS = ['rel_in_rainbows', 'rel_ram', 'rel_tpab'];
 
 async function seedUsers(): Promise<Map<string, string>> {
   const ids = new Map<string, string>();
+  const passwordHash = hashDevPassword(DEV_PASSWORD);
   for (const u of USERS) {
     const data = {
+      passwordHash,
       displayName: u.displayName,
       email: `${u.username.replace(/[^a-z0-9]/gi, '')}@openmusic.test`,
       avatarUrl: u.avatarUrl,
@@ -500,7 +575,22 @@ async function seedSocial(userIds: Map<string, string>): Promise<void> {
     await prisma.scrobbleLog.upsert({ where: { id }, update: data, create: { id, ...data } });
   }
 
-  const verified = new Set(SCROBBLES.map(([u, rk]) => `${u}:${rk}`));
+  // ADR-002 (same rule as ReviewsService): >= 3 distinct scrobbled tracks of the release, or all
+  // of them for releases shorter than that.
+  const distinctPlays = new Map<string, Set<string>>();
+  for (const [u, rk, title] of SCROBBLES) {
+    const k = `${u}:${rk}`;
+    distinctPlays.set(k, (distinctPlays.get(k) ?? new Set()).add(title));
+  }
+  const verified = new Set(
+    [...distinctPlays.entries()]
+      .filter(([k, titles]) => {
+        const releaseKey = k.slice(k.indexOf(':') + 1);
+        const trackCount = RELEASES.find((r) => r.key === releaseKey)?.tracks.length ?? 0;
+        return titles.size >= Math.max(1, Math.min(3, trackCount));
+      })
+      .map(([k]) => k)
+  );
   for (const r of REVIEWS) {
     const userId = uid(r.username);
     const releaseId = seedId(`release:${r.releaseKey}`);
@@ -571,30 +661,109 @@ async function seedSocial(userIds: Map<string, string>): Promise<void> {
   }
 }
 
+async function seedPosts(userIds: Map<string, string>): Promise<void> {
+  const uid = (username: string): string => {
+    const id = userIds.get(username);
+    if (!id) throw new Error(`Unknown seed user: ${username}`);
+    return id;
+  };
+  for (const [key, author, content, releaseKey, rating, vibeTags, hours, likedBy] of POSTS) {
+    const id = seedId(`post:${key}`);
+    const authorId = uid(author);
+    const data = {
+      authorId,
+      content,
+      releaseId: releaseKey ? seedId(`release:${releaseKey}`) : null,
+      rating,
+      vibeTags,
+      createdAt: daysAgo(0, hours),
+    };
+    await prisma.post.upsert({ where: { id }, update: data, create: { id, ...data } });
+    for (const liker of likedBy) {
+      const like = { postId: id, userId: uid(liker) };
+      await prisma.postLike.upsert({
+        where: { postId_userId: like },
+        update: {},
+        create: like,
+      });
+      const notificationId = seedId(`notification:like:${key}:${liker}`);
+      const notification = {
+        recipientId: authorId,
+        actorId: like.userId,
+        type: NotificationType.POST_LIKE,
+        postId: id,
+      };
+      await prisma.notification.upsert({
+        where: { id: notificationId },
+        update: notification,
+        create: { id: notificationId, ...notification },
+      });
+    }
+  }
+
+  for (const [follower, following] of FOLLOWS) {
+    const notificationId = seedId(`notification:follow:${follower}:${following}`);
+    const notification = {
+      recipientId: uid(following),
+      actorId: uid(follower),
+      type: NotificationType.FOLLOW,
+    };
+    await prisma.notification.upsert({
+      where: { id: notificationId },
+      update: notification,
+      create: { id: notificationId, ...notification },
+    });
+  }
+}
+
 interface Aggregate {
   avg: number | null;
   freshPct: number | null;
   count: number;
 }
 
-/** ADR-001: average on the 0.5–5.0 scale (1 decimal) and % of ratings >= 70 ("fresh"). */
-function aggregate(ratings: number[]): Aggregate {
-  if (ratings.length === 0) return { avg: null, freshPct: null, count: 0 };
-  const sum = ratings.reduce((acc, r) => acc + r, 0);
+/**
+ * ADR-001/ADR-002, mirrors apps/api/src/modules/reviews/score.ts: weighted average on the
+ * 0.5–5.0 scale (1 decimal) and weighted % of ratings >= 70 ("fresh"); a verified listen
+ * weighs 1.5x. Critic aggregates pass `weighted = false`.
+ */
+function aggregate(
+  reviews: Array<{ rating: number; isVerifiedListen: boolean }>,
+  weighted: boolean
+): Aggregate {
+  if (reviews.length === 0) return { avg: null, freshPct: null, count: 0 };
+  let weightSum = 0;
+  let ratingSum = 0;
+  let freshSum = 0;
+  for (const r of reviews) {
+    const w = weighted && r.isVerifiedListen ? 1.5 : 1;
+    weightSum += w;
+    ratingSum += w * r.rating;
+    if (r.rating >= 70) freshSum += w;
+  }
   return {
-    avg: Math.round((sum / ratings.length / 20) * 10) / 10,
-    freshPct: Math.round((ratings.filter((r) => r >= 70).length / ratings.length) * 100),
-    count: ratings.length,
+    avg: Math.round((ratingSum / weightSum / 20) * 10) / 10,
+    freshPct: Math.round((freshSum / weightSum) * 100),
+    count: reviews.length,
   };
 }
 
 async function recomputeReleaseScores(): Promise<void> {
   const releases = await prisma.release.findMany({
-    select: { id: true, reviews: { select: { rating: true, isCritic: true } } },
+    select: {
+      id: true,
+      reviews: { select: { rating: true, isCritic: true, isVerifiedListen: true } },
+    },
   });
   for (const r of releases) {
-    const audience = aggregate(r.reviews.filter((x) => !x.isCritic).map((x) => x.rating));
-    const critic = aggregate(r.reviews.filter((x) => x.isCritic).map((x) => x.rating));
+    const audience = aggregate(
+      r.reviews.filter((x) => !x.isCritic),
+      true
+    );
+    const critic = aggregate(
+      r.reviews.filter((x) => x.isCritic),
+      false
+    );
     await prisma.release.update({
       where: { id: r.id },
       data: {
@@ -610,10 +779,14 @@ async function recomputeReleaseScores(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to run the development seed with NODE_ENV=production');
+  }
   console.log('Seeding OpenMusic database...');
   const userIds = await seedUsers();
   await seedCatalog();
   await seedSocial(userIds);
+  await seedPosts(userIds);
   await recomputeReleaseScores();
 
   const counts = {
@@ -623,8 +796,13 @@ async function main(): Promise<void> {
     reviews: await prisma.review.count(),
     playlists: await prisma.playlist.count(),
     chatMessages: await prisma.chatMessage.count(),
+    posts: await prisma.post.count(),
+    notifications: await prisma.notification.count(),
   };
   console.log('Seed complete:', counts);
+  console.log(
+    `Sign in with any seeded email (e.g. francospagnati@openmusic.test, admin@openmusic.test) and password "${DEV_PASSWORD}".`
+  );
 }
 
 main()
