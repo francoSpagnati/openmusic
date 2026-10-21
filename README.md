@@ -24,7 +24,7 @@ Turborepo + npm workspaces. TypeScript strict ovunque.
 
 ### Prerequisiti
 
-- Node.js **>= 20** e npm 10
+- Node.js **>= 22.13** (richiesto da Expo SDK 58 / React Native 0.88) e npm 10
 - Docker + Docker Compose (oppure PostgreSQL 16 e Redis 7 installati in locale)
 
 ### 1. Dipendenze e servizi

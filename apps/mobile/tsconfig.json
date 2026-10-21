@@ -1,9 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "jsx": "react-native",
-    "rootDir": "./src",
-    "outDir": "./dist"
+    "jsx": "react-jsx",
+    "lib": ["DOM", "ES2022"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "customConditions": ["react-native"],
+    "noEmit": true,
+    "declaration": false,
+    "types": ["jest"]
   },
-  "include": ["src/**/*"]
+  "include": ["app/**/*", "src/**/*", "expo-env.d.ts", "jest.setup.ts"],
+  "exclude": ["node_modules", "dist-smoke"]
 }

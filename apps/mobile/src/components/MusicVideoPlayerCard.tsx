@@ -64,9 +64,7 @@ export const MusicVideoPlayerCard: React.FC<MusicVideoPlayerCardProps> = ({
 
         {/* Categoria Badge */}
         <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>
-            {CATEGORY_LABELS[category] ?? category}
-          </Text>
+          <Text style={styles.categoryText}>{CATEGORY_LABELS[category] ?? category}</Text>
         </View>
       </View>
 
@@ -109,7 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
