@@ -152,6 +152,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     createAuthRoutes(authService, {
       rateLimitMax: options.authRateLimitMax ?? env.AUTH_RATE_LIMIT_MAX,
       cookieSecure: env.COOKIE_SECURE,
+      presence: nowPlayingService,
     }),
     { prefix: '/api/auth' }
   );

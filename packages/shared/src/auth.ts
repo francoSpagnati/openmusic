@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { HttpUrlSchema } from './common';
 
 export const UserRoleSchema = z.enum(['USER', 'CRITIC', 'MODERATOR', 'ADMIN']);
 
@@ -104,6 +105,8 @@ export const SpotifyLoginQuerySchema = z.object({
 
 export const LastFmAuthCallbackQuerySchema = z.object({
   token: z.string().optional(),
+  /** Echo of the `state` we put in the callback URL (CSRF protection, like Spotify). */
+  state: z.string().optional(),
 });
 
 export const OAuthUrlResponseSchema = z.object({ url: z.string().url() });
@@ -113,7 +116,7 @@ export const UpdateProfileSchema = z
   .object({
     displayName: z.string().trim().min(1).max(50).optional(),
     bio: z.string().max(280).optional(),
-    avatarUrl: z.string().url().nullable().optional(),
+    avatarUrl: HttpUrlSchema.nullable().optional(),
     isGhostMode: z.boolean().optional(),
     favoriteGenres: FavoriteGenresSchema.optional(),
   })

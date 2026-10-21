@@ -9,7 +9,7 @@ import type {
 } from '@openmusic/shared';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors';
 import type { NotificationsService } from '../notifications/notifications.service';
-import { aggregateScore } from '../reviews/score';
+import { recalculateReleaseScores } from '../reviews/release-scores';
 
 export class CriticService {
   constructor(
@@ -169,8 +169,8 @@ export class CriticService {
       },
     });
 
-    // Ricalcola Critic Score dell'album
-    await this.recalculateCriticScore(input.releaseId);
+    // Both pools: the upsert may turn the critic's earlier audience review into a critic one.
+    await recalculateReleaseScores(this.prisma, input.releaseId);
 
     return {
       id: review.id,
@@ -184,22 +184,6 @@ export class CriticService {
       releaseId: input.releaseId,
       createdAt: review.createdAt.toISOString(),
     };
-  }
-
-  /**
-   * Ricalcola il Critic Score (Media e % Fresh dei critici accreditati)
-   */
-  private async recalculateCriticScore(releaseId: string): Promise<void> {
-    const criticReviews = await this.prisma.review.findMany({
-      where: { releaseId, isCritic: true },
-      select: { rating: true, isVerifiedListen: true },
-    });
-    // Critic score is unweighted: accreditation, not scrobbles, is the trust signal.
-    const score = aggregateScore(criticReviews, () => 1);
-    await this.prisma.release.update({
-      where: { id: releaseId },
-      data: { criticAvg: score.avg, criticFreshPct: score.freshPct, criticCount: score.count },
-    });
   }
 
   /**

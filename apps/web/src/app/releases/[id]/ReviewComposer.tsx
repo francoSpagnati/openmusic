@@ -13,7 +13,7 @@ import {
   starsFromRating,
   useToast,
 } from '../../../components/ui';
-import { VibeTagsInput } from './VibeTagsInput';
+import { VibeTagsInput } from '../../../components/web-core/feed/VibeTagsInput';
 
 const MAX_CONTENT = 3000;
 const MIN_CRITIC_CONTENT = 10;

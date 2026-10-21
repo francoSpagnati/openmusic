@@ -17,6 +17,8 @@ export interface AuthContext {
 
 export interface SessionTokenPayload {
   sub: string;
+  /** `User.sessionVersion` at issue time; a password change bumps it and revokes older tokens. */
+  sv?: number;
 }
 
 declare module '@fastify/jwt' {
@@ -37,7 +39,10 @@ declare module 'fastify' {
     optionalAuth: preHandlerAsyncHookHandler;
     /** preHandler factory: 403 unless the authenticated user has one of `roles`. */
     requireRole: (...roles: Role[]) => preHandlerAsyncHookHandler;
-    issueSession: (reply: FastifyReply, userId: string) => { token: string; expiresAt: string };
+    issueSession: (
+      reply: FastifyReply,
+      userId: string
+    ) => Promise<{ token: string; expiresAt: string }>;
     clearSession: (reply: FastifyReply) => void;
   }
 }
@@ -77,9 +82,10 @@ async function loadPrincipal(
   if (typeof payload.sub !== 'string') return null;
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
-    select: { id: true, role: true },
+    select: { id: true, role: true, sessionVersion: true },
   });
-  return user ? { userId: user.id, role: user.role } : null;
+  if (!user || (payload.sv ?? 0) !== user.sessionVersion) return null;
+  return { userId: user.id, role: user.role };
 }
 
 /**
@@ -119,9 +125,16 @@ export function registerAuth(app: FastifyInstance, prisma: PrismaClient, env: En
     };
   });
 
-  app.decorate('issueSession', (reply: FastifyReply, userId: string) => {
+  app.decorate('issueSession', async (reply: FastifyReply, userId: string) => {
     const expiresInSeconds = env.JWT_EXPIRES_IN_SECONDS;
-    const token = app.jwt.sign({ sub: userId }, { expiresIn: expiresInSeconds });
+    const { sessionVersion } = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { sessionVersion: true },
+    });
+    const token = app.jwt.sign(
+      { sub: userId, sv: sessionVersion },
+      { expiresIn: expiresInSeconds }
+    );
     reply.setCookie(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: env.COOKIE_SECURE,

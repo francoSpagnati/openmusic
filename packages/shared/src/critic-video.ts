@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { HttpUrlSchema } from './common';
 
 // ==========================================
 // 1. CRITIC ACCREDITATION & CRITIC SCORE (ADR-001)
@@ -6,7 +7,7 @@ import { z } from 'zod';
 
 export const CriticAccreditationRequestSchema = z.object({
   outletName: z.string().min(2).max(100),
-  portfolioUrl: z.string().url(),
+  portfolioUrl: HttpUrlSchema,
   bio: z.string().max(500).optional(),
 });
 
@@ -36,7 +37,7 @@ export const PublishCriticReviewInputSchema = z.object({
   releaseId: z.string().uuid(),
   rating: z.number().int().min(10).max(100),
   content: z.string().min(10).max(5000),
-  originalReviewUrl: z.string().url().optional(),
+  originalReviewUrl: HttpUrlSchema.optional(),
 });
 
 export const VideoFeedQuerySchema = z.object({
@@ -92,8 +93,8 @@ export const MusicVideoItemSchema = z.object({
 export const CreateVideoContentInputSchema = z.object({
   title: z.string().min(3).max(150),
   creatorName: z.string().min(2).max(100),
-  videoUrl: z.string().url(),
-  thumbnailUrl: z.string().url().optional(),
+  videoUrl: HttpUrlSchema,
+  thumbnailUrl: HttpUrlSchema.optional(),
   durationSeconds: z.number().int().positive(),
   releaseId: z.string().uuid().optional(),
   category: VideoCategorySchema.default('ESSAY'),

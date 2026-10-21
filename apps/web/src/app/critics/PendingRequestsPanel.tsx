@@ -5,6 +5,7 @@ import { ArrowSquareOut, Check, X } from '@phosphor-icons/react';
 import type { PendingCriticRequest } from '@openmusic/shared';
 import { api, isApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { externalHref } from '../../lib/url';
 import {
   Avatar,
   Button,
@@ -99,9 +100,9 @@ export function PendingRequestsPanel() {
                     </p>
                     <p className="flex flex-wrap gap-x-3 text-xs text-ink-secondary">
                       <time dateTime={r.requestedAt}>{formatRelative(r.requestedAt)}</time>
-                      {r.portfolioUrl && (
+                      {externalHref(r.portfolioUrl) && (
                         <a
-                          href={r.portfolioUrl}
+                          href={externalHref(r.portfolioUrl) ?? undefined}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline"

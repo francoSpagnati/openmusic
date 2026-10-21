@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CatalogTrackSchema } from './catalog';
-import { CursorQuerySchema, pageSchema } from './common';
+import { CursorQuerySchema, pageSchema, VibeTagsSchema } from './common';
 import { UserSummarySchema } from './users';
 
 /** Release card attached to a post. */
@@ -40,7 +40,7 @@ export const CreatePostInputSchema = z
     releaseId: z.string().uuid().optional(),
     trackId: z.string().uuid().optional(),
     rating: z.number().int().min(10).max(100).optional(),
-    vibeTags: z.array(z.string().trim().min(1).max(30)).max(5).default([]),
+    vibeTags: VibeTagsSchema,
   })
   .refine((p) => p.rating === undefined || p.releaseId !== undefined || p.trackId !== undefined, {
     message: 'Un voto richiede un disco o un brano allegato',

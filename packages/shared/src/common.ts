@@ -1,5 +1,32 @@
 import { z } from 'zod';
 
+/**
+ * A user-supplied link that ends up in an `href`/`src`. Only http(s) is accepted: `z.string().url()`
+ * alone also accepts `javascript:` and `data:` URLs, which would be stored XSS once rendered.
+ */
+export const HttpUrlSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .url()
+  // A regex, not `new URL()`: Zod runs refinements even after `.url()` failed, and must not throw.
+  .refine((value) => /^https?:\/\//i.test(value), {
+    message: 'Sono ammessi solo link http(s)',
+  });
+
+/**
+ * A vibe tag as stored: without the leading `#` (the UI adds it when rendering), so `#Notturno`
+ * and `Notturno` are the same tag.
+ */
+export const VibeTagSchema = z
+  .string()
+  .trim()
+  .transform((tag) => tag.replace(/^#+/, '').trim())
+  .pipe(z.string().min(1).max(30));
+
+/** Up to five vibe tags on a review or post. */
+export const VibeTagsSchema = z.array(VibeTagSchema).max(5).default([]);
+
 /** Route params carrying a single UUID (`/:id`). */
 export const IdParamSchema = z.object({ id: z.string().uuid() });
 

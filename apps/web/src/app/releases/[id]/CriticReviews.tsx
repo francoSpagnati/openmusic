@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowSquareOut, SealCheck } from '@phosphor-icons/react/dist/ssr';
 import type { CriticReviewItem } from '@openmusic/shared';
+import { externalHref } from '../../../lib/url';
 import { Avatar, Badge, EmptyState, ErrorState, RatingStars } from '../../../components/ui';
 import { formatDate, formatStars, ratingToStars } from '../../../components/discovery/format';
 
@@ -44,9 +45,9 @@ function CriticReview({ review, featured }: { review: CriticReviewItem; featured
             {formatDate(review.createdAt)}
           </time>
         </span>
-        {review.originalReviewUrl && (
+        {externalHref(review.originalReviewUrl) && (
           <a
-            href={review.originalReviewUrl}
+            href={externalHref(review.originalReviewUrl) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"

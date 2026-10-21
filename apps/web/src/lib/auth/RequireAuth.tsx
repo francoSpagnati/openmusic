@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { UserRole } from '@openmusic/shared';
+import { safeRelativePath } from '../url';
 import { useAuth } from './AuthProvider';
 
 /** Where anonymous users are sent. The original path is passed as `?next=`. */
@@ -10,13 +11,12 @@ export const LOGIN_PATH = '/auth';
 
 /** Builds `/auth?next=<path>`; only same-origin relative paths are accepted as `next`. */
 export function loginRedirectUrl(nextPath: string): string {
-  const safe = nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/';
-  return `${LOGIN_PATH}?next=${encodeURIComponent(safe)}`;
+  return `${LOGIN_PATH}?next=${encodeURIComponent(safeRelativePath(nextPath))}`;
 }
 
 /** Reads a safe post-login destination from `?next=` (falls back to `/`). */
 export function safeNextPath(next: string | null | undefined): string {
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+  return safeRelativePath(next);
 }
 
 /**

@@ -6,6 +6,7 @@ import type {
   SpotifyTopArtist,
   SpotifyRecentlyPlayedItem,
 } from '@openmusic/shared';
+import { upstreamFetch } from '../../lib/upstream';
 
 export interface SpotifyTokens {
   accessToken: string;
@@ -64,7 +65,7 @@ export class SpotifyService {
       redirect_uri: env.SPOTIFY_REDIRECT_URI,
     });
 
-    const response = await fetch(this.tokenEndpoint, {
+    const response = await upstreamFetch(this.tokenEndpoint, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${credentials}`,
@@ -106,7 +107,7 @@ export class SpotifyService {
       refresh_token: refreshToken,
     });
 
-    const response = await fetch(this.tokenEndpoint, {
+    const response = await upstreamFetch(this.tokenEndpoint, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${credentials}`,
@@ -137,7 +138,7 @@ export class SpotifyService {
   }
 
   async fetchUserProfile(accessToken: string): Promise<SpotifyUserProfile> {
-    const response = await fetch(`${this.apiBase}/me`, {
+    const response = await upstreamFetch(`${this.apiBase}/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -173,7 +174,7 @@ export class SpotifyService {
    * Se nulla è in riproduzione (status 204 o is_playing false), ritorna null.
    */
   async getCurrentlyPlaying(accessToken: string): Promise<SpotifyCurrentlyPlaying | null> {
-    const response = await fetch(`${this.apiBase}/me/player/currently-playing`, {
+    const response = await upstreamFetch(`${this.apiBase}/me/player/currently-playing`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -248,11 +249,14 @@ export class SpotifyService {
     accessToken: string,
     limit: number = 20
   ): Promise<SpotifyRecentlyPlayedItem[]> {
-    const response = await fetch(`${this.apiBase}/me/player/recently-played?limit=${limit}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const response = await upstreamFetch(
+      `${this.apiBase}/me/player/recently-played?limit=${limit}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       const err = await response.text();
@@ -307,7 +311,7 @@ export class SpotifyService {
     timeRange: 'short_term' | 'medium_term' | 'long_term' = 'short_term',
     limit: number = 10
   ): Promise<SpotifyTrackItem[]> {
-    const response = await fetch(
+    const response = await upstreamFetch(
       `${this.apiBase}/me/top/tracks?time_range=${timeRange}&limit=${limit}`,
       {
         headers: {
@@ -360,7 +364,7 @@ export class SpotifyService {
     timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term',
     limit: number = 10
   ): Promise<SpotifyTopArtist[]> {
-    const response = await fetch(
+    const response = await upstreamFetch(
       `${this.apiBase}/me/top/artists?time_range=${timeRange}&limit=${limit}`,
       {
         headers: {
@@ -407,7 +411,7 @@ export class SpotifyService {
       limit: limit.toString(),
     });
 
-    const response = await fetch(`${this.apiBase}/search?${params.toString()}`, {
+    const response = await upstreamFetch(`${this.apiBase}/search?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -464,7 +468,7 @@ export class SpotifyService {
     description: string = 'Creata con OpenMusic (Social Network Musicale Analogico)',
     isPublic: boolean = true
   ): Promise<{ id: string; externalUrl: string }> {
-    const response = await fetch(`${this.apiBase}/users/${spotifyUserId}/playlists`, {
+    const response = await upstreamFetch(`${this.apiBase}/users/${spotifyUserId}/playlists`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -510,7 +514,7 @@ export class SpotifyService {
     const batchSize = 100;
     for (let i = 0; i < trackUris.length; i += batchSize) {
       const batch = trackUris.slice(i, i + batchSize);
-      const response = await fetch(`${this.apiBase}/playlists/${playlistId}/tracks`, {
+      const response = await upstreamFetch(`${this.apiBase}/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowSquareOut, Clock, Play } from '@phosphor-icons/react/dist/ssr';
 import type { MusicVideoItem } from '@openmusic/shared';
 import { Badge, Card } from '../../components/ui';
+import { externalHref } from '../../lib/url';
 import { formatDate, formatLongDuration } from '../../components/discovery/format';
 import { CATEGORY_LABEL, fallbackThumbnail, videoHost } from './videoMeta';
 
@@ -68,7 +69,7 @@ export function VideoCard({
         </div>
         <h3 className="om-headline line-clamp-2 text-lg text-ink group-hover:text-accent">
           <a
-            href={video.videoUrl}
+            href={externalHref(video.videoUrl) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"

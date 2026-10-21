@@ -4,12 +4,20 @@ import type { CreateReviewInputSchema } from '@openmusic/shared';
 import type { z } from 'zod';
 import { BadRequestError, NotFoundError } from '../../lib/errors';
 import type { NotificationsService } from '../notifications/notifications.service';
-import { aggregateScore } from './score';
+import { recalculateAudienceScore, recalculateReleaseScores } from './release-scores';
 
 type CreateReviewInput = z.output<typeof CreateReviewInputSchema>;
 
 /** ADR-002: an album review is "verified" after this many distinct tracks were scrobbled. */
 export const VERIFIED_MIN_DISTINCT_TRACKS = 3;
+
+const REVIEW_AUTHOR_SELECT = {
+  id: true,
+  username: true,
+  displayName: true,
+  avatarUrl: true,
+  role: true,
+} as const;
 
 export class ReviewsService {
   constructor(
@@ -54,9 +62,12 @@ export class ReviewsService {
   async createOrUpdateReview(userId: string, input: CreateReviewInput): Promise<ReviewItem> {
     const { releaseId, trackId, rating, content, vibeTags } = input;
 
-    if (!releaseId && !trackId) {
-      throw new BadRequestError('Specificare releaseId o trackId per la recensione');
-    }
+    const target = releaseId
+      ? ({ kind: 'release', releaseId } as const)
+      : trackId
+        ? ({ kind: 'track', trackId } as const)
+        : null;
+    if (!target) throw new BadRequestError('Specificare releaseId o trackId per la recensione');
 
     // 1. ADR-002: verified listen from the user's scrobble history
     const isVerifiedListen = await this.isVerifiedListen(userId, { releaseId, trackId });
@@ -68,99 +79,37 @@ export class ReviewsService {
     });
     const isCritic = user?.role === 'CRITIC';
 
-    // 3. Upsert della recensione
-    let review;
-    if (releaseId) {
-      review = await this.prisma.review.upsert({
-        where: {
-          userId_releaseId: {
-            userId,
-            releaseId,
-          },
-        },
-        update: {
-          rating,
-          content,
-          vibeTags,
-          isVerifiedListen,
-          isCritic,
-        },
-        create: {
-          userId,
-          releaseId,
-          rating,
-          content,
-          vibeTags,
-          isVerifiedListen,
-          isCritic,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-              role: true,
-            },
-          },
-          reactions: true,
-        },
-      });
+    // 3. One review per user per release / per track (both are unique in the schema).
+    const data = { rating, content, vibeTags, isVerifiedListen, isCritic };
+    const include = {
+      user: { select: REVIEW_AUTHOR_SELECT },
+      reactions: true,
+    } as const;
+    const review =
+      target.kind === 'release'
+        ? await this.prisma.review.upsert({
+            where: { userId_releaseId: { userId, releaseId: target.releaseId } },
+            update: data,
+            create: { userId, releaseId: target.releaseId, ...data },
+            include,
+          })
+        : await this.prisma.review.upsert({
+            where: { userId_trackId: { userId, trackId: target.trackId } },
+            update: data,
+            create: { userId, trackId: target.trackId, ...data },
+            include,
+          });
 
-      // 4. ADR-001: Ricalcola l'Audience Score sull'album
-      await this.recalculateAudienceScore(releaseId);
-    } else {
-      // Recensione di singola traccia
-      review = await this.prisma.review.create({
-        data: {
-          userId,
-          trackId,
-          rating,
-          content,
-          vibeTags,
-          isVerifiedListen,
-          isCritic,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-              role: true,
-            },
-          },
-          reactions: true,
-        },
-      });
-    }
+    // 4. ADR-001: recompute both pools. A critic's review counts toward the critic score, and an
+    // upsert can move an existing review between pools when its author was accredited meanwhile.
+    if (target.kind === 'release') await recalculateReleaseScores(this.prisma, target.releaseId);
 
     return this.mapReviewItem(review, userId);
   }
 
-  /**
-   * Ricalcola la media (0.5 - 5.0) e la percentuale "Fresh" (% voti >= 70 / 3.5 stelle)
-   */
-  /**
-   * ADR-001/ADR-002: weighted mean (0.5..5.0) and weighted fresh share (ratings >= 70), where a
-   * verified listen weighs 1.5x. Public via `recalculateAudienceScore` for the seed and tests.
-   */
+  /** Recomputes the audience score of a release (seed, tests and e2e teardown use it). */
   async recalculateAudienceScore(releaseId: string): Promise<void> {
-    const reviews = await this.prisma.review.findMany({
-      where: { releaseId, isCritic: false },
-      select: { rating: true, isVerifiedListen: true },
-    });
-    const score = aggregateScore(reviews);
-    await this.prisma.release.update({
-      where: { id: releaseId },
-      data: {
-        audienceAvg: score.avg,
-        audienceFreshPct: score.freshPct,
-        audienceCount: score.count,
-      },
-    });
+    await recalculateAudienceScore(this.prisma, releaseId);
   }
 
   /**

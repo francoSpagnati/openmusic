@@ -21,7 +21,8 @@ import type { LastFmService } from './lastfm.service';
 
 type RegisterData = z.output<typeof RegisterInputSchema>;
 type LoginData = z.output<typeof LoginInputSchema>;
-type UpdateProfileData = z.output<typeof UpdateProfileSchema>;
+/** Ghost Mode is excluded: it goes through `NowPlayingService.setGhostMode` (presence + flag). */
+type UpdateProfileData = Omit<z.output<typeof UpdateProfileSchema>, 'isGhostMode'>;
 
 const PROVIDERS: readonly ConnectedProvider[] = ['SPOTIFY', 'LASTFM', 'APPLE_MUSIC'];
 
@@ -88,7 +89,10 @@ export class AuthService {
     }
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: await hashPassword(input.newPassword) },
+      data: {
+        passwordHash: await hashPassword(input.newPassword),
+        sessionVersion: { increment: 1 },
+      },
     });
   }
 
@@ -99,7 +103,6 @@ export class AuthService {
         displayName: input.displayName,
         bio: input.bio,
         avatarUrl: input.avatarUrl,
-        isGhostMode: input.isGhostMode,
         favoriteGenres: input.favoriteGenres,
       },
     });
@@ -114,8 +117,8 @@ export class AuthService {
     return this.spotifyService.getAuthorizationUrl(state);
   }
 
-  getLastFmAuthUrl(callbackUrl?: string): string {
-    return this.lastFmService.getAuthorizationUrl(callbackUrl);
+  getLastFmAuthUrl(state?: string): string {
+    return this.lastFmService.getAuthorizationUrl(state);
   }
 
   /**
@@ -186,9 +189,18 @@ export class AuthService {
   async handleLastFmCallback(token: string, userId: string): Promise<MeResponse> {
     const session = await this.lastFmService.getSession(token);
 
+    const existing = await this.prisma.connectedAccount.findUnique({
+      where: { provider_providerId: { provider: 'LASTFM', providerId: session.name } },
+      select: { userId: true },
+    });
+    if (existing && existing.userId !== userId) {
+      // Never move a link silently: scrobbles drive verified listens for its current owner.
+      throw new ConflictError('Questo account Last.fm è già collegato a un altro utente');
+    }
+
     await this.prisma.connectedAccount.upsert({
       where: { provider_providerId: { provider: 'LASTFM', providerId: session.name } },
-      update: { accessToken: session.sessionKey, userId },
+      update: { accessToken: session.sessionKey },
       create: {
         userId,
         provider: 'LASTFM',

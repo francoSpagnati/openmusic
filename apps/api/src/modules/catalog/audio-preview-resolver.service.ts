@@ -1,4 +1,5 @@
 import type { AudioPreviewResult } from '@openmusic/shared';
+import { upstreamFetch } from '../../lib/upstream';
 
 export class AudioPreviewResolverService {
   /**
@@ -6,18 +7,14 @@ export class AudioPreviewResolverService {
    * 1. Cerca su Deezer API (tramite ISRC se presente, oppure "artist track") -> MP3 30s gratuito
    * 2. Fallback su Apple Music / iTunes Search API -> AAC 30s gratuito
    */
-  async resolvePreview(
-    title: string,
-    artist: string,
-    isrc?: string
-  ): Promise<AudioPreviewResult> {
+  async resolvePreview(title: string, artist: string, isrc?: string): Promise<AudioPreviewResult> {
     // 1. Tentativo con Deezer API
     try {
       const deezerUrl = isrc
         ? `https://api.deezer.com/track/isrc:${encodeURIComponent(isrc)}`
         : `https://api.deezer.com/search?q=${encodeURIComponent(`artist:"${artist}" track:"${title}"`)}&limit=1`;
 
-      const response = await fetch(deezerUrl, {
+      const response = await upstreamFetch(deezerUrl, {
         headers: { Accept: 'application/json' },
       });
 
@@ -47,7 +44,7 @@ export class AudioPreviewResolverService {
         `${artist} ${title}`
       )}&entity=song&limit=1`;
 
-      const response = await fetch(itunesUrl, {
+      const response = await upstreamFetch(itunesUrl, {
         headers: { Accept: 'application/json' },
       });
 
@@ -58,7 +55,11 @@ export class AudioPreviewResolverService {
         };
 
         const itunesPreview = data.results?.[0]?.previewUrl;
-        if (itunesPreview && typeof itunesPreview === 'string' && itunesPreview.startsWith('http')) {
+        if (
+          itunesPreview &&
+          typeof itunesPreview === 'string' &&
+          itunesPreview.startsWith('http')
+        ) {
           return {
             previewUrl: itunesPreview,
             source: 'ITUNES',

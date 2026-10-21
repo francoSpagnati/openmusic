@@ -76,46 +76,32 @@ export class ProfileService {
 
     // 2. Rotazione Pesante (ultimi 30 giorni)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const recentScrobbles = await this.prisma.scrobbleLog.findMany({
-      where: {
-        userId,
-        playedAt: { gte: thirtyDaysAgo },
-      },
-      include: {
-        track: {
-          include: { release: true },
-        },
-      },
-      orderBy: { playedAt: 'desc' },
+    // Aggregated in SQL: loading every scrobble of the month does not scale for heavy listeners.
+    const topTracks = await this.prisma.scrobbleLog.groupBy({
+      by: ['trackId'],
+      where: { userId, playedAt: { gte: thirtyDaysAgo } },
+      _count: { trackId: true },
+      _max: { playedAt: true },
+      orderBy: [{ _count: { trackId: 'desc' } }, { _max: { playedAt: 'desc' } }],
+      take: 5,
     });
-
-    // Raggruppa per traccia
-    const trackCounts = new Map<
-      string,
-      { count: number; lastPlayed: Date; track: (typeof recentScrobbles)[0]['track'] }
-    >();
-
-    for (const scrobble of recentScrobbles) {
-      const existing = trackCounts.get(scrobble.trackId);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        trackCounts.set(scrobble.trackId, {
-          count: 1,
-          lastPlayed: scrobble.playedAt,
-          track: scrobble.track,
-        });
-      }
-    }
-
-    const heavyRotation: HeavyRotationItem[] = Array.from(trackCounts.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map(({ track, count, lastPlayed }) => ({
-        track: toCatalogTrack(track),
-        playCount: count,
-        lastPlayedAt: lastPlayed.toISOString(),
-      }));
+    const trackRows = await this.prisma.track.findMany({
+      where: { id: { in: topTracks.map((t) => t.trackId) } },
+      include: { release: true },
+    });
+    const trackById = new Map(trackRows.map((t) => [t.id, t]));
+    const heavyRotation: HeavyRotationItem[] = topTracks.flatMap((t) => {
+      const track = trackById.get(t.trackId);
+      return track && t._max.playedAt
+        ? [
+            {
+              track: toCatalogTrack(track),
+              playCount: t._count.trackId,
+              lastPlayedAt: t._max.playedAt.toISOString(),
+            },
+          ]
+        : [];
+    });
 
     // 3. Statistiche complessive
     const totalReviews = await this.prisma.review.count({ where: { userId } });

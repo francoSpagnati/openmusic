@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { PublicUserSchema, UserRoleSchema } from './auth';
 import { CatalogTrackSchema } from './catalog';
+import { VibeTagsSchema } from './common';
 
 export const ReactionTypeSchema = z.enum([
   'AGREE', // "Condivido al 100%"
@@ -16,7 +17,7 @@ export const CreateReviewInputSchema = z
     trackId: z.string().uuid().optional(),
     rating: z.number().int().min(10).max(100),
     content: z.string().max(3000).optional(),
-    vibeTags: z.array(z.string().min(1).max(30)).max(5).default([]),
+    vibeTags: VibeTagsSchema,
   })
   .refine((r) => r.releaseId !== undefined || r.trackId !== undefined, {
     message: 'Specificare releaseId o trackId',

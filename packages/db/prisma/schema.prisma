@@ -51,6 +51,8 @@ model User {
   criticVerifiedAt   DateTime?
   criticPortfolioUrl String?
   criticRequestedAt  DateTime? // Richiesta di accredito in attesa di verifica admin
+  /// Bumped on password change: session tokens carrying an older value are rejected.
+  sessionVersion     Int       @default(0)
   createdAt          DateTime  @default(now())
 
   connectedAccounts ConnectedAccount[]
@@ -160,6 +162,7 @@ model Review {
   notifications Notification[]
 
   @@unique([userId, releaseId])
+  @@unique([userId, trackId])
 }
 
 model ReviewReaction {

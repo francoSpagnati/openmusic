@@ -8,14 +8,16 @@ Riferimento per chi lavora su `apps/api` e su `apps/web`. I contratti (schemi Zo
 **Account locali (email + password)** sono il metodo di accesso principale. Spotify e Last.fm sono
 account _collegati_ opzionali.
 
-| Aspetto         | Scelta                                                                                       |
-| --------------- | -------------------------------------------------------------------------------------------- |
-| Hash password   | `scrypt` di `node:crypto` (N=2^15, r=8, p=1, salt 16 byte), formato `scrypt$N$r$p$salt$hash` |
-| Policy password | 10–128 caratteri, nessuna regola di composizione (NIST 800-63B)                              |
-| Token           | JWT HS256, `sub` = id utente, scadenza `JWT_EXPIRES_IN_SECONDS` (default 7 giorni)           |
-| Ruolo           | **Non** nel token: viene riletto dal DB a ogni richiesta (un ruolo revocato vale subito)     |
-| `JWT_SECRET`    | Obbligatorio in produzione, minimo 32 caratteri. In dev, se assente, chiave effimera         |
-| Rate limit      | `register`, `login`, `password`: `AUTH_RATE_LIMIT_MAX` richieste/minuto per IP (default 10)  |
+| Aspetto         | Scelta                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hash password   | `scrypt` di `node:crypto` (N=2^15, r=8, p=1, salt 16 byte), formato `scrypt$N$r$p$salt$hash`                                                      |
+| Policy password | 10–128 caratteri, nessuna regola di composizione (NIST 800-63B)                                                                                   |
+| Token           | JWT HS256, `sub` = id utente, scadenza `JWT_EXPIRES_IN_SECONDS` (default 7 giorni)                                                                |
+| Revoca          | `sv` nel token = `User.sessionVersion`; il cambio password lo incrementa e invalida le altre sessioni (questo dispositivo riceve un cookie nuovo) |
+| Ruolo           | **Non** nel token: viene riletto dal DB a ogni richiesta (un ruolo revocato vale subito)                                                          |
+| `JWT_SECRET`    | Obbligatorio in produzione, minimo 32 caratteri. In dev, se assente, chiave effimera                                                              |
+| Rate limit      | `register`, `login`, `password`: `AUTH_RATE_LIMIT_MAX` richieste/minuto per IP (default 10); `catalog/search` e `catalog/preview`: 60/minuto      |
+| Link utente     | Avatar, portfolio, link articolo e video: solo `http(s)` (`HttpUrlSchema`), mai `javascript:`/`data:`                                             |
 
 ### Browser: cookie httpOnly
 
@@ -41,6 +43,10 @@ Le stesse rotte accettano `Authorization: Bearer <token>`; il token è nel body 
 consenso; il callback rifiuta (403) uno `state` diverso. Un account Spotify nuovo **non** viene mai
 collegato in automatico a un account locale con la stessa email (409: accedi e collega dalle
 impostazioni).
+
+`GET /api/auth/lastfm/login` usa lo stesso cookie di stato: lo `state` è aggiunto all'URL di callback
+e Last.fm lo rimanda insieme al `token`. Un account Last.fm già collegato a un altro utente dà 409
+(non viene mai spostato). Le chiamate a Last.fm usano HTTPS.
 
 ## 2. Formato degli errori
 
@@ -97,11 +103,11 @@ sessione obbligatoria · **ROLE** ruolo richiesto.
 | POST       | `/api/auth/logout`                                  | —                               | 204, cancella il cookie                          |
 | GET        | `/api/auth/me`                                      | auth                            | `MeResponse`                                     |
 | PATCH      | `/api/auth/me`                                      | auth                            | `UpdateProfileSchema` (strict) → `MeResponse`    |
-| POST       | `/api/auth/password`                                | auth (rate limit)               | 204                                              |
+| POST       | `/api/auth/password`                                | auth (rate limit)               | 204 + cookie nuovo; revoca le altre sessioni     |
 | GET        | `/api/auth/spotify/login`                           | —                               | `{ url }` + cookie di stato                      |
 | GET        | `/api/auth/spotify/callback`                        | opt                             | collega o accede; 403 se `state` non valido      |
-| GET        | `/api/auth/lastfm/login`                            | —                               | `{ url }`                                        |
-| GET        | `/api/auth/lastfm/callback`                         | auth                            | collega Last.fm                                  |
+| GET        | `/api/auth/lastfm/login`                            | —                               | `{ url }` + cookie di stato                      |
+| GET        | `/api/auth/lastfm/callback`                         | auth                            | collega Last.fm; 403 `state`, 409 già collegato  |
 | DELETE     | `/api/auth/providers/:provider`                     | auth                            | scollega SPOTIFY/LASTFM/APPLE_MUSIC              |
 | GET        | `/api/users/search?q=`                              | opt                             | `UserSummaryPage`                                |
 | GET        | `/api/users/:userId/followers`                      | opt                             | `UserSummaryPage`                                |

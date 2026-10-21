@@ -1,6 +1,7 @@
 import { UpstreamError } from '../../lib/errors';
 import crypto from 'crypto';
 import { env } from '../../config/env';
+import { upstreamFetch } from '../../lib/upstream';
 
 export interface LastFmSession {
   name: string; // username su Last.fm
@@ -8,14 +9,17 @@ export interface LastFmSession {
 }
 
 export class LastFmService {
-  private readonly authEndpoint = 'http://www.last.fm/api/auth/';
-  private readonly apiEndpoint = 'http://ws.audioscrobbler.com/2.0/';
+  // HTTPS: the session key returned by auth.getSession is a long-lived credential.
+  private readonly authEndpoint = 'https://www.last.fm/api/auth/';
+  private readonly apiEndpoint = 'https://ws.audioscrobbler.com/2.0/';
 
-  getAuthorizationUrl(callbackUrl?: string): string {
-    const cb = callbackUrl ?? env.LASTFM_CALLBACK_URL;
+  /** `state` is appended to the callback URL; Last.fm sends it back next to the token. */
+  getAuthorizationUrl(state?: string): string {
+    const cb = new URL(env.LASTFM_CALLBACK_URL);
+    if (state) cb.searchParams.set('state', state);
     const params = new URLSearchParams({
       api_key: env.LASTFM_API_KEY,
-      cb,
+      cb: cb.toString(),
     });
     return `${this.authEndpoint}?${params.toString()}`;
   }
@@ -49,7 +53,7 @@ export class LastFmService {
       format: 'json',
     });
 
-    const response = await fetch(`${this.apiEndpoint}?${queryParams.toString()}`);
+    const response = await upstreamFetch(`${this.apiEndpoint}?${queryParams.toString()}`);
 
     if (!response.ok) {
       const err = await response.text();

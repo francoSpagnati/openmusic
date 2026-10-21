@@ -8,6 +8,7 @@ import type {
 } from '@openmusic/shared';
 import { nextCursorOf } from '../../lib/mappers';
 import type { AudioPreviewResolverService } from './audio-preview-resolver.service';
+import { upstreamFetch } from '../../lib/upstream';
 
 export class CatalogService {
   constructor(
@@ -58,7 +59,7 @@ export class CatalogService {
     // 2. Se vuoto in locale, interroga Deezer API pubblica per indicizzare istantaneamente l'opera
     try {
       const deezerSearchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(trimmed)}&limit=5`;
-      const response = await fetch(deezerSearchUrl);
+      const response = await upstreamFetch(deezerSearchUrl);
 
       if (response.ok) {
         const data = (await response.json()) as {
