@@ -73,7 +73,10 @@ export function Avatar({
           s.text
         )}
       >
-        {showImage ? (
+        {/* Initials sit underneath the photo: they show while it loads and if it never does
+            (including an error that fired before hydration, which onError cannot see). */}
+        <span aria-hidden="true">{initials(name)}</span>
+        {showImage && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={src ?? undefined}
@@ -81,10 +84,8 @@ export function Avatar({
             loading="lazy"
             decoding="async"
             onError={() => setFailed(true)}
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
           />
-        ) : (
-          <span aria-hidden="true">{initials(name)}</span>
         )}
       </span>
       {status && status !== 'offline' && (
