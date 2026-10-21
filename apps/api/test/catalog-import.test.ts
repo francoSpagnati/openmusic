@@ -7,6 +7,7 @@ import {
 } from '@openmusic/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { AppContext } from '../src/app';
+import { CatalogImportService } from '../src/modules/catalog/catalog-import.service';
 import { CuratedAlbumSchema, importCuratedAlbums } from '../src/modules/catalog/curated-import';
 import { signedInUser } from './helpers/factories';
 import {
@@ -223,6 +224,43 @@ describe('Catalog import from external databases', () => {
     expect(await prisma.release.count()).toBe(1);
   });
 
+  it('concurrent imports of the same album converge on one release and one tracklist', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => resolve('provider=deezer&id=302127'))
+    );
+    const ids = new Set(
+      results.map((res) => {
+        expect(res.statusCode).toBe(200);
+        return CatalogResolveResultSchema.parse(res.json()).release.id;
+      })
+    );
+    expect(ids.size).toBe(1);
+    expect(await prisma.release.count()).toBe(1);
+    expect(await prisma.track.count()).toBe(10);
+    expect(await prisma.artist.count()).toBe(1);
+  });
+
+  it('two API processes importing the same album converge via the unique constraints', async () => {
+    // Separate importers = separate in-process locks, like two API instances.
+    const importers = Array.from(
+      { length: 3 },
+      () => new CatalogImportService(prisma, ctx.catalogProviders)
+    );
+    const album = await ctx.catalogProviders.deezer.getAlbum('302127');
+    if (!album) throw new Error('fixture missing');
+    const results = await Promise.all(importers.map((imp) => imp.importRelease(album)));
+    expect(new Set(results.map((r) => r.release.id)).size).toBe(1);
+    expect(await prisma.release.count()).toBe(1);
+    expect(await prisma.release.count({ where: { deezerId: '302127' } })).toBe(1);
+    expect(await prisma.track.count()).toBe(10);
+  });
+
+  it('concurrent search hits do not duplicate releases or tracks', async () => {
+    await Promise.all(Array.from({ length: 4 }, () => search('q=in%20rainbows')));
+    expect(await prisma.release.count()).toBe(2);
+    expect(await prisma.track.count()).toBe(1);
+  });
+
   it('merges the same album from iTunes and Deezer into one row', async () => {
     const itunes = CatalogResolveResultSchema.parse(
       (await resolve('provider=itunes&id=1109714933')).json()
@@ -368,5 +406,46 @@ describe('Catalog import from external databases', () => {
       expect(upgraded?.status).toBe('imported');
       expect(await prisma.release.count()).toBe(1);
     });
+  });
+});
+
+describe('CATALOG_EXTERNAL_ENABLED=false', () => {
+  let ctx: AppContext;
+  let fixtures: ReturnType<typeof createFixtureFetch>;
+
+  beforeAll(async () => {
+    fixtures = createFixtureFetch(inRainbowsRoutes());
+    ctx = await createTestApp({
+      catalogFetch: fixtures.fetch,
+      catalogClock: createFakeClock(),
+      catalogExternalEnabled: false,
+    });
+  });
+
+  afterAll(async () => {
+    await closeTestApp(ctx);
+  });
+
+  it('makes no outbound call for search, resolve or audio previews', async () => {
+    await resetTestState(ctx);
+    const search = await ctx.app.inject({ method: 'GET', url: '/api/catalog/search?q=reckoner' });
+    expect(search.statusCode).toBe(200);
+    const resolve = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/catalog/resolve?provider=deezer&id=302127',
+    });
+    expect(resolve.statusCode).toBe(404);
+    const preview = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/catalog/preview?title=Reckoner&artist=Radiohead',
+    });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.json()).toMatchObject({ previewUrl: null, source: 'NONE' });
+    const tooLong = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/catalog/preview?title=${'a'.repeat(301)}&artist=Radiohead`,
+    });
+    expect(tooLong.statusCode).toBe(400);
+    expect(fixtures.calls).toHaveLength(0);
   });
 });

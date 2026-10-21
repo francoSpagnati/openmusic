@@ -4,7 +4,11 @@ import type { CatalogProviders } from './providers';
 const NONE: AudioPreviewResult = { previewUrl: null, source: 'NONE', durationSeconds: 30 };
 
 export class AudioPreviewResolverService {
-  constructor(private readonly providers: Pick<CatalogProviders, 'deezer' | 'itunes'>) {}
+  constructor(
+    private readonly providers: Pick<CatalogProviders, 'deezer' | 'itunes'>,
+    /** CATALOG_EXTERNAL_ENABLED: when false no preview is looked up (no outbound calls). */
+    private readonly options: { externalEnabled: boolean } = { externalEnabled: true }
+  ) {}
 
   /**
    * ADR-003: Risolutore a cascata per anteprime audio da 30s.
@@ -13,6 +17,7 @@ export class AudioPreviewResolverService {
    * Le risposte passano dalla cache Redis e dal rate limiting dei provider.
    */
   async resolvePreview(title: string, artist: string, isrc?: string): Promise<AudioPreviewResult> {
+    if (!this.options.externalEnabled) return NONE;
     try {
       const byIsrc = isrc ? await this.providers.deezer.getTrackByIsrc(isrc) : null;
       const track =

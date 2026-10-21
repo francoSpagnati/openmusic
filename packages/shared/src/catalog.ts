@@ -95,10 +95,11 @@ export const SearchResultSchema = z.object({
 // ADR-003: Audio Preview Resolver Fallback (Spotify -> Deezer -> iTunes)
 export const AudioPreviewSourceSchema = z.enum(['SPOTIFY', 'DEEZER', 'ITUNES', 'NONE']);
 
+/** Bounded: the values end up in Deezer/iTunes query strings and cache keys. */
 export const AudioPreviewResolveQuerySchema = z.object({
-  isrc: z.string().optional(),
-  title: z.string().min(1),
-  artist: z.string().min(1),
+  isrc: z.string().max(32).optional(),
+  title: z.string().min(1).max(300),
+  artist: z.string().min(1).max(300),
 });
 
 export const AudioPreviewResultSchema = z.object({

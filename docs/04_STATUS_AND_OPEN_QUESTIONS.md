@@ -13,7 +13,7 @@
 | `npm ci` (copia pulita dei manifest + lockfile)       | passa, lockfile allineato                                     |
 | `npm run lint`                                        | passa (api, db, shared, web + e2e)                            |
 | `npm run typecheck`                                   | passa su 5/5 pacchetti, mobile incluso                        |
-| `npm test` (dopo `db:test:prepare`)                   | shared 41/41, api 125/125 (catalogo su fixture), mobile 58/58 |
+| `npm test` (dopo `db:test:prepare`)                   | shared 41/41, api 130/130 (catalogo su fixture), mobile 58/58 |
 | Build web (`next build`)                              | passa                                                         |
 | `npm run e2e` (Playwright, 10 test, DB nuovo + seed)  | passa in locale                                               |
 | `expo export` iOS + Android (`EXPO_OFFLINE=1`)        | passa (bundle Hermes ~5 MB per piattaforma)                   |
@@ -94,6 +94,20 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - [ ] Apple Music, YouTube Music e deep-link nativi nei link universali: non implementati.
 - [x] ~~Colore dominante dal seed~~: calcolato all'import dalla cover (JPEG/PNG, `06` §8).
 - [ ] Undo nei Reels e nella Roulette (euristica di Nielsen #3).
+- [ ] **Catalogo, dalla review dell'import** (non ancora corretti):
+  - album omonimi dello stesso artista (es. i vari "Weezer") con id Deezer diversi vengono uniti
+    sulla stessa riga per `matchKey` e le tracklist si sommano. Serve una regola (id diverso dello
+    stesso provider + anno diverso = release diversa) che non rompa l'unione explicit/clean;
+  - `GET /api/catalog/resolve` è limitato a 60/min per IP, ma la pagina web
+    `/releases/external/...` lo chiama in SSR dall'IP del server web: tutti gli utenti anonimi
+    condividono lo stesso limite. Servono chiave per utente o un IP inoltrato e fidato;
+  - gli URL delle anteprime Deezer sono firmati (`hdnea=exp=…`) e scadono, ma `Track.previewUrl`
+    non viene mai aggiornato e la ricerca Deezer resta in cache per 1 h. Il web riprova con
+    `/preview`, il mobile no. La durata reale dei token va verificata dal vivo;
+  - i limiti di frequenza (MusicBrainz 1 req/s) valgono per processo: con più istanze API, o con
+    `catalog:import` lanciato insieme al server, lo stesso IP li supera;
+  - i termini d'uso di Deezer e Apple (salvataggio permanente dei metadati, attribuzione e link
+    allo store per le anteprime) vanno verificati prima della produzione.
 
 ### Realtime
 

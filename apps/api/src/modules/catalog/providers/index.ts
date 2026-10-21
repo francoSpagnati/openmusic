@@ -101,10 +101,10 @@ export function createCatalogProviders(options: CatalogProvidersOptions): Catalo
     thumbnailFor(coverUrl: string): string | null {
       const host = safeHost(coverUrl);
       if (!host) return null;
-      if (host.endsWith('dzcdn.net')) return deezerThumbnail(coverUrl);
-      if (host.endsWith('mzstatic.com')) return itunesThumbnail(coverUrl);
+      if (hostIn(host, 'dzcdn.net')) return deezerThumbnail(coverUrl);
+      if (hostIn(host, 'mzstatic.com')) return itunesThumbnail(coverUrl);
       // CAA thumbnails: `<id>-1200.jpg` -> `<id>-250.jpg`.
-      if (host.endsWith('coverartarchive.org') || host.endsWith('archive.org')) {
+      if (hostIn(host, 'coverartarchive.org') || hostIn(host, 'archive.org')) {
         return coverUrl.replace(/-(?:500|1200)\.jpg$/, '-250.jpg');
       }
       return null;
@@ -119,4 +119,9 @@ function safeHost(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** `host` is `domain` or one of its subdomains (`evil-dzcdn.net` is not `dzcdn.net`). */
+function hostIn(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`);
 }

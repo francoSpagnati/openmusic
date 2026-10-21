@@ -12,6 +12,7 @@ import {
   normalizeIsrc,
 } from '@openmusic/shared';
 import { dominantColorOf } from '../../lib/dominant-color';
+import { KeyedMutex } from '../../lib/keyed-mutex';
 import type { CatalogProviders } from './providers';
 import type {
   ProviderArtist,
@@ -124,6 +125,13 @@ export interface ImportedRelease {
  * repeated imports are no-ops.
  */
 export class CatalogImportService {
+  /**
+   * Serializes "find, else create" per match key inside this process, so concurrent imports of
+   * the same album/track/artist (two users running the same search) converge on one row. Lock
+   * order is always release -> track -> artist, so nested locks cannot deadlock.
+   */
+  private readonly locks = new KeyedMutex();
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly providers: Pick<CatalogProviders, 'images' | 'thumbnailFor'>
@@ -132,8 +140,12 @@ export class CatalogImportService {
   // -- Artists -----------------------------------------------------------------------------
 
   async upsertArtist(artist: ProviderArtist): Promise<string> {
-    const field = idField(artist.provider);
     const matchKey = normalizeCatalogArtist(artist.name);
+    return this.locks.run(`artist:${matchKey}`, () => this.upsertArtistLocked(artist, matchKey));
+  }
+
+  private async upsertArtistLocked(artist: ProviderArtist, matchKey: string): Promise<string> {
+    const field = idField(artist.provider);
     let existing =
       field && artist.externalId
         ? await this.prisma.artist.findFirst({ where: { [field]: artist.externalId } })
@@ -217,52 +229,57 @@ export class CatalogImportService {
    */
   async importRelease(pr: ProviderRelease): Promise<ImportedRelease> {
     const artistId = await this.upsertArtist(pr.artist);
+    const matchKey = catalogMatchKey(pr.title, pr.artist.name);
+    const release = await this.locks.run(`release:${matchKey}`, () =>
+      this.upsertRelease(pr, artistId, matchKey)
+    );
+    const trackIds = pr.tracks ? await this.importTracks(release, pr.tracks) : [];
+    return { release, trackIds };
+  }
+
+  private async upsertRelease(
+    pr: ProviderRelease,
+    artistId: string,
+    matchKey: string
+  ): Promise<Release> {
     const existing = await this.findExistingRelease(pr);
+    if (existing) return this.mergeRelease(existing, pr, artistId);
     const field = idField(pr.provider);
     const full = pr.tracks !== null;
     const upc = normalizeBarcode(pr.upc);
-    const matchKey = catalogMatchKey(pr.title, pr.artist.name);
     const coverSource: CatalogSource | null =
       pr.provider === 'MUSICBRAINZ' ? null : (pr.provider as CatalogSource);
 
-    let release: Release;
-    if (!existing) {
-      const data: Prisma.ReleaseUncheckedCreateInput = {
-        title: pr.title,
-        artistName: pr.artist.name,
-        artistId,
-        releaseType: pr.releaseType,
-        coverUrl: pr.coverUrl,
-        coverSource: pr.coverUrl ? coverSource : null,
-        dominantColor: DEFAULT_DOMINANT_COLOR,
-        genres: mergeGenres([], pr.genres),
-        releaseDate: toDate(pr.releaseDate),
-        label: pr.label,
-        trackCount: pr.trackCount,
-        upc,
-        matchKey,
-        musicbrainzReleaseGroupId: pr.musicbrainzReleaseGroupId ?? null,
-        metadataSyncedAt: full ? new Date() : null,
-        ...(field ? { [field]: pr.externalId } : {}),
-      };
-      try {
-        release = await writeDroppingConflicts(
-          data,
-          ['upc', 'deezerId', 'itunesId', 'musicbrainzId'],
-          (d) => this.prisma.release.create({ data: d })
-        );
-      } catch (err) {
-        if (uniqueConflict(err) === null) throw err;
-        const winner = await this.findExistingRelease(pr);
-        if (!winner) throw err;
-        release = await this.mergeRelease(winner, pr, artistId);
-      }
-    } else {
-      release = await this.mergeRelease(existing, pr, artistId);
+    const data: Prisma.ReleaseUncheckedCreateInput = {
+      title: pr.title,
+      artistName: pr.artist.name,
+      artistId,
+      releaseType: pr.releaseType,
+      coverUrl: pr.coverUrl,
+      coverSource: pr.coverUrl ? coverSource : null,
+      dominantColor: DEFAULT_DOMINANT_COLOR,
+      genres: mergeGenres([], pr.genres),
+      releaseDate: toDate(pr.releaseDate),
+      label: pr.label,
+      trackCount: pr.trackCount,
+      upc,
+      matchKey,
+      musicbrainzReleaseGroupId: pr.musicbrainzReleaseGroupId ?? null,
+      metadataSyncedAt: full ? new Date() : null,
+      ...(field ? { [field]: pr.externalId } : {}),
+    };
+    try {
+      return await this.prisma.release.create({ data });
+    } catch (err) {
+      if (uniqueConflict(err) === null) throw err;
     }
-
-    const trackIds = pr.tracks ? await this.importTracks(release, pr.tracks) : [];
-    return { release, trackIds };
+    // Another process created the row meanwhile (same provider id or barcode): merge into it.
+    // Only when no such row exists is the conflicting optional column dropped instead.
+    const winner = await this.findExistingRelease(pr);
+    if (winner) return this.mergeRelease(winner, pr, artistId);
+    return writeDroppingConflicts(data, ['upc', 'deezerId', 'itunesId', 'musicbrainzId'], (d) =>
+      this.prisma.release.create({ data: d })
+    );
   }
 
   private async mergeRelease(
@@ -366,7 +383,12 @@ export class CatalogImportService {
     );
   }
 
-  private async upsertTrack(
+  private upsertTrack(releaseId: string, pt: ProviderTrack, artistId: string): Promise<string> {
+    const key = `track:${releaseId}:${catalogMatchKey(pt.title, pt.artist.name)}`;
+    return this.locks.run(key, () => this.upsertTrackLocked(releaseId, pt, artistId));
+  }
+
+  private async upsertTrackLocked(
     releaseId: string,
     pt: ProviderTrack,
     artistId: string
@@ -374,7 +396,7 @@ export class CatalogImportService {
     const field = idField(pt.provider);
     const externalId = pt.musicbrainzId ?? pt.externalId;
     const isrc = normalizeIsrc(pt.isrc);
-    const existing = await this.findExistingTrack(releaseId, pt);
+    let existing = await this.findExistingTrack(releaseId, pt);
 
     if (!existing) {
       const data: Prisma.TrackUncheckedCreateInput = {
@@ -390,12 +412,22 @@ export class CatalogImportService {
         matchKey: catalogMatchKey(pt.title, pt.artist.name),
         ...(field ? { [field]: externalId } : {}),
       };
-      const created = await writeDroppingConflicts(
-        data,
-        ['isrc', 'deezerId', 'itunesId', 'musicbrainzId'],
-        (d) => this.prisma.track.create({ data: d })
-      );
-      return created.id;
+      try {
+        return (await this.prisma.track.create({ data })).id;
+      } catch (err) {
+        if (uniqueConflict(err) === null) throw err;
+      }
+      // Created by another process meanwhile -> update that row. Otherwise the id/ISRC belongs to
+      // a track of another release (same recording on a compilation): store this one without it.
+      existing = await this.findExistingTrack(releaseId, pt);
+      if (!existing) {
+        const created = await writeDroppingConflicts(
+          data,
+          ['isrc', 'deezerId', 'itunesId', 'musicbrainzId'],
+          (d) => this.prisma.track.create({ data: d })
+        );
+        return created.id;
+      }
     }
 
     const data: Prisma.TrackUncheckedUpdateInput = {};

@@ -1,3 +1,4 @@
+import { deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { dominantColorOf } from '../src/lib/dominant-color';
@@ -354,6 +355,12 @@ describe('thumbnails and dominant color', () => {
     );
     expect(p.thumbnailFor('https://images.unsplash.com/photo-1?w=600')).toBeNull();
     expect(p.thumbnailFor('http://cdn-images.dzcdn.net/x.jpg')).toBeNull();
+    // Suffix look-alikes are not provider CDNs: the server must not download from them.
+    expect(
+      p.thumbnailFor('https://evildzcdn.net/images/cover/abc/1000x1000-000000-80-0-0.jpg')
+    ).toBeNull();
+    expect(p.thumbnailFor('https://notmzstatic.com/image/thumb/x/1000x1000bb.jpg')).toBeNull();
+    expect(p.thumbnailFor('https://fakearchive.org/x-1200.jpg')).toBeNull();
   });
 
   it.each([
@@ -379,6 +386,29 @@ describe('thumbnails and dominant color', () => {
     const jpeg = imageFixture('red-baseline-420.jpg');
     expect(() => dominantColorOf(jpeg.subarray(0, 200))).not.toThrow();
     expect(dominantColorOf(Buffer.from([0xff, 0xd8, 0xff, 0xd9]))).toBeNull();
+  });
+
+  it('does not inflate a PNG beyond what its header declares (zlib bomb)', () => {
+    const chunk = (type: string, body: Buffer) => {
+      const length = Buffer.alloc(4);
+      length.writeUInt32BE(body.length);
+      return Buffer.concat([length, Buffer.from(type, 'latin1'), body, Buffer.alloc(4)]);
+    };
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(2, 0); // 2 x 2 RGB, 8-bit
+    ihdr.writeUInt32BE(2, 4);
+    ihdr[8] = 8;
+    ihdr[9] = 2;
+    // ~64 KB of zlib that expands to 64 MB.
+    const bomb = deflateSync(Buffer.alloc(64 * 1024 * 1024), { level: 9 });
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk('IHDR', ihdr),
+      chunk('IDAT', bomb),
+      chunk('IEND', Buffer.alloc(0)),
+    ]);
+    expect(png.length).toBeLessThan(200_000);
+    expect(dominantColorOf(png)).toBeNull();
   });
 
   it('rejects images larger than the limit', async () => {

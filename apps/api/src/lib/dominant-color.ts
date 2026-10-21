@@ -14,6 +14,9 @@ import { inflateSync } from 'node:zlib';
 
 export type Rgb = readonly [number, number, number];
 
+/** Larger images are ignored (covers are requested as small thumbnails anyway). */
+const MAX_PIXELS = 4096 * 4096;
+
 export function dominantColorOf(image: Uint8Array): string | null {
   const pixels = isPng(image) ? decodePngPixels(image) : isJpeg(image) ? decodeJpegDc(image) : null;
   if (!pixels || pixels.length === 0) return null;
@@ -119,18 +122,18 @@ export function decodePngPixels(data: Uint8Array): Rgb[] | null {
     return null;
   }
   if (colorType === 3 && !palette) return null;
-  if (width * height > 4096 * 4096) return null;
-
-  let raw: Buffer;
-  try {
-    raw = inflateSync(Buffer.concat(idat));
-  } catch {
-    return null;
-  }
+  if (width * height > MAX_PIXELS) return null;
 
   // Filters work on whole bytes: sub-byte formats use 1 as the "pixel" distance.
   const bytesPerPixel = Math.max(1, (channels * bitDepth) / 8);
   const stride = Math.ceil((width * channels * bitDepth) / 8);
+  let raw: Buffer;
+  try {
+    // Never inflate more than the header promises: a few KB of zlib can expand to gigabytes.
+    raw = inflateSync(Buffer.concat(idat), { maxOutputLength: (stride + 1) * height });
+  } catch {
+    return null;
+  }
   if (raw.length < (stride + 1) * height) return null;
 
   const current = new Uint8Array(stride);
@@ -431,6 +434,7 @@ function decodeJpegDcUnsafe(data: Uint8Array): Rgb[] | null {
         width = u16(segment + 3);
         const count = data[segment + 5] ?? 0;
         if (width === 0 || height === 0 || (count !== 1 && count !== 3)) return null;
+        if (width * height > MAX_PIXELS) return null; // DC buffers grow with the image size
         components = [];
         for (let i = 0; i < count; i++) {
           const p = segment + 6 + i * 3;

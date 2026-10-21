@@ -158,7 +158,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     catalogProviders,
     catalogImportService
   );
-  const previewResolver = new AudioPreviewResolverService(catalogProviders);
+  const catalogExternalEnabled =
+    options.catalogExternalEnabled ??
+    (env.NODE_ENV === 'test' && !options.catalogFetch ? false : env.CATALOG_EXTERNAL_ENABLED);
+  const previewResolver = new AudioPreviewResolverService(catalogProviders, {
+    externalEnabled: catalogExternalEnabled,
+  });
   const catalogService = new CatalogService(
     prisma,
     previewResolver,
@@ -167,11 +172,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     catalogEnrichmentService,
     catalogBackground,
     app.log,
-    {
-      externalEnabled:
-        options.catalogExternalEnabled ??
-        (env.NODE_ENV === 'test' && !options.catalogFetch ? false : env.CATALOG_EXTERNAL_ENABLED),
-    }
+    { externalEnabled: catalogExternalEnabled }
   );
   const reviewsService = new ReviewsService(prisma, notificationsService);
   const profileService = new ProfileService(prisma);
