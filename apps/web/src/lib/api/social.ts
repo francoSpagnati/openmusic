@@ -12,6 +12,7 @@ import {
   PostSchema,
   UnreadCountSchema,
   UserSummaryPageSchema,
+  UserSuggestionListSchema,
   type ChatMessage,
   type ConversationSummary,
   type CreatePostInput,
@@ -29,6 +30,8 @@ import {
   type ChatReactionType,
   type SendMessageInput,
   type UserSearchQuery,
+  type UserSuggestionsQuery,
+  type UserSummary,
   type UserSummaryPage,
 } from '@openmusic/shared';
 import { apiRequest } from './client';
@@ -40,6 +43,10 @@ const UpdatedCountSchema = z.object({ updated: z.number().int() });
 export const usersApi = {
   search: (query: UserSearchQuery): Promise<UserSummaryPage> =>
     apiRequest('/api/users/search', { query: { ...query }, schema: UserSummaryPageSchema }),
+
+  /** "Who to follow": popular users the viewer does not follow yet. */
+  suggestions: (query: UserSuggestionsQuery = {}): Promise<UserSummary[]> =>
+    apiRequest('/api/users/suggestions', { query: { ...query }, schema: UserSuggestionListSchema }),
 
   followers: (userId: string, page: PageParams = {}): Promise<UserSummaryPage> =>
     apiRequest(`/api/users/${userId}/followers`, { query: page, schema: UserSummaryPageSchema }),

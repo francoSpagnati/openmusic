@@ -1,98 +1,91 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
-import { Disc, GithubLogo, ShieldCheck, Heart, Sparkle } from '@phosphor-icons/react';
+import { GithubLogo } from '@phosphor-icons/react/dist/ssr';
 
+const EXPLORE_LINKS = [
+  { href: '/explore', label: 'Esplora le uscite' },
+  { href: '/critics', label: 'Critica accreditata' },
+  { href: '/videos', label: 'Video saggi' },
+  { href: '/reels', label: 'Reels di scoperta' },
+];
+
+const ACCOUNT_LINKS = [
+  { href: '/profile', label: 'Il tuo profilo' },
+  { href: '/settings', label: 'Impostazioni e privacy' },
+  { href: '/auth?mode=register', label: 'Crea un account' },
+];
+
+/** Colophon, styled like the back page of a music magazine. */
 export const Footer: React.FC = () => {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="w-full border-t border-om-border bg-om-card/60 mt-20">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Colonna 1: Manifesto */}
-          <div className="md:col-span-2 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-om-card border border-om-border">
-                <Disc weight="duotone" className="h-5 w-5 text-om-amber" />
-              </div>
-              <span className="font-editorial text-lg font-bold text-om-text">OpenMusic</span>
-            </div>
-            <p className="text-sm text-om-secondary leading-relaxed max-w-md">
-              Il social network musicale open-source e tattile. Niente algoritmi di dipendenza o feed rumorosi: solo
-              condivisione sincera, recensioni a doppio punteggio (Critica & Pubblico) e ascolto in tempo reale.
+    <footer className="mt-16 w-full border-t border-line bg-surface">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid gap-8 md:grid-cols-4">
+          <div className="space-y-3 md:col-span-2">
+            <p className="om-headline text-2xl text-ink">OpenMusic</p>
+            <p className="om-deck max-w-md text-ink-secondary">
+              Un negozio di dischi che stampa anche una rivista: niente algoritmi della dipendenza,
+              solo ascolti condivisi, voto del pubblico e della critica.
             </p>
-            <div className="flex items-center gap-2 text-xs text-om-muted font-mono">
-              <ShieldCheck className="h-4 w-4 text-om-fresh" />
-              <span>Piattaforma musicale indipendente guidata dalla community</span>
-            </div>
           </div>
 
-          {/* Colonna 2: Navigazione */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-mono uppercase tracking-wider text-om-amber font-semibold">
-              Esplorazione
-            </h4>
-            <ul className="space-y-2 text-sm text-om-secondary">
-              <li>
-                <Link href="/#releases" className="hover:text-om-text transition-colors">
-                  Ultime Releases
-                </Link>
-              </li>
-              <li>
-                <Link href="/critics" className="hover:text-om-text transition-colors">
-                  Accredito Critica & Webzine
-                </Link>
-              </li>
-              <li>
-                <Link href="/videos" className="hover:text-om-text transition-colors">
-                  Video-Saggi Musicali
-                </Link>
-              </li>
-              <li>
-                <Link href="/#roulette" className="hover:text-om-text transition-colors">
-                  Roulette dei Generi
-                </Link>
-              </li>
+          <nav aria-labelledby="footer-explore">
+            <h2 id="footer-explore" className="om-eyebrow mb-3">
+              Esplora
+            </h2>
+            <ul className="space-y-2 text-sm">
+              {EXPLORE_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-ink-secondary hover:text-ink hover:underline"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
-          </div>
+          </nav>
 
-          {/* Colonna 3: Open Source & Community */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-mono uppercase tracking-wider text-om-amber font-semibold">
-              Ecosistema
-            </h4>
-            <ul className="space-y-2 text-sm text-om-secondary">
+          <nav aria-labelledby="footer-account">
+            <h2 id="footer-account" className="om-eyebrow mb-3">
+              Account
+            </h2>
+            <ul className="space-y-2 text-sm">
+              {ACCOUNT_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-ink-secondary hover:text-ink hover:underline"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
               <li>
                 <a
                   href="https://github.com/francoSpagnati/openmusic"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 hover:text-om-text transition-colors"
+                  className="inline-flex items-center gap-1.5 text-ink-secondary hover:text-ink hover:underline"
                 >
-                  <GithubLogo className="h-4 w-4" /> GitHub Repository
+                  <GithubLogo aria-hidden="true" className="h-4 w-4" />
+                  Codice sorgente
+                  <span className="sr-only">(si apre in una nuova scheda)</span>
                 </a>
               </li>
-              <li>
-                <span className="text-xs font-mono text-om-muted">Licenza MIT Open-Source</span>
-              </li>
-              <li>
-                <span className="text-xs font-mono text-om-muted">Monorepo: Expo + Next.js + Fastify</span>
-              </li>
-              <li>
-                <span className="text-xs font-mono text-om-muted">Preview Audio via ISRC Fallback</span>
-              </li>
             </ul>
-          </div>
+          </nav>
         </div>
 
-        {/* Bottom bar */}
-        <div className="mt-12 pt-6 border-t border-om-border/50 flex flex-col sm:flex-row items-center justify-between text-xs text-om-muted font-mono gap-4">
-          <p>© {new Date().getFullYear()} OpenMusic Community. Costruito con rispetto per la musica analogica.</p>
-          <div className="flex items-center gap-2">
-            <span>Ascolto verificato con</span>
-            <Heart weight="fill" className="h-3.5 w-3.5 text-om-amber inline" />
-            <span>per veri amanti del vinile</span>
-          </div>
+        <hr className="om-rule mt-10" />
+        <div className="flex flex-col gap-2 pt-4 font-mono text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © <span className="tabular-nums">{year}</span> OpenMusic Community · Licenza MIT
+          </p>
+          <p>Anteprime di 30 secondi · Voti da 0,5 a 5 stelle</p>
         </div>
       </div>
     </footer>

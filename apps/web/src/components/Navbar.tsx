@@ -1,130 +1,155 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
-import { Disc, UsersThree, Newspaper, VideoCamera, Sparkle, List, X, Waveform } from '@phosphor-icons/react';
+import { usePathname } from 'next/navigation';
+import { Bell, List, SignIn, SignOut, X } from '@phosphor-icons/react';
+import { loginRedirectUrl, useAuth } from '@/lib/auth';
+import { useFriendsPresence } from '@/lib/socket';
+import { Avatar, IconButton, buttonClasses, cn } from '@/components/ui';
+import { BrandMark } from './web-core/shell/BrandMark';
+import { GhostModeSwitch } from './web-core/GhostModeSwitch';
+import { NAV_ITEMS, isActivePath } from './web-core/navigation';
+import { displayNameOf } from './web-core/format';
+import { useUnreadNotifications } from './web-core/useUnreadNotifications';
 
+/** Mobile/tablet top bar (< lg). Desktop navigation is the <Sidebar>. */
 export const Navbar: React.FC = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const { status, user, logout } = useAuth();
+  const unread = useUnreadNotifications();
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const authenticated = status === 'authenticated' && user !== null;
+
+  // Close the menu after navigating and on Escape.
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  const items = NAV_ITEMS.filter((item) => authenticated || !item.private);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-om-border bg-om-bg/90 backdrop-blur-md lg:hidden">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-om-card border border-om-border shadow-analog group-hover:border-om-amber transition-colors">
-            <Disc weight="duotone" className="h-6 w-6 text-om-amber animate-[spin_10s_linear_infinite]" />
-            <div className="absolute h-2 w-2 rounded-full bg-om-bg" />
-          </div>
-          <div>
-            <span className="font-editorial text-xl font-bold tracking-tight text-om-text group-hover:text-om-amber transition-colors">
-              OpenMusic
-            </span>
-            <span className="hidden sm:inline-block ml-2 text-[10px] font-mono uppercase tracking-wider text-om-secondary border border-om-border px-1.5 py-0.5 rounded">
-              v0.5 Open Beta
-            </span>
-          </div>
-        </Link>
+    <header className="sticky top-0 z-sticky w-full border-b border-line bg-canvas/95 lg:hidden">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
+        <BrandMark compact />
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1 lg:gap-2">
-          <Link
-            href="/#releases"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-om-secondary hover:text-om-text hover:bg-om-card transition-colors"
-          >
-            <Disc weight="regular" className="h-4 w-4 text-om-amber" />
-            <span>Releases</span>
-          </Link>
-
-          <Link
-            href="/critics"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-om-secondary hover:text-om-text hover:bg-om-card transition-colors"
-          >
-            <Newspaper weight="regular" className="h-4 w-4 text-om-amber" />
-            <span>Critic Score</span>
-          </Link>
-
-          <Link
-            href="/videos"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-om-secondary hover:text-om-text hover:bg-om-card transition-colors"
-          >
-            <VideoCamera weight="regular" className="h-4 w-4 text-om-amber" />
-            <span>Video Saggi</span>
-          </Link>
-
-          <Link
-            href="/#roulette"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-om-secondary hover:text-om-text hover:bg-om-card transition-colors"
-          >
-            <Sparkle weight="regular" className="h-4 w-4 text-om-amber" />
-            <span>Roulette</span>
-          </Link>
-        </nav>
-
-        {/* Action Button & Live Status */}
-        <div className="hidden sm:flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full bg-om-card/80 border border-om-border px-3 py-1.5 text-xs text-om-secondary font-mono">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-om-amber opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-om-amber"></span>
-            </span>
-            <span>4 amici in ascolto</span>
-          </div>
-
-          <Link
-            href="/auth"
-            className="flex items-center gap-2 rounded-lg bg-om-amber hover:bg-om-amber/90 text-om-bg font-sans text-xs font-semibold px-3.5 py-2 transition-all shadow-glow hover:scale-[1.02]"
-          >
-            <Waveform weight="bold" className="h-4 w-4" />
-            <span>Accedi / Registrati</span>
-          </Link>
-        </div>
-
-        {/* Mobile menu button */}
-        <div className="flex md:hidden">
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-om-secondary hover:text-om-text rounded-md focus:outline-none"
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X size={24} /> : <List size={24} />}
-          </button>
+        <div className="flex items-center gap-1.5">
+          {authenticated && <LiveFriendsPill />}
+          {authenticated ? (
+            <>
+              <Link
+                href="/notifications"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-md text-ink-secondary hover:bg-ink/5 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                aria-label={unread > 0 ? `Notifiche, ${unread} non lette` : 'Notifiche'}
+              >
+                <Bell aria-hidden="true" className="h-5 w-5" />
+                {unread > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-1 top-1 min-w-4 rounded-full bg-accent px-1 text-center font-mono text-[10px] font-bold leading-4 text-on-accent tabular-nums"
+                  >
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/profile"
+                aria-label="Il tuo profilo"
+                className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                <Avatar name={displayNameOf(user)} src={user.avatarUrl} size="sm" decorative />
+              </Link>
+            </>
+          ) : (
+            status === 'anonymous' && (
+              <Link
+                href={loginRedirectUrl(pathname ?? '/')}
+                className={buttonClasses({ size: 'sm' })}
+              >
+                <SignIn aria-hidden="true" weight="bold" />
+                Accedi
+              </Link>
+            )
+          )}
+          <IconButton
+            label={open ? 'Chiudi menu' : 'Apri menu'}
+            icon={open ? <X weight="bold" /> : <List weight="bold" />}
+            aria-expanded={open}
+            aria-controls={menuId}
+            onClick={() => setOpen((v) => !v)}
+          />
         </div>
       </div>
 
-      {/* Mobile menu dropdown */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-b border-om-border bg-om-card px-4 pt-2 pb-4 space-y-1">
-          <Link
-            href="/#releases"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-om-text hover:bg-om-interactive"
-          >
-            <Disc className="h-5 w-5 text-om-amber" /> Releases
-          </Link>
-          <Link
-            href="/critics"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-om-text hover:bg-om-interactive"
-          >
-            <Newspaper className="h-5 w-5 text-om-amber" /> Critic Score & Accrediti
-          </Link>
-          <Link
-            href="/videos"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-om-text hover:bg-om-interactive"
-          >
-            <VideoCamera className="h-5 w-5 text-om-amber" /> Video Saggi Musicali
-          </Link>
-          <Link
-            href="/#roulette"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-om-text hover:bg-om-interactive"
-          >
-            <Sparkle className="h-5 w-5 text-om-amber" /> Roulette dei Generi
-          </Link>
-        </div>
-      )}
+      <nav
+        id={menuId}
+        aria-label="Menu"
+        hidden={!open}
+        className="border-t border-line bg-surface px-4 pb-4 pt-2 sm:px-6"
+      >
+        <ul className="grid gap-0.5 sm:grid-cols-2">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const active = isActivePath(pathname, item.href);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center gap-3 rounded-md px-3 py-3 text-base',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus',
+                    active
+                      ? 'bg-elevated font-semibold text-ink'
+                      : 'text-ink-secondary hover:bg-elevated hover:text-ink'
+                  )}
+                >
+                  <Icon
+                    aria-hidden="true"
+                    weight={active ? 'fill' : 'regular'}
+                    className={cn('h-5 w-5', active && 'text-accent')}
+                  />
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        {authenticated && (
+          <div className="mt-3 space-y-3 border-t border-line pt-3">
+            <GhostModeSwitch variant="detailed" />
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-base text-ink-secondary hover:bg-elevated hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            >
+              <SignOut aria-hidden="true" className="h-5 w-5" />
+              Esci
+            </button>
+          </div>
+        )}
+      </nav>
     </header>
   );
 };
+
+/** "3 amici in ascolto": live count from the presence socket. */
+function LiveFriendsPill() {
+  const { friends } = useFriendsPresence();
+  const listening = friends.filter((f) => !f.isGhostMode && f.currentlyPlaying?.isPlaying).length;
+  if (listening === 0) return null;
+  return (
+    <span className="hidden items-center gap-2 rounded-full border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-ink-secondary sm:inline-flex">
+      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-live" />
+      <span className="tabular-nums">{listening}</span>{' '}
+      {listening === 1 ? 'amico in ascolto' : 'amici in ascolto'}
+    </span>
+  );
+}
