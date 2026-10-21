@@ -26,6 +26,22 @@ export class UsersService {
     });
   }
 
+  /**
+   * "Who to follow": the most-followed users the viewer does not follow yet (anonymous viewers
+   * get the most-followed overall).
+   */
+  async suggestions(viewerId: string | null, limit: number): Promise<UserSummary[]> {
+    const rows = await this.prisma.user.findMany({
+      where: viewerId
+        ? { id: { not: viewerId }, followedBy: { none: { followerId: viewerId } } }
+        : {},
+      select: USER_SUMMARY_SELECT,
+      orderBy: [{ followedBy: { _count: 'desc' } }, { createdAt: 'desc' }, { id: 'asc' }],
+      take: limit,
+    });
+    return rows.map((u) => toUserSummary(u, new Set()));
+  }
+
   async followers(viewerId: string | null, userId: string, page: PageQuery) {
     await this.assertUserExists(userId);
     return this.listUsers(viewerId, page, { following: { some: { followingId: userId } } });

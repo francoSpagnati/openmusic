@@ -1,5 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { CursorQuerySchema, UserIdParamSchema, UserSearchQuerySchema } from '@openmusic/shared';
+import {
+  CursorQuerySchema,
+  UserIdParamSchema,
+  UserSearchQuerySchema,
+  UserSuggestionsQuerySchema,
+} from '@openmusic/shared';
 import { requireAuth } from '../../lib/auth';
 import type { UsersService } from './users.service';
 
@@ -8,6 +13,11 @@ export function createUsersRoutes(users: UsersService): FastifyPluginAsync {
     fastify.get('/search', { preHandler: fastify.optionalAuth }, async (request) => {
       const { q, ...page } = UserSearchQuerySchema.parse(request.query);
       return users.search(request.auth?.userId ?? null, q, page);
+    });
+
+    fastify.get('/suggestions', { preHandler: fastify.optionalAuth }, async (request) => {
+      const { limit } = UserSuggestionsQuerySchema.parse(request.query);
+      return users.suggestions(request.auth?.userId ?? null, limit);
     });
 
     fastify.get('/:userId/followers', { preHandler: fastify.optionalAuth }, async (request) => {

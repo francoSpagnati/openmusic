@@ -274,11 +274,13 @@ export class ReviewsService {
     };
 
     let userReaction: ReactionType | null = null;
+    const userReactions: ReactionType[] = [];
 
     for (const rx of r.reactions) {
       reactionCounts[rx.type] = (reactionCounts[rx.type] || 0) + 1;
       if (currentUserId && rx.userId === currentUserId) {
         userReaction = rx.type;
+        userReactions.push(rx.type);
       }
     }
 
@@ -301,6 +303,7 @@ export class ReviewsService {
       isVerifiedListen: r.isVerifiedListen,
       reactions: reactionCounts,
       userReaction,
+      userReactions,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     };

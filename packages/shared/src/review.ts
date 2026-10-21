@@ -49,6 +49,8 @@ export const ReviewItemSchema = z.object({
     HEART: 0,
   }),
   userReaction: ReactionTypeSchema.nullable().optional(),
+  /** Every reaction the caller left on this review (a user can leave one of each type). */
+  userReactions: z.array(ReactionTypeSchema).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

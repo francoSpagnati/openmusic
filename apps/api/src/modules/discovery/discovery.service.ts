@@ -93,10 +93,9 @@ export class DiscoveryService {
    */
   async getReelsFeed(userId?: string, limit = 10): Promise<DiscoveryFeedResponse> {
     // 1. Preleva tracce con anteprima audio già presente o generabile
+    // Tracks that already have a stored preview come first; the rest are still returned and the
+    // client resolves their 30s clip on demand via GET /api/catalog/preview (ADR-003).
     const tracks = await this.prisma.track.findMany({
-      where: {
-        previewUrl: { not: null },
-      },
       include: {
         release: {
           include: {
@@ -114,7 +113,7 @@ export class DiscoveryService {
         },
       },
       take: limit,
-      orderBy: { id: 'desc' },
+      orderBy: [{ previewUrl: { sort: 'asc', nulls: 'last' } }, { id: 'desc' }],
     });
 
     const items: DiscoveryReelItem[] = tracks.map((t) => {

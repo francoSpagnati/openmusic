@@ -48,6 +48,33 @@ describe('chat', () => {
     expect(message.readAt).toBeNull();
   });
 
+  it('shares tracks imported from catalog search (non-UUID ids) and rejects unknown ones', async () => {
+    const alice = await signedInUser(ctx);
+    const bob = await signedInUser(ctx);
+    const release = await prisma.release.create({
+      data: { id: `deezer-alb-${Date.now()}`, title: 'Imported', artistName: 'Someone' },
+    });
+    const track = await prisma.track.create({
+      data: {
+        id: `deezer-trk-${Date.now()}`,
+        title: 'Imported track',
+        artistName: 'Someone',
+        durationMs: 180_000,
+        releaseId: release.id,
+      },
+    });
+
+    const ok = await send(alice.headers, { receiverId: bob.user.id, trackId: track.id });
+    expect(ok.statusCode).toBe(201);
+    expect(ChatMessageSchema.parse(ok.json()).track?.id).toBe(track.id);
+
+    const missing = await send(alice.headers, {
+      receiverId: bob.user.id,
+      trackId: 'deezer-trk-does-not-exist',
+    });
+    expect(missing.statusCode).toBe(400);
+  });
+
   it('validates messages and recipients', async () => {
     const alice = await signedInUser(ctx);
 

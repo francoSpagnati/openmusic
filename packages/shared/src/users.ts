@@ -39,3 +39,12 @@ export type UserSummary = z.infer<typeof UserSummarySchema>;
 export type UserSearchQuery = z.input<typeof UserSearchQuerySchema>;
 export type UserSummaryPage = z.infer<typeof UserSummaryPageSchema>;
 export type FollowState = z.infer<typeof FollowStateSchema>;
+
+/** `GET /api/users/suggestions?limit=` — people to follow (not you, not already followed). */
+export const UserSuggestionsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(20).default(5),
+});
+
+export const UserSuggestionListSchema = z.array(UserSummarySchema);
+
+export type UserSuggestionsQuery = z.input<typeof UserSuggestionsQuerySchema>;
