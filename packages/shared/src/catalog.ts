@@ -19,7 +19,10 @@ export const CatalogReleaseSchema = z.object({
   artistName: z.string().min(1),
   releaseType: ReleaseTypeSchema.default('ALBUM'),
   coverUrl: z.string().url().nullable().optional(),
-  dominantColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#26262B'),
+  dominantColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .default('#26262B'),
   releaseDate: z.string().nullable().optional(),
   genres: z.array(z.string()).default([]),
 
@@ -54,6 +57,33 @@ export const AudioPreviewResultSchema = z.object({
   durationSeconds: z.number().default(30),
 });
 
+/** `GET /api/catalog/search?q=` */
+export const CatalogSearchQuerySchema = z.object({
+  q: z.string().trim().max(100).default(''),
+});
+
+/** `GET /api/catalog/releases?genre=&cursor=&limit=` (explore page). */
+export const BrowseReleasesQuerySchema = z.object({
+  genre: z.string().trim().min(1).max(40).optional(),
+  sort: z.enum(['popular', 'recent']).default('popular'),
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const ReleasePageSchema = z.object({
+  items: z.array(CatalogReleaseSchema),
+  nextCursor: z.string().nullable(),
+});
+
+/** `GET /api/catalog/genres` */
+export const GenreListSchema = z.array(
+  z.object({ name: z.string(), releaseCount: z.number().int() })
+);
+
+export type CatalogSearchQuery = z.input<typeof CatalogSearchQuerySchema>;
+export type BrowseReleasesQuery = z.input<typeof BrowseReleasesQuerySchema>;
+export type ReleasePage = z.infer<typeof ReleasePageSchema>;
+export type GenreList = z.infer<typeof GenreListSchema>;
 export type ReleaseType = z.infer<typeof ReleaseTypeSchema>;
 export type CatalogTrack = z.infer<typeof CatalogTrackSchema>;
 export type CatalogRelease = z.infer<typeof CatalogReleaseSchema>;
