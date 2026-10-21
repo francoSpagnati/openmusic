@@ -1,7 +1,8 @@
 # 05 · Design System — "Warm Editorial Vinyl"
 
-> Status: **definitive** (supersedes the typography notes in `02_DESIGN_AND_NIELSEN.md`
-> and the token table in `design_system_anti_ai_slop_ed_euristiche_di_nielsen.md`).
+> Status: **definitive** (ADR-008). Older colour and font values that appeared in previous
+> versions of the docs are superseded. UX principles and Nielsen heuristics live in
+> `02_DESIGN_AND_NIELSEN.md`.
 > Source of truth for tokens: `packages/shared/src/theme.ts` (`THEME`).
 > Web mirror: `apps/web/src/app/globals.css` (CSS variables) + `apps/web/tailwind.config.ts`.
 > Primitives: `apps/web/src/components/ui` (import from `@/components/ui` or a relative path).

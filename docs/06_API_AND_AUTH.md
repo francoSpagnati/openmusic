@@ -110,6 +110,7 @@ sessione obbligatoria · **ROLE** ruolo richiesto.
 | GET        | `/api/auth/lastfm/callback`                         | auth                            | collega Last.fm; 403 `state`, 409 già collegato  |
 | DELETE     | `/api/auth/providers/:provider`                     | auth                            | scollega SPOTIFY/LASTFM/APPLE_MUSIC              |
 | GET        | `/api/users/search?q=`                              | opt                             | `UserSummaryPage`                                |
+| GET        | `/api/users/suggestions?limit=`                     | opt                             | utenti da seguire                                |
 | GET        | `/api/users/:userId/followers`                      | opt                             | `UserSummaryPage`                                |
 | GET        | `/api/users/:userId/following`                      | opt                             | `UserSummaryPage`                                |
 | PUT        | `/api/users/:userId/follow`                         | auth                            | idempotente → `FollowState`, notifica FOLLOW     |

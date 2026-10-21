@@ -1,86 +1,150 @@
-# 🚦 Stato del Progetto, Roadmap e Questioni Aperte (TBD)
+# 04 · Stato del progetto e questioni aperte
 
-> **Ultimo aggiornamento:** Milestone 5 Completata (Critic Score, Accredito Testate Giornalistiche & Spazio Video-Contenuti).
+> **Ultimo aggiornamento:** 2026-10-21, branch `ccr-8d035389-g64pel`.
+> Questo documento dice cosa **funziona davvero**, cosa è parziale e cosa manca. Le versioni
+> precedenti segnavano come "completate" milestone che erano solo componenti su dati mock: qui
+> una voce è "reale" solo se è collegata all'API, persiste su database ed è coperta da test o
+> verificata a mano.
 
-## 1. Stato Attuale del Progetto
-- [x] Creazione repository GitHub (`francoSpagnati/openmusic`) con licenza MIT.
-- [x] Definizione Visione, Personas, Euristiche di Nielsen e Architettura Monorepo.
-- [x] Definizione Schema Database iniziale (`Prisma` con supporto per User, Release, Track, Review, Audience/Critic Score, ConnectedAccount).
-- [x] Inizializzazione Monorepo (Turborepo, Docker Compose per Postgres + Redis, configurazione .env e packaging).
-- [x] Setup `apps/api` (Backend Fastify Node.js/TypeScript con Socket.io e Redis).
-- [x] Setup `apps/mobile` (Expo React Native con Reanimated v3, Phosphor Icons, Haptics).
-- [x] Setup `apps/web` (Next.js App Router con Server-Side Rendering e SEO).
+## 1. Verifiche (stato del branch)
 
----
+| Controllo                                  | Esito locale                           |
+| ------------------------------------------ | -------------------------------------- |
+| `npm run lint`                             | passa (api, db, shared, web + e2e)     |
+| `npm run typecheck`                        | passa su 5/5 pacchetti, mobile incluso |
+| `npm test` (dopo `db:test:prepare`)        | shared 33/33, api 72/72                |
+| Build web (`next build`)                   | passa                                  |
+| `npm run e2e` (Playwright, 5 test)         | passa in locale                        |
+| CI GitHub (`ci.yml`, job `verify` + `e2e`) | **non ancora eseguita su GitHub**      |
 
-## 2. Roadmap di Sviluppo (Milestones)
+Non verificabili nell'ambiente di sviluppo usato (senza rete esterna): copertine reali, Google
+Fonts, anteprime Deezer/iTunes, OAuth Spotify/Last.fm reali.
 
-### 🏁 Milestone 1: Core Infrastructure & "Now Playing" (MVP Parte 1)
-- [x] Setup completo del Monorepo e del database PostgreSQL + Redis in Docker (`docker-compose.yml`, `.env.example`, `.env`).
-- [x] Autenticazione utenti e collegamento OAuth con **Spotify** e **Last.fm** (`AuthService`, `SpotifyService`, `LastFmService`, contratti in `@openmusic/shared/src/auth.ts`).
-- [x] Implementazione del motore WebSockets per la **`<LiveFriendsBar />`** (`NowPlayingService` in Redis con TTL 300s, `NowPlayingGateway` Socket.io, hook `useNowPlayingSocket`, `LiveFriendsBar` con Phosphor Icons e Haptics, test su `apps/mobile/App.tsx`).
+## 2. Cosa è reale
 
-### 🏁 Milestone 2: Catalogo, Recensioni & Profilo (MVP Parte 2)
-- [x] Ricerca brani/album e indicizzazione on-the-fly (`CatalogService`, `AudioPreviewResolverService` a cascata Deezer $\rightarrow$ iTunes tramite ISRC, rotte `/api/catalog/search`, `/api/catalog/releases/:id`, `/api/catalog/preview`).
-- [x] Sistema di recensioni e calcolo del **Voto del Pubblico** (`ReviewsService`, scala 10..100 nel DB, ricalcolo `audienceAvg` 0.5-5.0 e % `audienceFreshPct` $\ge 70\%$, badge `isVerifiedListen` tramite `ScrobbleLog`, reazioni costruttive `AGREE`, `WELL_WRITTEN`, `DISCOVERED`, `HEART`).
-- [x] Componenti Mobile (`<ReleaseHeaderCard />` con Audience Score Rotten Tomatoes e Dynamic Tint, `<ReviewComposer />` con step 0.5 stelle, vibe tags e auto-save, `<UserProfileView />` con Rotazione Pesante e Diario Recensioni).
-- [x] Pagina Profilo Utente (`ProfileService`, rotte `/api/profile/me` e `/api/profile/:userId`).
+### Piattaforma e API
 
-### 🏁 Milestone 3: Discovery (Music Reels & Roulette)
-- [x] Sviluppo del feed verticale `<DiscoveryReelsFeed />` con pre-buffer delle clip audio da 30 secondi (Soglia di Doherty < 400ms), pulsante Undo swipe (Euristica #3) e Thumb Zone (Legge di Fitts).
-- [x] Algoritmo della **Roulette Russa dei generi** (`DiscoveryService.spinGenreRoulette`, selezione generi fuori dallo storico dell'utente con starter pack di 3 brani con preview, componente `<GenreRouletteWheel />` con vinile rotante animato in Reanimated v3).
+- Monorepo Turborepo, Docker Compose (Postgres 16 + Redis 7), `.env.example` unico.
+- Prisma con **migrazioni versionate** (3) e seed con utenti, release, recensioni e post.
+- **Account locali** email + password (scrypt), JWT in cookie httpOnly o Bearer, revoca delle
+  sessioni al cambio password, ruoli `USER`/`CRITIC`/`MODERATOR`/`ADMIN` riletti dal DB.
+- Error handler centrale con formato `ApiErrorBody`, nessun dettaglio interno nelle risposte.
+- Helmet, CORS ristretto, rate limit su auth (10/min) e catalogo (60/min), timeout 5 s verso i
+  provider, URL utente solo `http(s)`.
+- Socket.io autenticato dal token; presenza inviata solo ai follower; Ghost Mode immediata.
+- Social: follow, suggerimenti, feed post (following/global), like, salvati, notifiche persistenti
+  e live, chat 1-a-1 con brani, reazioni e "ascoltato".
+- Recensioni: upsert (una per utente e release/brano), reazioni `AGREE`/`WELL_WRITTEN`/
+  `DISCOVERED`/`HEART`, **peso 1.5 per ascolto verificato**, ricalcolo coerente dei punteggi
+  pubblico e critica.
+- Critica: richiesta di accredito, coda e approvazione **solo ADMIN**, recensioni della critica,
+  dual score. Video: pubblicazione per CRITIC/MODERATOR/ADMIN, feed e video per release.
+- Catalogo: ricerca locale + import on-the-fly da Deezer/iTunes, elenco per genere, anteprime 30 s
+  (Deezer → iTunes).
+- Spotify collegato: currently playing, sync playback con scrobble, heavy rotation in cache, top
+  artisti, export playlist.
 
-### 🏁 Milestone 4: Chat Musicale, Playlist & Notifica OS
-- [x] Chat diretta per consigli musicali con traduzione universale dei link tramite ISRC (`ChatService`, rotte `/api/chat/*`, componente `<MusicChatBubble />` con audio preview e reazioni rapide).
-- [x] Creazione e condivisione di playlist tematiche con concetto analogico a doppio lato **Lato A / Lato B** (`PlaylistsService`, rotte `/api/playlists/*`, componente `<ThemedPlaylistView />` con switcher Reanimated e contatore durata).
-- [x] Implementazione della notifica persistente di sistema / Live Activity (`NotificationPresenceService`, rotta `/api/notifications/presence-summary`, componente `<NotificationPresenceWidget />`).
+### Web (`apps/web`) — tutte le pagine sull'API reale, nessun dato mock
 
-### 🏁 Milestone 5: Voto della Critica & Spazio Video (Espansione Futura)
-- [x] Portale di verifica per giornalisti/webzine musicali e attivazione del **Critic Score** (`CriticService`, rotte `/api/critic/*`, calcolo dual-score e recensioni ufficiali con testata).
-- [x] Sezione multimediale per la condivisione di video-contenuti a tema musicale (`VideosService`, rotte `/api/videos/*`, modello `MusicVideoContent`).
-- [x] Componenti Mobile: `<DualScoreCard />` (Tomatometer stile Pitchfork/Rotten Tomatoes con badge Fresh/Rotten per Critica e Pubblico), `<CriticReviewCard />` (scheda editoriale con testata e link articolo esterno) e `<MusicVideoPlayerCard />` (video-saggi con durata e tag).
+| Pagina                          | Cosa fa                                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/auth`                         | Registrazione e login, redirect sicuro a `?next=`                                                         |
+| `/`                             | Feed (seguiti/globale), composizione post, amici in ascolto, suggerimenti                                 |
+| `/explore`                      | Ricerca, filtri per genere/ordinamento, griglia release, Roulette dei generi                              |
+| `/releases/[id]`                | Scheda SSR con SEO, tracklist, anteprime, dual score, recensioni e reazioni, compositore con bozza locale |
+| `/reels`                        | Feed verticale con anteprime pre-caricate                                                                 |
+| `/chat`                         | Inbox, conversazione, invio brano, reazioni, "ascoltato", aggiornamenti live                              |
+| `/notifications`                | Elenco, segna come lette, arrivo live                                                                     |
+| `/profile`, `/profile/[handle]` | Profilo, statistiche, heavy rotation, follow                                                              |
+| `/settings`                     | Profilo, password, Ghost Mode, collegamento Spotify/Last.fm                                               |
+| `/critics`                      | Richiesta di accredito, coda ADMIN                                                                        |
+| `/videos`                       | Feed video, pubblicazione per ruoli abilitati                                                             |
 
-- [x] Fase "fondamenta": account locali email+password (scrypt, JWT in cookie httpOnly / Bearer), error handler centrale, rate limit, helmet, Socket.io autenticato con presenza solo ai follower, ruolo `ADMIN` e verifica accrediti critici, feed post/like/salvati, follow, notifiche persistenti + live, inbox chat, peso 1.5x ascolto verificato, test d'integrazione su DB reale, client API tipizzato per il web (`docs/06_API_AND_AUTH.md`).
-- [ ] Pagine web ancora su dati mock: da collegare al client `apps/web/src/lib/api` nella fase successiva.
-- [ ] App mobile: il socket usa ancora `auth: { userId }` e va migrato a `auth: { token }`.
+L'unico dato statico rimasto è l'elenco di generi di riserva in `GenrePicker`, usato solo se il
+catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsplash.
 
----
+### Test e strumenti
 
-## 3. Open Questions / Cose da Definire (TBD)
+- ESLint + Prettier configurati; CI con job `verify` (lint, typecheck, test, build) ed `e2e`.
+- 105 test Vitest (unit su `packages/shared`, integrazione su Postgres/Redis reali in `apps/api`).
+- Playwright smoke: registrazione, login, feed, apertura release, recensione, messaggio in chat.
 
-1. **Scala esatta del Voto del Pubblico nella UI:**
-   - Nel database salviamo un intero `10-100` per massima flessibilità matematica (ADR-001).
-   - Nell'interfaccia utente: input da **0.5 a 5.0 stelle** (passo 0.5) con badge "Fresh" ($\ge 70\%$) verde o "Rotten" rosso stile Rotten Tomatoes.
-2. **Design e Limiti della Notifica Persistente su Mobile (ADR-002):**
-   - Su **Android**, una *Ongoing Notification* visibile nella tendina notifiche che riassume chi sta ascoltando musica ora.
-   - Su **iOS**, Widget Schermata di Blocco + *Live Activity* durante le sessioni di ascolto.
-3. **Sorgente Primaria delle Anteprime Audio da 30s (ADR-003):**
-   - *Preview Resolver* a cascata implementato: Deezer API $\rightarrow$ iTunes Search API tramite ISRC o metadati brano.
-4. **Regole della Moderazione per "Vivere Sereni" (ADR-004):**
-   - Solo reazioni costruttive `ReactionType` (`AGREE`, `WELL_WRITTEN`, `DISCOVERED`, `HEART`) e badge `isVerifiedListen`.
-5. **Strategia di Hosting Iniziale (ADR-005):**
-   - Docker in locale; poi Vercel (Web), Railway/Render (API/DB/Redis) ed EAS (Mobile).
+## 3. Cosa è parziale o manca
 
----
+### Prodotto / API
 
-## 4. Next Session Handoff
-- **Cosa è stato completato nella sessione attuale (Sviluppo Web Next.js, GitHub & Spotify API Suite):**
-  - Setup completo di `apps/web`: Next.js 14 App Router, TypeScript, Tailwind CSS, Phosphor Icons, Google Fonts (`Fraunces`, `Plus Jakarta Sans`, `JetBrains Mono`).
-  - Architettura audio globale `AudioPlayerContext` e `<AudioPlayerBar />` dock fisso con riproduzione 30s preview.
-  - Pagina iniziale `/`: Hero editoriale, `<LiveFriendsTicker />` con indicatori real-time e Ghost Mode, classifica release con `<DualScoreBadge />`, `<SpotifyConnectCard />` per la sincronizzazione real-time, e `<GenreRouletteInteractive />` con vinile rotante animato.
-  - Scheda release `/releases/[id]`: Server-Side Rendering (SSR) e generazione dinamica dei metadati OpenGraph/SEO, tracklist a doppio lato (Lato A / Lato B in `ReleaseTracklistClient`), recensioni accreditate affiancate a recensioni del pubblico con reazioni costruttive.
-  - Portale accredito critica `/critics`: Modulo di candidatura per giornalisti/webzine, spiegazione del Critic Score e showcase testate accreditate.
-  - Spazio video-contenuti `/videos`: Feed video saggi, analisi armoniche e documentari musicali collegati agli album.
-  - **Motore Spotify API Completo (`SpotifySyncService` & `/api/spotify/*`):**
-    - Scopes estesi per OAuth2 (`user-read-currently-playing`, `user-read-playback-state`, `user-read-recently-played`, `user-top-read`, `playlist-modify-public`, `playlist-modify-private`).
-    - Rinnovo silenzioso del token (`refresh_token`) con aggiornamento automatico su PostgreSQL (`ConnectedAccount`).
-    - Sincronizzazione playback in tempo reale con Redis e Socket.io, e calcolo automatico per il badge **Ascolto Verificato** (`ScrobbleLog`) con deduplicazione a 3 minuti.
-    - Caching in Redis (TTL 1h) per la "Rotazione Pesante" (Top 5 brani dell'ultimo mese).
-    - Esportazione automatica di playlist viniliche OpenMusic (Lato A / Lato B) sull'account Spotify dell'utente tramite risoluzione codici ISRC e fallback per metadati.
-  - Verifica typecheck ed esecuzione build:
-    - `npm run typecheck` (`turbo run typecheck`): 5/5 package passati con 0 errori.
-    - `next build`: build di produzione completato con successo (generazione statica e dinamica delle rotte).
-  - Sincronizzazione GitHub: commit semantico e push sul repository remoto `francoSpagnati/openmusic`.
-- **Prossimi Passi Consigliati:**
-  - Setup pipeline CI/CD GitHub Actions per lint e typecheck automatico su PR.
-  - Integrazione provider OAuth di produzione e deployment cloud su Vercel (Web), Render/Railway (API + DB + Redis) ed Expo EAS (Mobile).
+- [ ] **Media bayesiana** (ADR-001): non applicata, `audienceAvg` è una media pesata semplice.
+- [ ] **Ordine del resolver anteprime** diverso dall'ADR-003 (vedi §5).
+- [ ] **Id Deezer** (`deezer-…`): accettati solo in chat; post, recensioni, playlist e pagine
+      release richiedono UUID, quindi un brano importato al volo da Deezer non è recensibile finché
+      non è nel catalogo.
+- [ ] **OAuth Spotify/Last.fm:** dopo il consenso l'utente atterra sul JSON dell'API invece di
+      tornare all'app.
+- [ ] Endpoint mancanti: reset password, eliminazione recensione, like/salvataggio di un reel,
+      paginazione dei messaggi più vecchi e dei Reels.
+- [ ] **Playlist:** API presenti, nessuna pagina web.
+- [ ] Apple Music, YouTube Music e deep-link nativi nei link universali: non implementati.
+- [ ] Estrazione automatica del colore dominante dalle copertine (oggi viene dal seed).
+- [ ] Undo nei Reels e nella Roulette (euristica di Nielsen #3).
+
+### Realtime
+
+- [ ] Un messaggio in chat arriva live solo al destinatario: le altre schede del mittente e le
+      reazioni non si aggiornano.
+- [ ] Il badge "non lette" non scende dopo "segna tutte come lette".
+- [ ] Il socket resta autenticato dopo logout o cambio password (il token si verifica solo alla
+      connessione); gli aggiornamenti now-playing non hanno throttling.
+- [ ] Adapter Socket.io in memoria: una sola istanza API (serve l'adapter Redis per scalare).
+
+### Sicurezza e privacy (decisioni da prendere)
+
+- [ ] Chiunque può scrivere in chat a chiunque: nessun requisito di follow, blocco o rate limit.
+- [ ] Follow senza approvazione: chi ti segue vede l'ascolto live se Ghost Mode è spenta; la heavy
+      rotation è pubblica anche con Ghost Mode attiva.
+- [ ] `next.config.mjs` permette a `next/image` qualunque host https (proxy di immagini aperto).
+- [ ] Salvataggio recensione e ricalcolo punteggi non sono in un'unica transazione.
+
+### Repository
+
+- [ ] File `LICENSE` (MIT) assente.
+- [ ] Prima esecuzione della CI su GitHub.
+- [ ] Alcuni file preesistenti (mobile, 3 file API) non sono formattati con Prettier.
+
+### Minori
+
+- [ ] Una release inesistente mostra la pagina "non trovato" ma in dev risponde 200 (non
+      ricontrollato sulla build di produzione).
+- [ ] Titoli troncati in "Dischi del momento" a 1280 px.
+
+## 4. Mobile (`apps/mobile`): stato e prossimi passi
+
+**Stato:** prototipo. I componenti (`LiveFriendsBar`, `ReleaseHeaderCard`, `ReviewComposer`,
+`DiscoveryReelsFeed`, `GenreRouletteWheel`, `MusicChatBubble`, `ThemedPlaylistView`,
+`NotificationPresenceWidget`, `DualScoreCard`...) esistono e compilano, ma `App.tsx` usa dati mock
+(`MOCK_SOCIAL_POSTS`, un `userId` fisso) e non c'è login. `useNowPlayingSocket` usa ancora
+`auth: { userId }`, che **l'API ora rifiuta**: il mobile oggi non riceve presenza.
+`NotificationPresenceWidget` è un componente React Native, non un widget di sistema.
+
+Prossimi passi, in ordine:
+
+1. Client API condiviso o portato da `apps/web/src/lib/api` (stessi schemi Zod), con token Bearer
+   in `expo-secure-store`.
+2. Schermate login/registrazione; gestione del 401 (sessione revocata dopo cambio password).
+3. Socket con `auth: { token }` al posto di `auth: { userId }`.
+4. Navigazione (Expo Router) e sostituzione dei mock con feed, release, recensioni, chat.
+5. Font Fraunces / Plus Jakarta Sans / JetBrains Mono con `expo-font` (oggi non caricati).
+6. Solo dopo: modulo Android (ongoing notification, `NotificationListenerService`) e widget iOS /
+   Live Activity (ADR-004).
+
+## 5. Questioni aperte
+
+1. **Ordine del resolver anteprime (ADR-003):** il codice usa Deezer → iTunes, l'ADR dice
+   iTunes → Deezer → Spotify. Decidere se aggiornare l'ADR (Spotify è comunque inaffidabile per le
+   nuove app) o il codice.
+2. **Media bayesiana:** attivarla ora (con `m` e `C` dell'ADR-001) o quando il catalogo ha abbastanza
+   recensioni?
+3. **Chi può scrivere in chat e vedere l'ascolto live:** solo mutual? follow con approvazione?
+4. **Hosting (ADR-005):** confermare Vercel (web) + Railway/Fly (API con WebSocket) + Neon/Supabase
+   - Upstash; richiede web e API sullo stesso dominio registrabile per il cookie
+     (`COOKIE_DOMAIN`, vedi `06` §1).
+5. **Licenza:** aggiungere `LICENSE` MIT con il titolare corretto.
