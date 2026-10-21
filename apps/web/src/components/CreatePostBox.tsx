@@ -1,116 +1,227 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Disc, Star, Tag, PaperPlaneTilt, Image as ImageIcon } from '@phosphor-icons/react';
+import { PaperPlaneTilt, X } from '@phosphor-icons/react';
+import { CreatePostInputSchema, type Post } from '@openmusic/shared';
+import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { Avatar, Button, RatingStars, Textarea, ratingFromStars, useToast } from '@/components/ui';
+import { displayNameOf, errorMessage } from './web-core/format';
+import { FORM_ERROR, apiFormErrors, zodFormErrors, type FormErrors } from './web-core/formErrors';
+import { FormAlert } from './web-core/auth/FormAlert';
+import { ReleasePicker, type PickedRelease } from './web-core/feed/ReleasePicker';
+import { VibeTagsInput } from './web-core/feed/VibeTagsInput';
 
-interface CreatePostBoxProps {
-  onPostCreated?: (post: any) => void;
+const MAX_LENGTH = 2000;
+
+export interface CreatePostBoxProps {
+  onPostCreated: (post: Post) => void;
+  /** Called when the author undoes a just-published post from the toast. */
+  onPostRemoved?: (postId: string) => void;
 }
 
-export const CreatePostBox: React.FC<CreatePostBoxProps> = ({ onPostCreated }) => {
-  const [content, setContent] = useState('');
-  const [selectedAlbum, setSelectedAlbum] = useState('In Rainbows — Radiohead');
-  const [rating, setRating] = useState(5.0);
-  const [selectedVibe, setSelectedVibe] = useState('#Capolavoro');
-  const [isExpanded, setIsExpanded] = useState(false);
+/**
+ * Composer for the home feed. The draft survives failures (nothing is lost on a network error)
+ * and a published post can be undone from the confirmation toast.
+ */
+export const CreatePostBox = React.forwardRef<HTMLTextAreaElement, CreatePostBoxProps>(
+  function CreatePostBox({ onPostCreated, onPostRemoved }, ref) {
+    const { user } = useAuth();
+    const { notify } = useToast();
+    const [content, setContent] = useState('');
+    const [release, setRelease] = useState<PickedRelease | null>(null);
+    const [stars, setStars] = useState<number | null>(null);
+    const [vibeTags, setVibeTags] = useState<string[]>([]);
+    const [expanded, setExpanded] = useState(false);
+    const [errors, setErrors] = useState<FormErrors>({});
+    const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) return;
+    if (!user) return null;
+    const name = displayNameOf(user);
+    const trimmedLength = content.trim().length;
 
-    if (onPostCreated) {
-      onPostCreated({
-        id: `post_${Date.now()}`,
-        author: {
-          name: 'Franco Spagnati',
-          handle: '@francospagnati',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
+    function reset() {
+      setContent('');
+      setRelease(null);
+      setStars(null);
+      setVibeTags([]);
+      setErrors({});
+      setExpanded(false);
+    }
+
+    /** Discarding is reversible from the toast (Nielsen #3). */
+    function discard() {
+      const snapshot = { content, release, stars, vibeTags };
+      const hadDraft = trimmedLength > 0 || release !== null || vibeTags.length > 0;
+      reset();
+      if (!hadDraft) return;
+      notify({
+        title: 'Bozza scartata',
+        action: {
+          label: 'Ripristina',
+          onAction: () => {
+            setContent(snapshot.content);
+            setRelease(snapshot.release);
+            setStars(snapshot.stars);
+            setVibeTags(snapshot.vibeTags);
+            setExpanded(true);
+          },
         },
-        timeAgo: 'Adesso',
-        content,
-        album: {
-          title: 'In Rainbows',
-          artist: 'Radiohead',
-          coverUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&h=500&fit=crop',
-          year: 2007,
-          previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-        },
-        rating,
-        vibeTag: selectedVibe,
-        likesCount: 0,
-        commentsCount: 0,
       });
     }
 
-    setContent('');
-    setIsExpanded(false);
-  };
+    async function undo(post: Post) {
+      try {
+        await api.feed.remove(post.id);
+        onPostRemoved?.(post.id);
+        notify({ title: 'Post annullato' });
+      } catch (err) {
+        notify({
+          tone: 'error',
+          title: 'Non siamo riusciti ad annullare',
+          description: errorMessage(err),
+        });
+      }
+    }
 
-  return (
-    <div className="border-b border-om-border bg-om-card/60 p-4 sm:p-5">
-      <div className="flex gap-3.5">
-        <img
-          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
-          alt="Avatar utente"
-          className="h-10 w-10 rounded-full object-cover border border-om-border flex-shrink-0"
-        />
+    async function submit() {
+      const parsed = CreatePostInputSchema.safeParse({
+        content,
+        releaseId: release?.id,
+        rating: release && stars ? ratingFromStars(stars) : undefined,
+        vibeTags,
+      });
+      if (!parsed.success) {
+        setErrors(zodFormErrors(parsed.error));
+        return;
+      }
+      setSubmitting(true);
+      setErrors({});
+      try {
+        const post = await api.feed.create(parsed.data);
+        onPostCreated(post);
+        reset();
+        notify({
+          tone: 'success',
+          title: 'Pubblicato nel feed',
+          action: { label: 'Annulla', onAction: () => void undo(post) },
+        });
+      } catch (err) {
+        setErrors(
+          apiFormErrors(err, 'Pubblicazione non riuscita. Il testo è ancora qui: riprova.')
+        );
+      } finally {
+        setSubmitting(false);
+      }
+    }
 
-        <form onSubmit={handleSubmit} className="flex-1 space-y-3">
-          <textarea
-            placeholder="Cosa stai ascoltando? Scrivi una recensione o consiglia un album agli amici..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onFocus={() => setIsExpanded(true)}
-            rows={isExpanded ? 3 : 2}
-            className="w-full resize-none rounded-xl border border-om-border bg-om-bg/80 p-3 text-sm text-om-text placeholder-om-secondary focus:border-om-amber focus:outline-none font-sans"
+    return (
+      <section
+        id="compose"
+        aria-label="Nuovo post"
+        className="scroll-mt-20 border-b border-line bg-surface/60 p-4 sm:p-5"
+      >
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+          className="flex gap-3"
+        >
+          <Avatar
+            name={name}
+            src={user.avatarUrl}
+            size="md"
+            decorative
+            className="hidden sm:inline-flex"
           />
-
-          {isExpanded && (
-            <div className="flex flex-wrap items-center gap-2 pt-1 animate-in fade-in duration-200">
-              {/* Album selector tag */}
-              <div className="flex items-center gap-1.5 rounded-lg border border-om-border bg-om-interactive px-2.5 py-1 text-xs text-om-text">
-                <Disc weight="duotone" className="h-4 w-4 text-om-amber" />
-                <span className="font-sans font-medium">{selectedAlbum}</span>
-              </div>
-
-              {/* Rating selector */}
-              <div className="flex items-center gap-1 rounded-lg border border-om-border bg-om-interactive px-2 py-1 text-xs font-mono text-om-amber">
-                <Star weight="fill" className="h-3.5 w-3.5" />
-                <span>{rating.toFixed(1)}/5.0</span>
-              </div>
-
-              {/* Vibe tag */}
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectedVibe(
-                    selectedVibe === '#Capolavoro' ? '#AscoltoNotturno' : '#Capolavoro'
-                  )
+          <div className="min-w-0 flex-1 space-y-4">
+            {errors[FORM_ERROR] && <FormAlert>{errors[FORM_ERROR]}</FormAlert>}
+            <Textarea
+              ref={ref}
+              name="content"
+              label="Cosa stai ascoltando?"
+              hideLabel={!expanded}
+              placeholder="Cosa stai ascoltando? Racconta un disco ai tuoi amici…"
+              rows={expanded ? 4 : 2}
+              maxLength={MAX_LENGTH}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onFocus={() => setExpanded(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void submit();
                 }
-                className="flex items-center gap-1 rounded-lg border border-om-border bg-om-interactive px-2 py-1 text-xs font-mono text-om-secondary hover:text-om-text"
-              >
-                <Tag size={12} />
-                <span>{selectedVibe}</span>
-              </button>
+              }}
+              error={errors.content}
+              aside={expanded ? `${content.length}/${MAX_LENGTH}` : undefined}
+              disabled={submitting}
+              className="min-h-0"
+            />
+
+            {expanded && (
+              <div className="space-y-4">
+                <ReleasePicker
+                  value={release}
+                  onChange={(next) => {
+                    setRelease(next);
+                    if (!next) setStars(null);
+                  }}
+                  disabled={submitting}
+                />
+                {release && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <RatingStars
+                      label={`Il tuo voto per ${release.title}`}
+                      value={stars}
+                      onChange={setStars}
+                      showValue
+                      disabled={submitting}
+                    />
+                    {stars !== null && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setStars(null)}
+                        leadingIcon={<X aria-hidden="true" />}
+                      >
+                        Togli voto
+                      </Button>
+                    )}
+                    {errors.rating && <p className="w-full text-sm text-rotten">{errors.rating}</p>}
+                  </div>
+                )}
+                <VibeTagsInput value={vibeTags} onChange={setVibeTags} disabled={submitting} />
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="hidden font-mono text-xs text-ink-muted sm:block">
+                {expanded ? 'Ctrl/⌘ + Invio per pubblicare' : 'Visibile a chi ti segue'}
+              </p>
+              <div className="ml-auto flex items-center gap-2">
+                {expanded && (
+                  <Button variant="ghost" size="sm" onClick={discard} disabled={submitting}>
+                    {trimmedLength > 0 || release || vibeTags.length > 0 ? 'Scarta' : 'Chiudi'}
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={trimmedLength === 0}
+                  loading={submitting}
+                  loadingLabel="Pubblicazione…"
+                  leadingIcon={<PaperPlaneTilt aria-hidden="true" weight="bold" />}
+                >
+                  Pubblica
+                </Button>
+              </div>
             </div>
-          )}
-
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-[11px] font-mono text-om-muted">
-              Condividi con i tuoi follower
-            </span>
-
-            <button
-              type="submit"
-              disabled={!content.trim()}
-              className="flex items-center gap-2 rounded-xl bg-om-amber hover:bg-om-amber/90 text-om-bg font-sans font-semibold text-xs px-4 py-2 transition-all shadow-glow hover:scale-[1.02] disabled:opacity-40"
-            >
-              <PaperPlaneTilt weight="bold" className="h-3.5 w-3.5" />
-              <span>Pubblica</span>
-            </button>
           </div>
         </form>
-      </div>
-    </div>
-  );
-};
+      </section>
+    );
+  }
+);

@@ -1,0 +1,26 @@
+{
+  "resultCount": 1,
+  "results": [
+    {
+      "wrapperType": "track",
+      "kind": "song",
+      "artistId": 657515,
+      "collectionId": 1109714933,
+      "trackId": 1109715066,
+      "artistName": "Radiohead",
+      "collectionName": "In Rainbows",
+      "trackName": "Reckoner",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/aa/bb/cc/mzaf_123.plus.aac.p.m4a",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/1d/2e/3f/1d2e3f40-5a6b-7c8d-9e0f-a1b2c3d4e5f6/634904032463.png/100x100bb.jpg",
+      "releaseDate": "2007-10-10T07:00:00Z",
+      "trackCount": 10,
+      "trackNumber": 7,
+      "discCount": 1,
+      "discNumber": 1,
+      "trackTimeMillis": 290213,
+      "country": "ITA",
+      "primaryGenreName": "Alternative",
+      "isStreamable": true
+    }
+  ]
+}

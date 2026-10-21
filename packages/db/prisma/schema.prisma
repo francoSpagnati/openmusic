@@ -11,6 +11,23 @@ enum Role {
   USER
   CRITIC
   MODERATOR
+  ADMIN
+}
+
+enum NotificationType {
+  FOLLOW // actor ha iniziato a seguirti
+  POST_LIKE // actor ha apprezzato un tuo post
+  REVIEW_REACTION // actor ha reagito a una tua recensione
+  TRACK_LISTENED // actor ha ascoltato il brano che gli hai consigliato in chat
+  CRITIC_APPROVED // un admin ha approvato il tuo accredito critico
+}
+
+/// External open databases the catalog imports from (see apps/api/src/modules/catalog/providers).
+enum CatalogSource {
+  DEEZER
+  ITUNES
+  MUSICBRAINZ
+  COVER_ART_ARCHIVE
 }
 
 enum ReleaseType {
@@ -21,10 +38,10 @@ enum ReleaseType {
 
 // ADR-004: Solo reazioni costruttive, nessun commento tossico libero
 enum ReactionType {
-  AGREE           // "Condivido al 100%"
-  WELL_WRITTEN    // "Bella penna / Recensione curata"
-  DISCOVERED      // "Scoperto grazie a te"
-  HEART           // Apprezzamento generale
+  AGREE // "Condivido al 100%"
+  WELL_WRITTEN // "Bella penna / Recensione curata"
+  DISCOVERED // "Scoperto grazie a te"
+  HEART // Apprezzamento generale
 }
 
 model User {
@@ -32,29 +49,40 @@ model User {
   username           String    @unique
   displayName        String?
   email              String    @unique
+  passwordHash       String? // scrypt (node:crypto); null per account creati solo via OAuth
+  favoriteGenres     String[]  @default([])
   avatarUrl          String?
   bio                String?
   role               Role      @default(USER)
   isGhostMode        Boolean   @default(false) // Euristica 3: Ascolto privato a 1-tap
-  criticOutlet       String?   // Nome webzine o testata accreditata
+  criticOutlet       String? // Nome webzine o testata accreditata
   criticVerifiedAt   DateTime?
+  criticPortfolioUrl String?
+  criticRequestedAt  DateTime? // Richiesta di accredito in attesa di verifica admin
+  /// Bumped on password change: session tokens carrying an older value are rejected.
+  sessionVersion     Int       @default(0)
   createdAt          DateTime  @default(now())
 
-  connectedAccounts  ConnectedAccount[]
-  reviews            Review[]
-  reactions          ReviewReaction[]
-  scrobbleLogs       ScrobbleLog[]
-  playlists          Playlist[]
-  following          Follows[]          @relation("following")
-  followedBy         Follows[]          @relation("followedBy")
-  sentMessages       ChatMessage[]      @relation("SentMessages")
-  receivedMessages   ChatMessage[]      @relation("ReceivedMessages")
+  connectedAccounts ConnectedAccount[]
+  reviews           Review[]
+  reactions         ReviewReaction[]
+  scrobbleLogs      ScrobbleLog[]
+  playlists         Playlist[]
+  following         Follows[]          @relation("following")
+  followedBy        Follows[]          @relation("followedBy")
+  sentMessages      ChatMessage[]      @relation("SentMessages")
+  receivedMessages  ChatMessage[]      @relation("ReceivedMessages")
+  posts             Post[]
+  postLikes         PostLike[]
+  postSaves         PostSave[]
+  notifications     Notification[]     @relation("NotificationRecipient")
+  notificationsSent Notification[]     @relation("NotificationActor")
 }
 
 model ConnectedAccount {
   id           String    @id @default(uuid())
   userId       String
-  provider     String    // "SPOTIFY", "LASTFM", "APPLE_MUSIC"
+  provider     String // "SPOTIFY", "LASTFM", "APPLE_MUSIC"
   providerId   String
   accessToken  String
   refreshToken String?
@@ -72,72 +100,129 @@ model Follows {
   following   User     @relation("followedBy", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+/// Imported from external databases; internal UUID, external ids in the *Id columns.
+model Artist {
+  id            String   @id @default(uuid())
+  name          String
+  /// normalizeCatalogArtist(name), for matching without a shared id.
+  matchKey      String
+  deezerId      String?  @unique
+  itunesId      String?  @unique
+  musicbrainzId String?  @unique
+  pictureUrl    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  releases Release[]
+  tracks   Track[]
+
+  @@index([matchKey])
 }
 
 model Release {
-  id              String      @id @default(uuid())
-  musicbrainzId   String?     @unique
-  spotifyId       String?     @unique
-  title           String
-  artistName      String
-  releaseType     ReleaseType @default(ALBUM)
-  coverUrl        String?
-  dominantColor   String?     @default("#26262B")
-  genres          String[]
-  releaseDate     DateTime?
+  id                        String         @id @default(uuid())
+  /// MusicBrainz release MBID (a specific edition).
+  musicbrainzId             String?        @unique
+  spotifyId                 String?        @unique
+  deezerId                  String?        @unique
+  itunesId                  String?        @unique
+  /// Barcode as returned by the provider (UPC-A / EAN-13).
+  upc                       String?        @unique
+  musicbrainzReleaseGroupId String?
+  title                     String
+  artistName                String
+  artistId                  String?
+  releaseType               ReleaseType    @default(ALBUM)
+  coverUrl                  String?
+  coverSource               CatalogSource?
+  dominantColor             String?        @default("#26262B")
+  genres                    String[]
+  releaseDate               DateTime?
+  label                     String?
+  trackCount                Int?
+  /// catalogMatchKey(title, artistName) from @openmusic/shared; null for rows created by hand.
+  matchKey                  String?
+  /// Last full import of the provider detail (tracklist, label, date); null = only a search hit.
+  metadataSyncedAt          DateTime?
+  /// Last MusicBrainz / Cover Art Archive enrichment attempt.
+  enrichedAt                DateTime?
+  createdAt                 DateTime       @default(now())
 
   // ADR-001: Sistema di Rating Duale (Pubblico + Critica)
-  audienceAvg     Float?      // Media 0.5 - 5.0
-  audienceFreshPct Int?       // % di voti >= 3.5 (70/100) stile Rotten Tomatoes
-  audienceCount   Int         @default(0)
-  criticAvg       Float?
-  criticFreshPct  Int?
-  criticCount     Int         @default(0)
+  audienceAvg      Float? // Media 0.5 - 5.0
+  audienceFreshPct Int? // % di voti >= 3.5 (70/100) stile Rotten Tomatoes
+  audienceCount    Int    @default(0)
+  criticAvg        Float?
+  criticFreshPct   Int?
+  criticCount      Int    @default(0)
 
-  tracks          Track[]
-  reviews         Review[]
-  scrobbleLogs    ScrobbleLog[]
-  videoContents   MusicVideoContent[]
+  artist        Artist?             @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  tracks        Track[]
+  reviews       Review[]
+  scrobbleLogs  ScrobbleLog[]
+  videoContents MusicVideoContent[]
+  posts         Post[]
+
+  @@index([matchKey])
+  @@index([artistId])
 }
 
 model Track {
-  id            String   @id @default(uuid())
-  isrc          String?  @unique // Chiave universale per traduzione link e fallback audio
-  spotifyId     String?  @unique
-  deezerId      String?  @unique
-  title         String
-  artistName    String
-  durationMs    Int
-  previewUrl    String?  // Clip 30s risolta tramite ADR-003 (Spotify -> Deezer -> iTunes)
-  releaseId     String
-  release       Release  @relation(fields: [releaseId], references: [id], onDelete: Cascade)
-  reviews       Review[]
-  scrobbleLogs  ScrobbleLog[]
+  id             String          @id @default(uuid())
+  isrc           String?         @unique // Chiave universale per traduzione link e fallback audio
+  spotifyId      String?         @unique
+  deezerId       String?         @unique
+  itunesId       String?         @unique
+  /// MusicBrainz recording MBID.
+  musicbrainzId  String?         @unique
+  title          String
+  artistName     String
+  artistId       String?
+  durationMs     Int
+  trackNumber    Int?
+  discNumber     Int?
+  /// catalogMatchKey(title, artistName); matches tracks inside a release without an ISRC.
+  matchKey       String?
+  previewUrl     String? // Clip 30s risolta tramite ADR-003 (Spotify -> Deezer -> iTunes)
+  releaseId      String
+  release        Release         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  artist         Artist?         @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  reviews        Review[]
+  scrobbleLogs   ScrobbleLog[]
   playlistTracks PlaylistTrack[]
-  chatMessages  ChatMessage[]
+  chatMessages   ChatMessage[]
+  posts          Post[]
+
+  @@index([releaseId, matchKey])
+  @@index([artistId])
 }
 
 model Review {
-  id                String           @id @default(uuid())
+  id                String   @id @default(uuid())
   userId            String
   releaseId         String?
   trackId           String?
-  rating            Int              // Salvato 10..100 (es. 3.5 stelle = 70)
+  rating            Int // Salvato 10..100 (es. 3.5 stelle = 70)
   content           String?
   vibeTags          String[]
-  isCritic          Boolean          @default(false)
-  isVerifiedListen  Boolean          @default(false) // ADR-004: True se l'utente ha davvero ascoltato l'opera
-  outletName        String?          // Testata giornalistica per i critici (es. Pitchfork, Ondarock)
-  originalReviewUrl String?          // Link all'articolo completo esterno
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  isCritic          Boolean  @default(false)
+  isVerifiedListen  Boolean  @default(false) // ADR-004: True se l'utente ha davvero ascoltato l'opera
+  outletName        String? // Testata giornalistica per i critici (es. Pitchfork, Ondarock)
+  originalReviewUrl String? // Link all'articolo completo esterno
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  release           Release?         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
-  track             Track?           @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  reactions         ReviewReaction[]
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  release       Release?         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  track         Track?           @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  reactions     ReviewReaction[]
+  notifications Notification[]
 
   @@unique([userId, releaseId])
+  @@unique([userId, trackId])
 }
 
 model ReviewReaction {
@@ -147,38 +232,38 @@ model ReviewReaction {
   type      ReactionType
   createdAt DateTime     @default(now())
 
-  review    Review       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([reviewId, userId, type])
 }
 
 // Storico ascolti per calcolare "Cosa mi sta piacendo ultimamente" e il badge "Ascolto Verificato"
 model ScrobbleLog {
-  id         String   @id @default(uuid())
-  userId     String
-  trackId    String
-  releaseId  String?
-  provider   String
-  playedAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  trackId   String
+  releaseId String?
+  provider  String
+  playedAt  DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  release    Release? @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track   Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  release Release? @relation(fields: [releaseId], references: [id], onDelete: SetNull)
 
   @@index([userId, playedAt(sort: Desc)])
   @@index([userId, releaseId])
 }
 
 model Playlist {
-  id          String   @id @default(uuid())
+  id          String          @id @default(uuid())
   userId      String
   title       String
   description String?
   coverUrl    String?
-  isPublic    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPublic    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   tracks      PlaylistTrack[]
 }
 
@@ -190,43 +275,112 @@ model PlaylistTrack {
   position   Int      @default(0)
   addedAt    DateTime @default(now())
 
-  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
-  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@unique([playlistId, trackId])
   @@index([playlistId, side, position])
 }
 
 model ChatMessage {
-  id          String    @id @default(uuid())
-  senderId    String
-  receiverId  String
-  content     String?
-  trackId     String?
-  isListened  Boolean   @default(false)
-  reaction    String?   // "FIRE", "HEART", "NOT_FOR_ME"
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String?
+  trackId    String?
+  isListened Boolean   @default(false)
+  reaction   String? // "FIRE", "HEART", "NOT_FOR_ME"
+  readAt     DateTime? // Letto dal destinatario (contatore non letti nell'inbox)
+  createdAt  DateTime  @default(now())
 
-  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  track       Track?    @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  sender        User           @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver      User           @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  track         Track?         @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  notifications Notification[]
 
   @@index([senderId, receiverId, createdAt])
+  @@index([receiverId, readAt])
 }
 
 // Milestone 5: Spazio Video e Contenuti Multimediali Musicali
 model MusicVideoContent {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   title           String
   creatorName     String
   videoUrl        String
   thumbnailUrl    String?
   durationSeconds Int
   releaseId       String?
-  category        String    @default("ESSAY") // "ESSAY", "REVIEW", "INTERVIEW", "LIVE_SESSION"
-  createdAt       DateTime  @default(now())
+  category        String   @default("ESSAY") // "ESSAY", "REVIEW", "INTERVIEW", "LIVE_SESSION"
+  createdAt       DateTime @default(now())
 
-  release         Release?  @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  release Release? @relation(fields: [releaseId], references: [id], onDelete: SetNull)
 
   @@index([releaseId])
+}
+
+// Feed sociale: post testuali con disco/brano allegato e voto opzionale.
+// ADR-002: niente thread di commenti pubblici; solo like e salvataggi.
+model Post {
+  id        String   @id @default(uuid())
+  authorId  String
+  content   String
+  releaseId String?
+  trackId   String?
+  rating    Int? // 10..100 come Review.rating
+  vibeTags  String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  release       Release?       @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  track         Track?         @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  likes         PostLike[]
+  saves         PostSave[]
+  notifications Notification[]
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+model PostLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+}
+
+model PostSave {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  recipientId   String
+  actorId       String?
+  type          NotificationType
+  postId        String?
+  reviewId      String?
+  chatMessageId String?
+  readAt        DateTime?
+  createdAt     DateTime         @default(now())
+
+  recipient   User         @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User?        @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  review      Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  chatMessage ChatMessage? @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, readAt])
 }

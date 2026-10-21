@@ -1,32 +1,35 @@
-import type { NowPlayingService } from '../now-playing/now-playing.service';
 import type { NotificationPresenceSummary, ActiveListeningFriendSummary } from '@openmusic/shared';
+import type { NowPlayingService } from '../now-playing/now-playing.service';
 
 export class NotificationPresenceService {
   constructor(private readonly nowPlayingService: NowPlayingService) {}
 
   /**
-   * ADR-002: Genera il payload di sintesi per la notifica persistente di sistema
-   * (Ongoing Notification su Android / Live Activity su iOS)
+   * ADR-004: summary payload for the persistent OS notification
+   * (Android ongoing notification / iOS Live Activity).
    */
   async getPresenceSummary(userId: string): Promise<NotificationPresenceSummary> {
     const friends = await this.nowPlayingService.getFriendsLivePresence(userId);
 
-    // Filtra amici online che stanno effettivamente riproducendo musica (non in Ghost Mode)
-    const activeFriends = friends.filter(
-      (f) => f.isOnline && !f.isGhostMode && f.currentlyPlaying?.isPlaying
+    const active = friends.flatMap((f) =>
+      f.isOnline && !f.isGhostMode && f.currentlyPlaying?.isPlaying
+        ? [{ friend: f, track: f.currentlyPlaying }]
+        : []
     );
 
-    const topListeningFriends: ActiveListeningFriendSummary[] = activeFriends.slice(0, 3).map((f) => ({
-      userId: f.userId,
-      username: f.username,
-      avatarUrl: f.avatarUrl ?? null,
-      trackTitle: f.currentlyPlaying!.title,
-      artistName: f.currentlyPlaying!.artistName,
-      dominantColor: f.currentlyPlaying!.dominantColor ?? '#26262B',
-    }));
+    const topListeningFriends: ActiveListeningFriendSummary[] = active
+      .slice(0, 3)
+      .map(({ friend, track }) => ({
+        userId: friend.userId,
+        username: friend.username,
+        avatarUrl: friend.avatarUrl ?? null,
+        trackTitle: track.title,
+        artistName: track.artistName,
+        dominantColor: track.dominantColor,
+      }));
 
     return {
-      activeFriendsCount: activeFriends.length,
+      activeFriendsCount: active.length,
       topListeningFriends,
       timestamp: Date.now(),
     };

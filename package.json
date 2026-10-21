@@ -7,18 +7,38 @@
   ],
   "packageManager": "npm@10.2.4",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@openmusic/api --filter=@openmusic/web",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "db:generate": "npm --workspace=@openmusic/db run generate",
-    "db:push": "npm --workspace=@openmusic/db run push"
+    "db:push": "npm --workspace=@openmusic/db run push",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "npm --workspace=@openmusic/db run migrate",
+    "db:migrate:deploy": "npm --workspace=@openmusic/db run migrate:deploy",
+    "db:seed": "npm --workspace=@openmusic/db run seed && npm --workspace=@openmusic/api run catalog:import -- --seed-hook",
+    "db:test:prepare": "node scripts/prepare-test-db.mjs",
+    "dev:api": "turbo run dev --filter=@openmusic/api",
+    "dev:web": "turbo run dev --filter=@openmusic/web",
+    "dev:mobile": "npm --workspace=@openmusic/mobile run start",
+    "e2e": "npm --workspace=@openmusic/web run e2e",
+    "db:seed:offline": "npm --workspace=@openmusic/db run seed",
+    "catalog:import": "npm --workspace=@openmusic/api run catalog:import --",
+    "catalog:smoke": "npm --workspace=@openmusic/api run catalog:smoke"
   },
   "devDependencies": {
+    "@eslint/js": "^8.57.1",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "globals": "^15.15.0",
+    "prettier": "^3.9.10",
     "turbo": "^2.1.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.72.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.13.0"
   }
 }

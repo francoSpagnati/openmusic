@@ -1,15 +1,25 @@
-import type { PrismaClient } from '@prisma/client';
-import type { UserProfileData, ReviewItem, HeavyRotationItem } from '@openmusic/shared';
+import type { Prisma, PrismaClient } from '@openmusic/db';
+import type {
+  HeavyRotationItem,
+  ProfileSocialStats,
+  ReviewItem,
+  UserProfileData,
+  UserRole,
+} from '@openmusic/shared';
+import { NotFoundError } from '../../lib/errors';
+import { toCatalogTrack, toPublicUser } from '../../lib/mappers';
 
 export class ProfileService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async getUserProfile(userId: string): Promise<UserProfileData | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) return null;
+  /** Public profile (no email). `viewerId` personalises `social.isFollowedByMe` / `isMe`. */
+  async getUserProfile(
+    where: Prisma.UserWhereUniqueInput,
+    viewerId: string | null
+  ): Promise<UserProfileData> {
+    const user = await this.prisma.user.findUnique({ where });
+    if (!user) throw new NotFoundError('Profilo utente non trovato');
+    const userId = user.id;
 
     // 1. Recensioni recenti dell'utente
     const reviews = await this.prisma.review.findMany({
@@ -49,7 +59,7 @@ export class ProfileService {
           username: r.user.username,
           displayName: r.user.displayName,
           avatarUrl: r.user.avatarUrl,
-          role: r.user.role as 'USER' | 'CRITIC' | 'MODERATOR',
+          role: r.user.role as UserRole,
         },
         releaseId: r.releaseId,
         trackId: r.trackId,
@@ -66,52 +76,32 @@ export class ProfileService {
 
     // 2. Rotazione Pesante (ultimi 30 giorni)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const recentScrobbles = await this.prisma.scrobbleLog.findMany({
-      where: {
-        userId,
-        playedAt: { gte: thirtyDaysAgo },
-      },
-      include: {
-        track: {
-          include: { release: true },
-        },
-      },
-      orderBy: { playedAt: 'desc' },
+    // Aggregated in SQL: loading every scrobble of the month does not scale for heavy listeners.
+    const topTracks = await this.prisma.scrobbleLog.groupBy({
+      by: ['trackId'],
+      where: { userId, playedAt: { gte: thirtyDaysAgo } },
+      _count: { trackId: true },
+      _max: { playedAt: true },
+      orderBy: [{ _count: { trackId: 'desc' } }, { _max: { playedAt: 'desc' } }],
+      take: 5,
     });
-
-    // Raggruppa per traccia
-    const trackCounts = new Map<string, { count: number; lastPlayed: Date; track: typeof recentScrobbles[0]['track'] }>();
-
-    for (const scrobble of recentScrobbles) {
-      const existing = trackCounts.get(scrobble.trackId);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        trackCounts.set(scrobble.trackId, {
-          count: 1,
-          lastPlayed: scrobble.playedAt,
-          track: scrobble.track,
-        });
-      }
-    }
-
-    const heavyRotation: HeavyRotationItem[] = Array.from(trackCounts.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map(({ track, count, lastPlayed }) => ({
-        track: {
-          id: track.id,
-          isrc: track.isrc,
-          title: track.title,
-          artistName: track.artistName,
-          durationMs: track.durationMs,
-          previewUrl: track.previewUrl,
-          releaseId: track.releaseId,
-          coverUrl: track.release.coverUrl,
-        },
-        playCount: count,
-        lastPlayedAt: lastPlayed.toISOString(),
-      }));
+    const trackRows = await this.prisma.track.findMany({
+      where: { id: { in: topTracks.map((t) => t.trackId) } },
+      include: { release: true },
+    });
+    const trackById = new Map(trackRows.map((t) => [t.id, t]));
+    const heavyRotation: HeavyRotationItem[] = topTracks.flatMap((t) => {
+      const track = trackById.get(t.trackId);
+      return track && t._max.playedAt
+        ? [
+            {
+              track: toCatalogTrack(track),
+              playCount: t._count.trackId,
+              lastPlayedAt: t._max.playedAt.toISOString(),
+            },
+          ]
+        : [];
+    });
 
     // 3. Statistiche complessive
     const totalReviews = await this.prisma.review.count({ where: { userId } });
@@ -128,18 +118,25 @@ export class ProfileService {
       ? Math.round((avgRatingAgg._avg.rating / 20) * 10) / 10
       : null;
 
+    const [followersCount, followingCount, postsCount, followedByViewer] = await Promise.all([
+      this.prisma.follows.count({ where: { followingId: userId } }),
+      this.prisma.follows.count({ where: { followerId: userId } }),
+      this.prisma.post.count({ where: { authorId: userId } }),
+      viewerId
+        ? this.prisma.follows.count({ where: { followerId: viewerId, followingId: userId } })
+        : Promise.resolve(0),
+    ]);
+    const social: ProfileSocialStats = {
+      followersCount,
+      followingCount,
+      postsCount,
+      isFollowedByMe: followedByViewer > 0,
+      isMe: viewerId === userId,
+    };
+
     return {
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        bio: user.bio,
-        role: user.role,
-        isGhostMode: user.isGhostMode,
-        createdAt: user.createdAt.toISOString(),
-      },
+      user: toPublicUser(user),
+      social,
       recentReviews: mappedReviews,
       heavyRotation,
       stats: {

@@ -1,30 +1,26 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { UserIdParamSchema, UsernameParamSchema } from '@openmusic/shared';
+import { requireAuth } from '../../lib/auth';
 import type { ProfileService } from './profile.service';
 
 export function createProfileRoutes(profileService: ProfileService): FastifyPluginAsync {
   return async (fastify) => {
-    // 1. Profilo dell'utente corrente (richiede token JWT)
-    fastify.get('/me', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const profile = await profileService.getUserProfile(decoded.userId);
-        if (!profile) {
-          return reply.status(404).send({ error: 'Profilo non trovato' });
-        }
-        return reply.send(profile);
-      } catch {
-        return reply.status(401).send({ error: 'Non autorizzato' });
-      }
+    fastify.get('/me', { preHandler: fastify.authenticate }, async (request) => {
+      const { userId } = requireAuth(request);
+      return profileService.getUserProfile({ id: userId }, userId);
     });
 
-    // 2. Profilo pubblico per ID utente
-    fastify.get('/:userId', async (request, reply) => {
-      const { userId } = request.params as { userId: string };
-      const profile = await profileService.getUserProfile(userId);
-      if (!profile) {
-        return reply.status(404).send({ error: 'Profilo utente non trovato' });
-      }
-      return reply.send(profile);
+    fastify.get('/by-username/:username', { preHandler: fastify.optionalAuth }, async (request) => {
+      const { username } = UsernameParamSchema.parse(request.params);
+      return profileService.getUserProfile(
+        { username: username.toLowerCase() },
+        request.auth?.userId ?? null
+      );
+    });
+
+    fastify.get('/:userId', { preHandler: fastify.optionalAuth }, async (request) => {
+      const { userId } = UserIdParamSchema.parse(request.params);
+      return profileService.getUserProfile({ id: userId }, request.auth?.userId ?? null);
     });
   };
 }

@@ -1,281 +1,191 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAudioPlayer } from '../context/AudioPlayerContext';
-import { Plus, Disc, Waveform, EyeSlash, Eye } from '@phosphor-icons/react';
-import { StoryListeningModal, FriendStoryData } from './StoryListeningModal';
+import Link from 'next/link';
+import { Eye, EyeSlash } from '@phosphor-icons/react';
+import type { FriendPresence } from '@openmusic/shared';
+import { useAuth } from '@/lib/auth';
+import { useFriendsPresence } from '@/lib/socket';
+import { Avatar, Skeleton, cn } from '@/components/ui';
+import { CoverArt } from '@/components/discovery/CoverArt';
+import { displayNameOf } from '@/components/web-core/format';
+import { useGhostMode } from '@/components/web-core/useGhostMode';
+import {
+  isListening,
+  presenceStatus,
+  sortFriends,
+} from '@/components/web-social/presence/presence';
+import { StoryListeningModal } from './StoryListeningModal';
 
-const FRIEND_STORIES: FriendStoryData[] = [
-  {
-    id: 'st_1',
-    name: 'Elena Rossi',
-    handle: '@elena_rossi',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop',
-    isPlaying: true,
-    trackTitle: 'Weird Fishes/Arpeggi',
-    artist: 'Radiohead',
-    album: 'In Rainbows',
-    year: 2007,
-    albumCover: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&h=300&fit=crop',
-    progressMs: 142000,
-    durationMs: 318000,
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    provider: 'SPOTIFY',
-    criticScore: 98,
-    communityScore: 96,
-    userRating: 5.0,
-    userReviewSnippet: 'Gli arpeggi poliritmici di chitarra e la batteria di Phil Selway creano un abisso emotivo insuperabile.',
-  },
-  {
-    id: 'st_2',
-    name: 'Marco Valenti',
-    handle: '@marcov',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop',
-    isPlaying: true,
-    trackTitle: 'Get Lucky (feat. Pharrell Williams)',
-    artist: 'Daft Punk',
-    album: 'Random Access Memories',
-    year: 2013,
-    albumCover: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
-    progressMs: 95000,
-    durationMs: 248000,
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    provider: 'SPOTIFY',
-    criticScore: 88,
-    communityScore: 92,
-    userRating: 4.5,
-    userReviewSnippet: 'La linea di basso di Nathan East e la chitarra di Nile Rodgers sono pura storia funk registrata su nastro.',
-  },
-  {
-    id: 'st_3',
-    name: 'Sofia Bianchi',
-    handle: '@sofiab',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop',
-    isPlaying: true,
-    trackTitle: 'King Kunta',
-    artist: 'Kendrick Lamar',
-    album: 'To Pimp a Butterfly',
-    year: 2015,
-    albumCover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
-    progressMs: 180000,
-    durationMs: 234000,
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    provider: 'SPOTIFY',
-    criticScore: 97,
-    communityScore: 95,
-    userRating: 5.0,
-    userReviewSnippet: 'Un capolavoro assoluto che fonde jazz, funk anni 70 e impegno civile con una potenza lirica disarmante.',
-  },
-  {
-    id: 'st_4',
-    name: 'Luca Grassi',
-    handle: '@lucagrassi',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop',
-    isPlaying: true,
-    trackTitle: 'Do I Wanna Know?',
-    artist: 'Arctic Monkeys',
-    album: 'AM',
-    year: 2013,
-    albumCover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
-    progressMs: 60000,
-    durationMs: 272000,
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    provider: 'APPLE_MUSIC',
-    criticScore: 82,
-    communityScore: 90,
-    userRating: 4.0,
-    userReviewSnippet: 'Riff di chitarra a 12 corde sporco e produzione moderna che ha definito il sound rock dei 2010.',
-  },
-  {
-    id: 'st_5',
-    name: 'Giulia Riva',
-    handle: '@giuliar',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&h=120&fit=crop',
-    isPlaying: true,
-    trackTitle: 'Time',
-    artist: 'Pink Floyd',
-    album: 'The Dark Side of the Moon',
-    year: 1973,
-    albumCover: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300&h=300&fit=crop',
-    progressMs: 210000,
-    durationMs: 413000,
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    provider: 'SPOTIFY',
-    criticScore: 99,
-    communityScore: 98,
-    userRating: 5.0,
-    userReviewSnippet: 'L\'assolo di David Gilmour è il vertice assoluto della chitarra rock. Filosofia in musica.',
-  },
-  {
-    id: 'st_6',
-    name: 'Matteo Ferri',
-    handle: '@matteof',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&h=120&fit=crop',
-    isPlaying: false,
-    trackTitle: 'Never Meant',
-    artist: 'American Football',
-    album: 'American Football',
-    year: 1999,
-    albumCover: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&h=300&fit=crop',
-    progressMs: 0,
-    durationMs: 256000,
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    provider: 'LASTFM',
-    criticScore: 89,
-    communityScore: 92,
-  },
-];
-
+/**
+ * "Stories" row at the top of the feed: you (with one-tap Ghost Mode) and every followed user who
+ * is online, listening ones first. Updates live over the socket. Hidden for anonymous visitors.
+ */
 export const StoriesListeningBar: React.FC = () => {
-  const { currentTrack, isPlaying } = useAudioPlayer();
-  const [selectedFriend, setSelectedFriend] = useState<FriendStoryData | null>(null);
-  const [ghostMode, setGhostMode] = useState<boolean>(false);
+  const { status } = useAuth();
+  const { friends, connected, error } = useFriendsPresence();
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  // User's own listening data
-  const myListeningData: FriendStoryData = {
-    id: 'my_story',
-    name: 'Tu (Franco Spagnati)',
-    handle: '@francospagnati',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop',
-    isPlaying: !ghostMode,
-    trackTitle: 'Reckoner',
-    artist: 'Radiohead',
-    album: 'In Rainbows',
-    year: 2007,
-    albumCover: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&h=300&fit=crop',
-    progressMs: 142000,
-    durationMs: 290000,
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    provider: 'SPOTIFY',
-    criticScore: 98,
-    communityScore: 96,
-    userRating: 5.0,
-    userReviewSnippet: 'La sezione ritmica e il falsetto di Thom Yorke su Reckoner sono pura trascendenza.',
-  };
+  if (status !== 'authenticated') return null;
+
+  const sorted = sortFriends(friends);
+  const openFriend = openId ? (friends.find((f) => f.userId === openId) ?? null) : null;
 
   return (
-    <>
-      <div className="w-full border-b border-om-border bg-om-card/40 py-3.5 px-4 overflow-hidden">
-        <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-0.5">
-          {/* Your Story / Listening Bubble with Avatar + Playing badge + Ghost Mode */}
-          <div className="flex flex-col items-center gap-1.5 flex-shrink-0 group">
-            <div className="relative">
-              <div
-                onClick={() => setSelectedFriend(myListeningData)}
-                className="cursor-pointer"
-                title={ghostMode ? 'Ghost Mode attiva (ascolto privato)' : 'In ascolto su Spotify (clicca per dettagli)'}
+    <section aria-labelledby="stories-title" className="border-b border-line px-4 py-3 sm:px-5">
+      <h2 id="stories-title" className="sr-only">
+        Cosa ascoltano i tuoi amici adesso
+      </h2>
+      <ul className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 pt-1.5 [scrollbar-width:thin]">
+        <li className="shrink-0">
+          <MyBubble />
+        </li>
+        {!connected && !error
+          ? [0, 1, 2, 3].map((i) => (
+              <li
+                key={i}
+                aria-hidden="true"
+                className="flex w-16 shrink-0 flex-col items-center gap-1.5"
               >
-                {/* Outer ring */}
-                <div
-                  className={`h-14 w-14 rounded-full p-[2px] transition-all duration-300 group-hover:scale-105 ${
-                    ghostMode
-                      ? 'border-2 border-dashed border-om-muted bg-om-card/60'
-                      : 'bg-gradient-to-tr from-om-amber via-yellow-400 to-[#1DB954] shadow-glow'
-                  }`}
-                >
-                  <img
-                    src={myListeningData.avatar}
-                    alt="Il tuo profilo"
-                    className="h-full w-full rounded-full object-cover border-2 border-om-bg"
-                  />
-                </div>
+                <Skeleton shape="circle" className="h-14 w-14" />
+                <Skeleton shape="text" lines={1} className="w-12" />
+              </li>
+            ))
+          : sorted.map((friend) => (
+              <li key={friend.userId} className="shrink-0">
+                <FriendBubble friend={friend} onOpen={() => setOpenId(friend.userId)} />
+              </li>
+            ))}
+        {connected && sorted.length === 0 && (
+          <li className="flex min-w-[12rem] items-center text-xs text-ink-muted">
+            <p>
+              Nessun amico online.{' '}
+              <Link href="/explore" className="text-accent underline-offset-2 hover:underline">
+                Trova chi seguire
+              </Link>
+            </p>
+          </li>
+        )}
+        {error && !connected && (
+          <li className="flex items-center text-xs text-ink-muted" role="status">
+            Il live degli amici non è raggiungibile ora.
+          </li>
+        )}
+      </ul>
+      <p className="sr-only" role="status" aria-live="polite">
+        {connected ? `${sorted.filter(isListening).length} amici in ascolto` : ''}
+      </p>
 
-                {/* Mini Playing Album Artwork Badge */}
-                <div className="absolute -bottom-1 -left-1 h-5 w-5 rounded-full border border-om-border overflow-hidden bg-om-bg shadow-sm">
-                  <img
-                    src={myListeningData.albumCover}
-                    alt={myListeningData.trackTitle}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
-
-              {/* Ghost Mode Toggle Pill / Icon */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setGhostMode(!ghostMode);
-                }}
-                className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-om-border text-[10px] transition-all ${
-                  ghostMode
-                    ? 'bg-om-card text-om-muted hover:text-om-text'
-                    : 'bg-[#1DB954] text-black hover:scale-110'
-                }`}
-                title={ghostMode ? 'Disattiva Ghost Mode' : 'Attiva Ghost Mode (Ascolto privato)'}
-              >
-                {ghostMode ? <EyeSlash size={11} weight="bold" /> : <Eye size={11} weight="bold" />}
-              </button>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <span className="text-[11px] font-sans font-medium text-om-text truncate max-w-[64px]">
-                Tu
-              </span>
-              <span className={`text-[9px] font-mono leading-none ${ghostMode ? 'text-om-muted' : 'text-[#1DB954]'}`}>
-                {ghostMode ? 'Incognito' : 'In onda'}
-              </span>
-            </div>
-          </div>
-
-          {/* Friends Stories */}
-          {FRIEND_STORIES.map((friend) => {
-            const isThisPlaying = currentTrack?.id === friend.id && isPlaying;
-
-            return (
-              <div
-                key={friend.id}
-                onClick={() => setSelectedFriend(friend)}
-                className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
-                title={`Clicca per vedere cosa ascolta ${friend.name}`}
-              >
-                <div className="relative">
-                  {/* Outer animated vinyl border */}
-                  <div
-                    className={`h-14 w-14 rounded-full p-[2px] transition-all duration-300 group-hover:scale-105 ${
-                      isThisPlaying
-                        ? 'bg-gradient-to-tr from-om-amber via-yellow-500 to-om-fresh animate-[spin_6s_linear_infinite]'
-                        : friend.isPlaying
-                        ? 'bg-gradient-to-tr from-om-amber to-om-fresh'
-                        : 'bg-om-border'
-                    }`}
-                  >
-                    <img
-                      src={friend.avatar}
-                      alt={friend.name}
-                      className="h-full w-full rounded-full object-cover border-2 border-om-bg"
-                    />
-                  </div>
-
-                  {/* Mini album cover badge */}
-                  <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border border-om-border overflow-hidden bg-om-bg shadow-sm">
-                    <img
-                      src={friend.albumCover}
-                      alt={friend.trackTitle}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-
-                  {isThisPlaying && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
-                      <Waveform weight="bold" className="h-5 w-5 text-om-amber animate-pulse" />
-                    </div>
-                  )}
-                </div>
-
-                <span className="text-[11px] font-sans font-medium text-om-secondary group-hover:text-om-text truncate max-w-[60px]">
-                  {friend.name.split(' ')[0]}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Story Listening Popup Modal */}
-      <StoryListeningModal
-        friend={selectedFriend}
-        onClose={() => setSelectedFriend(null)}
-      />
-    </>
+      <StoryListeningModal friend={openFriend} onClose={() => setOpenId(null)} />
+    </section>
   );
 };
+
+function BubbleLabel({ name, sub, tone }: { name: string; sub: string; tone: 'live' | 'muted' }) {
+  return (
+    <span className="flex w-16 flex-col items-center">
+      <span className="w-full truncate text-center text-[11px] font-medium text-ink">{name}</span>
+      <span
+        className={cn(
+          'w-full truncate text-center font-mono text-[10px] leading-tight',
+          tone === 'live' ? 'text-fresh' : 'text-ink-muted'
+        )}
+      >
+        {sub}
+      </span>
+    </span>
+  );
+}
+
+function MyBubble() {
+  const { user } = useAuth();
+  const ghost = useGhostMode();
+  if (!user) return null;
+  const name = displayNameOf(user);
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="relative">
+        <Avatar
+          name={name}
+          src={user.avatarUrl}
+          size="lg"
+          status={ghost.enabled ? 'ghost' : 'online'}
+          decorative
+        />
+        <button
+          type="button"
+          aria-pressed={ghost.enabled}
+          aria-busy={ghost.pending || undefined}
+          disabled={ghost.pending}
+          onClick={() => void ghost.set(!ghost.enabled)}
+          title={ghost.enabled ? 'Disattiva Ghost Mode' : 'Attiva Ghost Mode'}
+          className={cn(
+            'absolute -bottom-1 -left-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-canvas transition-colors duration-fast',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus',
+            'disabled:cursor-progress',
+            ghost.enabled ? 'bg-elevated text-ink' : 'bg-accent text-on-accent'
+          )}
+        >
+          {ghost.enabled ? (
+            <EyeSlash aria-hidden="true" weight="bold" className="h-3.5 w-3.5" />
+          ) : (
+            <Eye aria-hidden="true" weight="bold" className="h-3.5 w-3.5" />
+          )}
+          <span className="sr-only">Ghost Mode</span>
+        </button>
+      </span>
+      <BubbleLabel
+        name="Tu"
+        sub={ghost.enabled ? 'Incognito' : 'Visibile'}
+        tone={ghost.enabled ? 'muted' : 'live'}
+      />
+    </div>
+  );
+}
+
+function FriendBubble({ friend, onOpen }: { friend: FriendPresence; onOpen: () => void }) {
+  const name = displayNameOf(friend);
+  const listening = isListening(friend);
+  const track = listening ? friend.currentlyPlaying : null;
+  const firstName = name.split(/\s+/)[0] ?? name;
+  const sub = friend.isGhostMode ? 'Ghost' : track ? track.artistName : 'online';
+  const label = track
+    ? `${name}: sta ascoltando ${track.title} di ${track.artistName}`
+    : friend.isGhostMode
+      ? `${name}, in Ghost Mode`
+      : `${name}, online`;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={label}
+      className="group flex flex-col items-center gap-1.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
+    >
+      <span
+        className={cn(
+          'relative rounded-full transition-transform duration-fast ease-tonearm group-hover:scale-105',
+          friend.isGhostMode && 'outline-dashed outline-1 outline-offset-2 outline-line-strong'
+        )}
+      >
+        <Avatar
+          name={name}
+          src={friend.avatarUrl}
+          size="lg"
+          status={presenceStatus(friend)}
+          decorative
+        />
+        {track && (
+          <CoverArt
+            src={track.coverUrl}
+            alt=""
+            sizes="24px"
+            className="absolute -bottom-1 -left-1 h-6 w-6 rounded-xs ring-2 ring-canvas"
+          />
+        )}
+      </span>
+      <BubbleLabel name={firstName} sub={sub} tone={track ? 'live' : 'muted'} />
+    </button>
+  );
+}

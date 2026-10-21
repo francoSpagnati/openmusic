@@ -1,166 +1,126 @@
 'use client';
 
-import React from 'react';
-import { useAudioPlayer } from '../context/AudioPlayerContext';
-import { Waveform, EyeSlash, Play, SpeakerHigh } from '@phosphor-icons/react';
+import React, { useId, useState } from 'react';
+import { EyeSlash } from '@phosphor-icons/react';
+import type { FriendPresence } from '@openmusic/shared';
+import { useAuth } from '@/lib/auth';
+import { useFriendsPresence } from '@/lib/socket';
+import { Avatar, Skeleton, cn } from '@/components/ui';
+import { displayNameOf } from '@/components/web-core/format';
+import { isListening, sortFriends } from '@/components/web-social/presence/presence';
+import { StoryListeningModal } from './StoryListeningModal';
 
-interface FriendActivity {
-  id: string;
-  name: string;
-  avatar: string;
-  trackTitle: string;
-  artist: string;
-  albumCover: string;
-  previewUrl: string;
-  isGhost: boolean;
-  timeAgo: string;
+interface LiveFriendsTickerProps {
+  /** `band`: full-width strip for page tops. `compact`: inside a panel (chat inbox). */
+  variant?: 'band' | 'compact';
+  className?: string;
 }
 
-const MOCK_FRIENDS: FriendActivity[] = [
-  {
-    id: 'f1',
-    name: 'Elena Rossi',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
-    trackTitle: 'Midnight City',
-    artist: 'M83',
-    albumCover: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&h=100&fit=crop',
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    isGhost: false,
-    timeAgo: 'ora',
-  },
-  {
-    id: 'f2',
-    name: 'Marco V.',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
-    trackTitle: 'Plastic Love',
-    artist: 'Mariya Takeuchi',
-    albumCover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100&h=100&fit=crop',
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    isGhost: false,
-    timeAgo: '1m fa',
-  },
-  {
-    id: 'f3',
-    name: 'Sofia B.',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-    trackTitle: 'Lover, You Should Have Come Over',
-    artist: 'Jeff Buckley',
-    albumCover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop',
-    previewUrl: 'https://cdns-preview-d.dzcdn.net/stream/c-deda7fa9316d9aa5228ec522267d7705-8.mp3',
-    isGhost: false,
-    timeAgo: 'ora',
-  },
-  {
-    id: 'f4',
-    name: 'Luca G.',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
-    trackTitle: 'Ghost Mode Attiva',
-    artist: 'Nessun broadcast pubblico',
-    albumCover: '',
-    previewUrl: '',
-    isGhost: true,
-    timeAgo: 'in incognito',
-  },
-];
+/**
+ * Live strip of followed users listening right now (socket presence). Ghost Mode friends appear
+ * only as "in Ghost Mode", never with their track. Renders nothing for anonymous visitors.
+ */
+export const LiveFriendsTicker: React.FC<LiveFriendsTickerProps> = ({
+  variant = 'band',
+  className,
+}) => {
+  const { status } = useAuth();
+  const { friends, connected, error } = useFriendsPresence();
+  const [open, setOpen] = useState<FriendPresence | null>(null);
+  const titleId = useId();
 
-export const LiveFriendsTicker: React.FC = () => {
-  const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
+  if (status !== 'authenticated') return null;
+
+  const visible = sortFriends(friends.filter((f) => isListening(f) || f.isGhostMode));
+  const listeningCount = visible.filter(isListening).length;
+  // Keep the modal in sync with live updates of the friend it shows.
+  const openFriend = open ? (friends.find((f) => f.userId === open.userId) ?? open) : null;
 
   return (
-    <section className="w-full border-y border-om-border bg-om-card/50 py-3 overflow-hidden">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-4">
-          {/* Label Header */}
-          <div className="flex items-center gap-2 flex-shrink-0 pr-3 border-r border-om-border">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-om-amber opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-om-amber" />
+    <section
+      aria-labelledby={titleId}
+      className={cn(
+        variant === 'band' ? 'border-y border-line bg-surface/60 py-3' : 'py-2',
+        className
+      )}
+    >
+      <div className={cn('flex items-center gap-3', variant === 'band' ? 'px-4 sm:px-6' : 'px-4')}>
+        <h2
+          id={titleId}
+          className="flex shrink-0 items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary"
+        >
+          <span
+            aria-hidden="true"
+            className={cn('h-2 w-2 rounded-full', connected ? 'bg-live' : 'bg-ink-muted')}
+          />
+          In ascolto
+          {connected && (
+            <span className="tabular-nums text-ink-muted">
+              {listeningCount}
+              <span className="sr-only"> amici</span>
             </span>
-            <span className="text-xs font-mono uppercase tracking-wider text-om-secondary font-semibold hidden sm:inline">
-              In Ascolto Ora
-            </span>
-          </div>
+          )}
+        </h2>
 
-          {/* Scrolling / Flex friend bubbles */}
-          <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-1">
-            {MOCK_FRIENDS.map((friend) => {
-              const isThisPlaying = currentTrack?.id === friend.id && isPlaying;
-
-              if (friend.isGhost) {
-                return (
-                  <div
-                    key={friend.id}
-                    className="flex items-center gap-2 rounded-full border border-dashed border-om-border bg-om-bg/50 px-3 py-1.5 flex-shrink-0 opacity-60"
-                    title="Amico in Ghost Mode (Euristica Nielsen #3: Libertà e Controllo)"
-                  >
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-om-interactive text-om-muted">
-                      <EyeSlash size={14} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-medium text-om-muted">{friend.name}</span>
-                      <span className="text-[10px] font-mono text-om-muted/80">Ghost Mode</span>
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={friend.id}
-                  onClick={() =>
-                    playTrack({
-                      id: friend.id,
-                      title: friend.trackTitle,
-                      artist: friend.artist,
-                      coverUrl: friend.albumCover,
-                      previewUrl: friend.previewUrl,
-                    })
-                  }
-                  className={`group flex items-center gap-2.5 rounded-full border px-3 py-1.5 flex-shrink-0 cursor-pointer transition-all hover:border-om-amber hover:bg-om-card shadow-sm ${
-                    isThisPlaying
-                      ? 'border-om-amber bg-om-card'
-                      : 'border-om-border bg-om-bg/80'
-                  }`}
-                >
-                  {/* User Avatar + Equalizer */}
-                  <div className="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-full border border-om-border">
-                    <img
-                      src={friend.avatar}
-                      alt={friend.name}
-                      className="h-full w-full object-cover"
-                    />
-                    {isThisPlaying && (
-                      <div className="absolute inset-0 bg-om-amber/80 flex items-center justify-center">
-                        <Waveform weight="bold" className="h-4 w-4 text-om-bg animate-pulse" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Friend & Song details */}
-                  <div className="flex flex-col min-w-0 pr-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-om-text truncate max-w-[100px] sm:max-w-[120px]">
-                        {friend.name}
-                      </span>
-                      <span className="text-[10px] font-mono text-om-amber tabular-nums">
-                        {friend.timeAgo}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-om-secondary truncate max-w-[130px] sm:max-w-[160px]">
-                      {friend.trackTitle} • {friend.artist}
-                    </span>
-                  </div>
-
-                  {/* Quick play action */}
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-om-interactive group-hover:bg-om-amber group-hover:text-om-bg text-om-secondary transition-colors">
-                    <Play weight="fill" className="h-2.5 w-2.5 ml-0.5" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {!connected ? (
+          error ? (
+            <p className="text-xs text-ink-muted" role="status">
+              Il live degli amici non è raggiungibile ora.
+            </p>
+          ) : (
+            <div aria-busy="true" className="flex gap-2">
+              <span className="sr-only">Collegamento al live…</span>
+              <Skeleton shape="rect" className="h-8 w-28 rounded-full" />
+              <Skeleton shape="rect" className="h-8 w-24 rounded-full" />
+            </div>
+          )
+        ) : visible.length === 0 ? (
+          <p className="truncate text-xs text-ink-muted">Nessun amico sta ascoltando ora.</p>
+        ) : (
+          <ul className="[scrollbar-width:thin] -my-1 flex min-w-0 gap-2 overflow-x-auto py-1">
+            {visible.map((friend) => (
+              <li key={friend.userId} className="shrink-0">
+                <FriendChip friend={friend} onOpen={() => setOpen(friend)} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
+
+      <StoryListeningModal friend={openFriend} onClose={() => setOpen(null)} />
     </section>
   );
 };
+
+function FriendChip({ friend, onOpen }: { friend: FriendPresence; onOpen: () => void }) {
+  const name = displayNameOf(friend);
+  const track = friend.currentlyPlaying;
+  const ghost = friend.isGhostMode;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={cn(
+        'flex max-w-[15rem] items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-left transition-colors duration-fast',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+        ghost
+          ? 'border-dashed border-line-strong text-ink-muted hover:text-ink-secondary'
+          : 'border-line bg-canvas hover:border-accent'
+      )}
+    >
+      {ghost ? (
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sunken">
+          <EyeSlash aria-hidden="true" className="h-3.5 w-3.5" />
+        </span>
+      ) : (
+        <Avatar name={name} src={friend.avatarUrl} size="xs" status="live" decorative />
+      )}
+      <span className="min-w-0 leading-tight">
+        <span className="block truncate text-xs font-semibold text-ink">{name}</span>
+        <span className="block truncate text-[11px] text-ink-secondary">
+          {ghost ? 'in Ghost Mode' : track ? `${track.title} · ${track.artistName}` : ''}
+        </span>
+      </span>
+    </button>
+  );
+}

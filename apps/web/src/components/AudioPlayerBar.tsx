@@ -1,97 +1,124 @@
 'use client';
 
 import React from 'react';
-import { useAudioPlayer } from '../context/AudioPlayerContext';
-import { Play, Pause, X, Disc, SpeakerHigh } from '@phosphor-icons/react';
+import Link from 'next/link';
+import { Pause, Play, X, ArrowClockwise } from '@phosphor-icons/react';
+import { useAudioPlayer, type PlayerStatus } from '../context/AudioPlayerContext';
+import { IconButton, Spinner } from './ui';
+import { CoverArt } from './discovery/CoverArt';
+import { formatClock } from './discovery/format';
 
+const STATUS_TEXT: Partial<Record<PlayerStatus, string>> = {
+  resolving: 'Cerco l’anteprima…',
+  loading: 'La puntina sta scendendo…',
+  unavailable: 'Nessuna anteprima di 30 secondi per questo brano',
+  blocked: 'Il browser ha messo in pausa l’audio: premi Riproduci',
+  error: 'La puntina è saltata: anteprima non caricata',
+};
+
+/** Sticky 30s preview player. Renders nothing until a track is chosen. */
 export const AudioPlayerBar: React.FC = () => {
-  const { currentTrack, isPlaying, togglePlay, stopTrack, currentTime, duration } = useAudioPlayer();
+  const {
+    currentTrack,
+    status,
+    isPlaying,
+    isLoading,
+    togglePlay,
+    stopTrack,
+    seek,
+    currentTime,
+    duration,
+  } = useAudioPlayer();
 
   if (!currentTrack) return null;
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+  const statusText = STATUS_TEXT[status];
+  const canSeek = status === 'playing' || status === 'paused';
+  const max = Math.max(1, Math.round(duration));
+  const retry = status === 'error' || status === 'blocked';
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-om-border bg-om-card/95 backdrop-blur-md px-4 py-2.5 sm:px-6 shadow-2xl transition-all animate-in slide-in-from-bottom duration-300">
-      {/* Progress line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-om-border">
-        <div
-          className="h-full bg-om-amber transition-all duration-150"
-          style={{ width: `${progressPercent}%` }}
+    <section
+      aria-label="Lettore anteprime"
+      className="fixed inset-x-0 bottom-0 z-playerBar border-t border-line bg-elevated shadow-om-lg"
+    >
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6">
+        <CoverArt
+          src={currentTrack.coverUrl}
+          alt=""
+          className="h-11 w-11 flex-shrink-0 rounded-sm"
+          sizes="44px"
         />
-      </div>
 
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-        {/* Track Info */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-md border border-om-border bg-om-bg">
-            {currentTrack.coverUrl ? (
-              <img
-                src={currentTrack.coverUrl}
-                alt={currentTrack.title}
-                className="h-full w-full object-cover"
-              />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-ink">
+            {currentTrack.releaseId ? (
+              <Link
+                href={`/releases/${currentTrack.releaseId}`}
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+              >
+                {currentTrack.title}
+              </Link>
             ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Disc weight="duotone" className="h-6 w-6 text-om-amber" />
-              </div>
+              currentTrack.title
             )}
-            {isPlaying && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <div className="flex items-end gap-0.5 h-3">
-                  <span className="w-0.5 bg-om-amber h-full animate-pulse" />
-                  <span className="w-0.5 bg-om-amber h-2/3 animate-pulse" />
-                  <span className="w-0.5 bg-om-amber h-4/5 animate-pulse" />
-                </div>
-              </div>
+          </p>
+          <p className="truncate text-xs text-ink-secondary" aria-live="polite">
+            {statusText ?? (
+              <>
+                {currentTrack.artist} · <span className="font-mono text-accent">Anteprima 30s</span>
+              </>
             )}
-          </div>
+          </p>
 
-          <div className="min-w-0 flex-1">
-            <h4 className="truncate text-sm font-semibold text-om-text font-sans">
-              {currentTrack.title}
-            </h4>
-            <p className="truncate text-xs text-om-secondary">
-              {currentTrack.artist} • <span className="font-mono text-om-amber">Anteprima 30s</span>
-            </p>
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="hidden w-9 text-right font-mono text-[11px] tabular-nums text-ink-muted sm:inline">
+              {formatClock(currentTime)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={max}
+              step={1}
+              value={Math.min(Math.round(currentTime), max)}
+              onChange={(e) => seek(Number(e.target.value))}
+              disabled={!canSeek}
+              aria-label="Posizione nell’anteprima"
+              aria-valuetext={`${formatClock(currentTime)} di ${formatClock(duration)}`}
+              className="h-1 w-full cursor-pointer accent-accent disabled:cursor-default disabled:opacity-40"
+            />
+            <span className="hidden w-9 font-mono text-[11px] tabular-nums text-ink-muted sm:inline">
+              {formatClock(duration)}
+            </span>
           </div>
         </div>
 
-        {/* Player Controls */}
-        <div className="flex items-center gap-3 sm:gap-6">
-          <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-om-secondary tabular-nums">
-            <span>{formatTime(currentTime)}</span>
-            <span>/</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-
-          <button
-            onClick={togglePlay}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-om-amber hover:bg-om-amber/90 text-om-bg shadow-glow transition-transform active:scale-95"
-            aria-label={isPlaying ? 'Pausa' : 'Riproduci'}
-          >
-            {isPlaying ? (
-              <Pause weight="fill" className="h-5 w-5" />
-            ) : (
-              <Play weight="fill" className="h-5 w-5 ml-0.5" />
-            )}
-          </button>
-
-          <button
-            onClick={stopTrack}
-            className="p-1.5 text-om-secondary hover:text-om-text rounded-md hover:bg-om-interactive transition-colors"
-            aria-label="Chiudi player"
-          >
-            <X size={18} />
-          </button>
+        <div className="flex items-center gap-1 sm:gap-2">
+          {status === 'resolving' ? (
+            <span className="flex h-10 w-10 items-center justify-center">
+              <Spinner size="sm" label="Ricerca anteprima" />
+            </span>
+          ) : (
+            <IconButton
+              label={isPlaying || isLoading ? 'Pausa' : retry ? 'Riprova' : 'Riproduci'}
+              variant="solid"
+              loading={status === 'loading'}
+              disabled={status === 'unavailable'}
+              onClick={togglePlay}
+              icon={
+                isPlaying || isLoading ? (
+                  <Pause weight="fill" />
+                ) : retry ? (
+                  <ArrowClockwise weight="bold" />
+                ) : (
+                  <Play weight="fill" />
+                )
+              }
+            />
+          )}
+          <IconButton label="Chiudi il lettore" variant="ghost" onClick={stopTrack} icon={<X />} />
         </div>
       </div>
-    </div>
+    </section>
   );
 };

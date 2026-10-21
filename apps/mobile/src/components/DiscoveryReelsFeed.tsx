@@ -7,13 +7,9 @@ import {
   Pressable,
   Dimensions,
   FlatList,
-  type ViewToken,
+  type ListViewToken as ViewToken,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import {
   Heart,
@@ -24,10 +20,7 @@ import {
   SealCheck,
   Quotes,
 } from 'phosphor-react-native';
-import {
-  THEME,
-  type DiscoveryReelItem,
-} from '@openmusic/shared';
+import { THEME, type DiscoveryReelItem } from '@openmusic/shared';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const REEL_ITEM_HEIGHT = SCREEN_HEIGHT * 0.78;
@@ -146,9 +139,7 @@ export const DiscoveryReelsFeed: React.FC<DiscoveryReelsFeedProps> = ({
                     backgroundColor: isFresh
                       ? `${THEME.colors.accentFresh}25`
                       : `${THEME.colors.accentRotten}25`,
-                    borderColor: isFresh
-                      ? THEME.colors.accentFresh
-                      : THEME.colors.accentRotten,
+                    borderColor: isFresh ? THEME.colors.accentFresh : THEME.colors.accentRotten,
                   },
                 ]}
               >
@@ -161,9 +152,7 @@ export const DiscoveryReelsFeed: React.FC<DiscoveryReelsFeedProps> = ({
                   style={[
                     styles.scoreText,
                     {
-                      color: isFresh
-                        ? THEME.colors.accentFresh
-                        : THEME.colors.accentRotten,
+                      color: isFresh ? THEME.colors.accentFresh : THEME.colors.accentRotten,
                     },
                   ]}
                 >
@@ -318,7 +307,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   coverWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   coverImage: {
     width: '100%',
@@ -329,7 +318,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.bgInteractive,
   },
   dynamicOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   topBadgesRow: {
     flexDirection: 'row',

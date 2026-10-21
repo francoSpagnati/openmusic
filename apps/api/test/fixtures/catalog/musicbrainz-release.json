@@ -1,0 +1,196 @@
+{
+  "id": "0a5d4e66-3a5e-4a69-8ad5-1b0f4d1e1a01",
+  "title": "In Rainbows",
+  "status": "Official",
+  "quality": "normal",
+  "date": "2008-01-01",
+  "country": "GB",
+  "barcode": "634904032463",
+  "asin": "B000Y9HEI8",
+  "artist-credit": [
+    {
+      "name": "Radiohead",
+      "joinphrase": "",
+      "artist": {
+        "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+        "name": "Radiohead",
+        "sort-name": "Radiohead"
+      }
+    }
+  ],
+  "label-info": [
+    {
+      "catalog-number": "XLCD324",
+      "label": {
+        "id": "c6ed3b5a-1b2e-4e1b-8d3a-6b1c2e3d4f5a",
+        "name": "XL Recordings"
+      }
+    }
+  ],
+  "release-group": {
+    "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+    "title": "In Rainbows",
+    "primary-type": "Album",
+    "first-release-date": "2007-10-10",
+    "secondary-types": []
+  },
+  "genres": [],
+  "tags": [],
+  "cover-art-archive": {
+    "artwork": true,
+    "count": 3,
+    "front": true,
+    "back": true,
+    "darkened": false
+  },
+  "media": [
+    {
+      "position": 1,
+      "format": "CD",
+      "track-count": 10,
+      "track-offset": 0,
+      "tracks": [
+        {
+          "id": "7d1c0000-0000-4000-8000-000000000000",
+          "position": 1,
+          "number": "1",
+          "title": "15 Step",
+          "length": 237213,
+          "recording": {
+            "id": "9e2d0000-0000-4000-8000-000000000000",
+            "title": "15 Step",
+            "length": 237213,
+            "isrcs": ["GBSTK0700001"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0001-0000-4000-8000-000000000001",
+          "position": 2,
+          "number": "2",
+          "title": "Bodysnatchers",
+          "length": 242213,
+          "recording": {
+            "id": "9e2d0001-0000-4000-8000-000000000001",
+            "title": "Bodysnatchers",
+            "length": 242213,
+            "isrcs": ["GBSTK0700002"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0002-0000-4000-8000-000000000002",
+          "position": 3,
+          "number": "3",
+          "title": "Nude",
+          "length": 255213,
+          "recording": {
+            "id": "9e2d0002-0000-4000-8000-000000000002",
+            "title": "Nude",
+            "length": 255213,
+            "isrcs": ["GBSTK0700003"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0003-0000-4000-8000-000000000003",
+          "position": 4,
+          "number": "4",
+          "title": "Weird Fishes/Arpeggi",
+          "length": 318213,
+          "recording": {
+            "id": "9e2d0003-0000-4000-8000-000000000003",
+            "title": "Weird Fishes/Arpeggi",
+            "length": 318213,
+            "isrcs": ["GBSTK0700004"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0004-0000-4000-8000-000000000004",
+          "position": 5,
+          "number": "5",
+          "title": "All I Need",
+          "length": 228213,
+          "recording": {
+            "id": "9e2d0004-0000-4000-8000-000000000004",
+            "title": "All I Need",
+            "length": 228213,
+            "isrcs": ["GBSTK0700005"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0005-0000-4000-8000-000000000005",
+          "position": 6,
+          "number": "6",
+          "title": "Faust Arp",
+          "length": 129213,
+          "recording": {
+            "id": "9e2d0005-0000-4000-8000-000000000005",
+            "title": "Faust Arp",
+            "length": 129213,
+            "isrcs": ["GBSTK0700006"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0006-0000-4000-8000-000000000006",
+          "position": 7,
+          "number": "7",
+          "title": "Reckoner",
+          "length": 290213,
+          "recording": {
+            "id": "9e2d0006-0000-4000-8000-000000000006",
+            "title": "Reckoner",
+            "length": 290213,
+            "isrcs": ["GBSTK0700007"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0007-0000-4000-8000-000000000007",
+          "position": 8,
+          "number": "8",
+          "title": "House Of Cards",
+          "length": 328213,
+          "recording": {
+            "id": "9e2d0007-0000-4000-8000-000000000007",
+            "title": "House Of Cards",
+            "length": 328213,
+            "isrcs": ["GBSTK0700008"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0008-0000-4000-8000-000000000008",
+          "position": 9,
+          "number": "9",
+          "title": "Jigsaw Falling Into Place",
+          "length": 248213,
+          "recording": {
+            "id": "9e2d0008-0000-4000-8000-000000000008",
+            "title": "Jigsaw Falling Into Place",
+            "length": 248213,
+            "isrcs": ["GBSTK0700009"],
+            "video": false
+          }
+        },
+        {
+          "id": "7d1c0009-0000-4000-8000-000000000009",
+          "position": 10,
+          "number": "10",
+          "title": "Videotape",
+          "length": 279213,
+          "recording": {
+            "id": "9e2d0009-0000-4000-8000-000000000009",
+            "title": "Videotape",
+            "length": 279213,
+            "isrcs": ["GBSTK0700010"],
+            "video": false
+          }
+        }
+      ]
+    }
+  ]
+}

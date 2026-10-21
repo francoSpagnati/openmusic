@@ -1,10 +1,12 @@
-import type { PrismaClient } from '@prisma/client';
-import type {
-  PlaylistDetails,
-  CreatePlaylistInput,
-  AddTrackToPlaylistInput,
-  PlaylistTrackItem,
-} from '@openmusic/shared';
+import type { PrismaClient } from '@openmusic/db';
+import type { PlaylistDetails, PlaylistSummary, PlaylistTrackItem } from '@openmusic/shared';
+import type { AddTrackToPlaylistInputSchema, CreatePlaylistInputSchema } from '@openmusic/shared';
+import type { z } from 'zod';
+import { ForbiddenError, NotFoundError } from '../../lib/errors';
+import { toCatalogTrack } from '../../lib/mappers';
+
+type CreatePlaylistInput = z.output<typeof CreatePlaylistInputSchema>;
+type AddTrackToPlaylistInput = z.output<typeof AddTrackToPlaylistInputSchema>;
 
 export class PlaylistsService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -53,8 +55,9 @@ export class PlaylistsService {
       where: { id: playlistId },
     });
 
-    if (!playlist || playlist.userId !== userId) {
-      throw new Error('Playlist non trovata o permessi insufficienti');
+    if (!playlist) throw new NotFoundError('Playlist non trovata');
+    if (playlist.userId !== userId) {
+      throw new ForbiddenError('Puoi modificare solo le tue playlist');
     }
 
     // Calcola la posizione successiva per il lato selezionato
@@ -80,13 +83,13 @@ export class PlaylistsService {
       },
     });
 
-    return this.getPlaylistDetails(playlistId);
+    return this.getPlaylistDetails(playlistId, userId);
   }
 
   /**
    * Restituisce i dettagli completi con tracce divise per Lato A e Lato B
    */
-  async getPlaylistDetails(playlistId: string): Promise<PlaylistDetails> {
+  async getPlaylistDetails(playlistId: string, viewerId: string | null): Promise<PlaylistDetails> {
     const playlist = await this.prisma.playlist.findUnique({
       where: { id: playlistId },
       include: {
@@ -102,8 +105,9 @@ export class PlaylistsService {
       },
     });
 
-    if (!playlist) {
-      throw new Error('Playlist non trovata');
+    // Private playlists are invisible (404, not 403) to everyone but their owner.
+    if (!playlist || (!playlist.isPublic && playlist.userId !== viewerId)) {
+      throw new NotFoundError('Playlist non trovata');
     }
 
     const sideATracks: PlaylistTrackItem[] = [];
@@ -117,16 +121,7 @@ export class PlaylistsService {
         side: item.side as 'A' | 'B',
         position: item.position,
         addedAt: item.addedAt.toISOString(),
-        track: {
-          id: item.track.id,
-          isrc: item.track.isrc,
-          title: item.track.title,
-          artistName: item.track.artistName,
-          durationMs: item.track.durationMs,
-          previewUrl: item.track.previewUrl,
-          releaseId: item.track.releaseId,
-          coverUrl: item.track.release.coverUrl,
-        },
+        track: toCatalogTrack(item.track),
       };
 
       if (item.side === 'A') {
@@ -154,9 +149,9 @@ export class PlaylistsService {
   /**
    * Elenco playlist create dall'utente
    */
-  async getUserPlaylists(userId: string) {
+  async getUserPlaylists(userId: string, viewerId: string | null): Promise<PlaylistSummary[]> {
     const playlists = await this.prisma.playlist.findMany({
-      where: { userId },
+      where: { userId, ...(viewerId === userId ? {} : { isPublic: true }) },
       include: {
         _count: { select: { tracks: true } },
       },

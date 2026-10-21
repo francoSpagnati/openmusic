@@ -1,130 +1,63 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
-import { useAudioPlayer } from '../context/AudioPlayerContext';
+import type { CatalogRelease } from '@openmusic/shared';
+import { Card } from './ui';
 import { DualScoreBadge } from './DualScoreBadge';
-import { Play, Pause, Disc, ArrowUpRight } from '@phosphor-icons/react';
+import { CoverArt } from './discovery/CoverArt';
+import { ReleasePreviewButton } from './discovery/ReleasePreviewButton';
+import { releaseEyebrow } from './discovery/format';
 
-export interface ReleaseCardData {
-  id: string;
-  title: string;
-  artist: string;
-  releaseYear: number;
-  coverUrl: string;
-  genre: string;
-  dominantColor?: string;
-  previewTrack?: {
-    id: string;
-    title: string;
-    previewUrl: string;
-  };
-  criticScore: {
-    freshPercentage: number;
-    totalReviews: number;
-    status: 'FRESH' | 'ROTTEN';
-  };
-  audienceScore: {
-    freshPercentage: number;
-    totalReviews: number;
-    status: 'FRESH' | 'ROTTEN';
-  };
+interface ReleaseCardProps {
+  release: CatalogRelease;
+  /** Eager-load the cover (first row above the fold). */
+  priority?: boolean;
+  headingLevel?: 2 | 3;
 }
 
-export const ReleaseCard: React.FC<{ release: ReleaseCardData }> = ({ release }) => {
-  const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
-
-  const isCurrentPlaying =
-    release.previewTrack &&
-    currentTrack?.id === release.previewTrack.id &&
-    isPlaying;
-
-  const handlePlay = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (release.previewTrack) {
-      playTrack({
-        id: release.previewTrack.id,
-        title: `${release.title} (${release.previewTrack.title})`,
-        artist: release.artist,
-        coverUrl: release.coverUrl,
-        previewUrl: release.previewTrack.previewUrl,
-      });
-    }
-  };
-
+/**
+ * Record-sleeve card for a release. The title link is stretched over the whole card, while the
+ * preview button sits above it so both stay separately focusable.
+ */
+export const ReleaseCard: React.FC<ReleaseCardProps> = ({
+  release,
+  priority,
+  headingLevel = 3,
+}) => {
+  const Heading = headingLevel === 2 ? 'h2' : 'h3';
   return (
-    <div className="group relative flex flex-col rounded-xl border border-om-border bg-om-card p-4 transition-all duration-300 hover:border-om-amber/60 hover:shadow-glow">
-      {/* Dynamic tint layer */}
-      <div
-        className="pointer-events-none absolute inset-0 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"
-        style={{
-          backgroundColor: release.dominantColor || '#D97736',
-        }}
-      />
-
-      {/* Album Cover & Play Overlay */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-om-border bg-om-bg">
-        <img
+    <Card
+      as="article"
+      variant="sleeve"
+      interactive
+      padding="none"
+      className="group flex h-full flex-col p-3 sm:p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus"
+    >
+      <div className="relative">
+        <CoverArt
           src={release.coverUrl}
-          alt={release.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          placeholderColor={release.dominantColor}
+          alt=""
+          sizes="(min-width: 1024px) 220px, (min-width: 640px) 33vw, 50vw"
+          priority={priority}
+          className="aspect-square w-full rounded-sm"
+          imageClassName="transition-transform duration-slow ease-standard group-hover:scale-[1.03]"
         />
-
-        {/* Hover action overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-om-bg/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-3">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-om-secondary bg-om-card/80 px-2 py-0.5 rounded border border-om-border">
-            {release.genre}
-          </span>
-
-          {release.previewTrack && (
-            <button
-              onClick={handlePlay}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-om-amber text-om-bg shadow-glow hover:scale-110 active:scale-95 transition-transform"
-              aria-label="Ascolta anteprima 30s"
-            >
-              {isCurrentPlaying ? (
-                <Pause weight="fill" className="h-5 w-5" />
-              ) : (
-                <Play weight="fill" className="h-5 w-5 ml-0.5" />
-              )}
-            </button>
-          )}
-        </div>
+        <ReleasePreviewButton release={release} className="absolute bottom-2 right-2 z-raised" />
       </div>
 
-      {/* Album Information */}
-      <div className="mt-3.5 flex flex-col flex-1 justify-between">
-        <div>
-          <div className="flex items-start justify-between gap-2">
-            <Link href={`/releases/${release.id}`} className="group-hover:text-om-amber transition-colors">
-              <h3 className="font-editorial text-lg font-bold text-om-text line-clamp-1">
-                {release.title}
-              </h3>
-            </Link>
-            <Link
-              href={`/releases/${release.id}`}
-              className="text-om-secondary hover:text-om-amber p-0.5 rounded"
-              aria-label="Dettagli album"
-            >
-              <ArrowUpRight size={16} />
-            </Link>
-          </div>
-
-          <p className="text-xs text-om-secondary mt-0.5">
-            {release.artist} • <span className="font-mono tabular-nums">{release.releaseYear}</span>
-          </p>
-        </div>
-
-        {/* Dual Score Section */}
-        <div className="mt-4 pt-3 border-t border-om-border/60">
-          <DualScoreBadge
-            criticScore={release.criticScore}
-            audienceScore={release.audienceScore}
-            size="sm"
-          />
-        </div>
+      <div className="mt-3 flex flex-1 flex-col gap-1">
+        <p className="om-eyebrow truncate">{releaseEyebrow(release)}</p>
+        <Heading className="om-headline line-clamp-2 text-lg text-ink">
+          <Link
+            href={`/releases/${release.id}`}
+            className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none group-hover:text-accent"
+          >
+            {release.title}
+          </Link>
+        </Heading>
+        <p className="truncate text-sm text-ink-secondary">{release.artistName}</p>
+        <DualScoreBadge score={release} size="sm" className="mt-auto pt-3" />
       </div>
-    </div>
+    </Card>
   );
 };

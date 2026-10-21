@@ -14,7 +14,10 @@ export const NowPlayingTrackSchema = z.object({
   artistName: z.string().min(1),
   albumTitle: z.string().optional(),
   coverUrl: z.string().url().optional(),
-  dominantColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#26262B'),
+  dominantColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .default('#26262B'),
   durationMs: z.number().int().positive(),
   progressMs: z.number().int().nonnegative(),
   previewUrl: z.string().url().optional(), // Clip 30s (Spotify -> Deezer -> iTunes fallback)
@@ -48,4 +51,7 @@ export const WS_EVENTS = {
   CLIENT_TOGGLE_GHOST: 'now_playing:toggle_ghost',
   SERVER_FRIEND_PRESENCE_CHANGED: 'now_playing:friend_presence_changed',
   SERVER_INITIAL_FRIENDS_STATE: 'now_playing:initial_friends_state',
+  SERVER_NOTIFICATION: 'notification:new',
+  SERVER_CHAT_MESSAGE: 'chat:message',
+  SERVER_SESSION_REVOKED: 'session:revoked',
 } as const;

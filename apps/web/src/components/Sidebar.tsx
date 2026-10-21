@@ -1,147 +1,194 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  House,
-  Compass,
-  Bell,
-  ChatCircleDots,
-  Newspaper,
-  User,
-  PlusCircle,
-  Disc,
-  EyeSlash,
-  Eye,
-  Waveform,
-  Gear,
-} from '@phosphor-icons/react';
+import { PlusCircle, SignIn, SignOut } from '@phosphor-icons/react';
+import { useAuth, loginRedirectUrl } from '@/lib/auth';
+import { Avatar, Button, Skeleton, buttonClasses, cn, useToast } from '@/components/ui';
+import { CatalogQuickSearch } from './discovery/CatalogQuickSearch';
+import { BrandMark } from './web-core/shell/BrandMark';
+import { GhostModeSwitch } from './web-core/GhostModeSwitch';
+import { NAV_ITEMS, isActivePath } from './web-core/navigation';
+import { displayNameOf, errorMessage } from './web-core/format';
+import { useUnreadNotifications } from './web-core/useUnreadNotifications';
 
 interface SidebarProps {
+  /** Opens the page's composer. Without it the button links to the home composer. */
   onOpenCreatePost?: () => void;
 }
 
+/** Desktop navigation rail (lg+). The mobile equivalent lives in <Navbar>. */
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
   const pathname = usePathname();
-  const [ghostMode, setGhostMode] = useState(false);
-
-  const navItems = [
-    { label: 'Home Feed', href: '/', icon: House },
-    { label: 'Esplora Gusti', href: '/explore', icon: Compass },
-    { label: 'Critic Score', href: '/critics', icon: Newspaper },
-    { label: 'Video Saggi', href: '/videos', icon: Waveform },
-    { label: 'Chat Musicale', href: '/chat', icon: ChatCircleDots },
-    { label: 'Notifiche', href: '/notifications', icon: Bell, badge: 3 },
-    { label: 'Il Tuo Profilo', href: '/profile', icon: User },
-    { label: 'Impostazioni', href: '/settings', icon: Gear },
-  ];
+  const { status } = useAuth();
+  const unread = useUnreadNotifications();
+  const authenticated = status === 'authenticated';
+  const items = NAV_ITEMS.filter((item) => authenticated || !item.private);
 
   return (
-    <aside className="sticky top-0 h-screen w-64 flex-shrink-0 flex-col justify-between border-r border-om-border bg-om-bg p-4 hidden lg:flex">
-      {/* Top Brand & Nav */}
+    <aside
+      aria-label="Navigazione principale"
+      className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col justify-between border-r border-line bg-canvas p-4 lg:flex"
+    >
       <div className="space-y-6">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 px-2 py-1 group">
-          <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-om-card border border-om-border group-hover:border-om-amber transition-colors shadow-analog">
-            <Disc weight="duotone" className="h-7 w-7 text-om-amber animate-[spin_12s_linear_infinite]" />
-            <div className="absolute h-2.5 w-2.5 rounded-full bg-om-bg" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-editorial text-2xl font-bold tracking-tight text-om-text group-hover:text-om-amber transition-colors leading-none">
-              OpenMusic
-            </span>
-            <span className="text-[11px] font-sans text-om-secondary mt-1">
-              Social Network Musicale
-            </span>
-          </div>
-        </Link>
+        <BrandMark />
 
-        {/* Navigation links */}
-        <nav className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
+        {/* Explore has its own, bigger search box. */}
+        {!isActivePath(pathname, '/explore') && <CatalogQuickSearch />}
 
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`flex items-center justify-between rounded-xl px-3.5 py-3 text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-om-card text-om-amber font-semibold border border-om-border shadow-sm'
-                    : 'text-om-secondary hover:bg-om-card hover:text-om-text'
-                }`}
-              >
-                <div className="flex items-center gap-3.5">
-                  <Icon
-                    weight={isActive ? 'fill' : 'regular'}
-                    className={`h-5 w-5 ${isActive ? 'text-om-amber' : 'text-om-secondary'}`}
-                  />
-                  <span>{item.label}</span>
-                </div>
-
-                {item.badge && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-om-amber text-[10px] font-mono font-bold text-om-bg tabular-nums">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        <nav aria-label="Sezioni">
+          <ul className="space-y-0.5">
+            {items.map((item) => {
+              const Icon = item.icon;
+              const active = isActivePath(pathname, item.href);
+              const badge = item.badge === 'notifications' && unread > 0 ? unread : null;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'group flex items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors duration-fast',
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+                      active
+                        ? 'bg-surface font-semibold text-ink shadow-om-sm ring-1 ring-line'
+                        : 'text-ink-secondary hover:bg-surface hover:text-ink'
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon
+                        aria-hidden="true"
+                        weight={active ? 'fill' : 'regular'}
+                        className={cn(
+                          'h-5 w-5',
+                          active ? 'text-accent' : 'text-ink-muted group-hover:text-ink'
+                        )}
+                      />
+                      {item.label}
+                    </span>
+                    {badge !== null && (
+                      <span className="min-w-5 rounded-full bg-accent px-1.5 text-center font-mono text-[11px] font-bold leading-5 text-on-accent tabular-nums">
+                        {badge > 99 ? '99+' : badge}
+                        <span className="sr-only"> non lette</span>
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
 
-        {/* Primary Action Button: "Condividi una Canzone" */}
-        <button
-          onClick={onOpenCreatePost}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-om-amber hover:bg-om-amber/90 text-om-bg font-sans font-semibold py-3 text-sm transition-all shadow-glow hover:scale-[1.02] active:scale-98"
-        >
-          <PlusCircle weight="bold" className="h-5 w-5" />
-          <span>Condividi una Canzone</span>
-        </button>
+        {authenticated &&
+          (onOpenCreatePost ? (
+            <Button
+              fullWidth
+              size="lg"
+              onClick={onOpenCreatePost}
+              leadingIcon={<PlusCircle aria-hidden="true" weight="bold" />}
+            >
+              Condividi un disco
+            </Button>
+          ) : (
+            <Link href="/#compose" className={buttonClasses({ size: 'lg', fullWidth: true })}>
+              <PlusCircle aria-hidden="true" weight="bold" />
+              Condividi un disco
+            </Link>
+          ))}
       </div>
 
-      {/* Bottom Profile & Ghost Mode Toggle */}
-      <div className="rounded-xl border border-om-border bg-om-card p-3 space-y-3">
-        <Link href="/profile" className="flex items-center gap-2.5 min-w-0 group">
-          <img
-            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
-            alt="Profilo utente"
-            className="h-9 w-9 rounded-full object-cover border border-om-border group-hover:border-om-amber transition-colors"
-          />
-          <div className="min-w-0">
-            <h5 className="font-sans text-sm font-semibold text-om-text group-hover:text-om-amber transition-colors truncate">
-              Franco Spagnati
-            </h5>
-            <p className="text-[11px] font-mono text-om-secondary truncate">
-              @francospagnati
-            </p>
-          </div>
-        </Link>
-
-        {/* 1-tap Ghost Mode switch */}
-        <button
-          onClick={() => setGhostMode(!ghostMode)}
-          className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-mono transition-colors ${
-            ghostMode
-              ? 'bg-om-interactive text-om-muted border border-dashed border-om-border'
-              : 'bg-om-bg text-om-secondary hover:text-om-text border border-om-border'
-          }`}
-          title="Attiva la modalità incognito per non mostrare cosa stai ascoltando agli amici"
-        >
-          <div className="flex items-center gap-1.5">
-            {ghostMode ? <EyeSlash size={14} /> : <Eye size={14} />}
-            <span>Ghost Mode</span>
-          </div>
-          <span
-            className={`text-[10px] font-bold ${
-              ghostMode ? 'text-om-muted' : 'text-om-fresh'
-            }`}
-          >
-            {ghostMode ? 'ATTIVA' : 'OFF'}
-          </span>
-        </button>
-      </div>
+      <AccountPanel nextPath={pathname ?? '/'} />
     </aside>
   );
 };
+
+function AccountPanel({ nextPath }: { nextPath: string }) {
+  const { status, user, logout } = useAuth();
+  const { notify } = useToast();
+  const [loggingOut, setLoggingOut] = React.useState(false);
+
+  if (status === 'loading') {
+    return (
+      <div aria-busy="true" className="rounded-lg border border-line bg-surface p-3">
+        <span className="sr-only">Caricamento account…</span>
+        <div className="flex items-center gap-3">
+          <Skeleton shape="circle" className="h-9 w-9" />
+          <Skeleton shape="text" lines={2} className="flex-1" />
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'anonymous' || !user) {
+    return (
+      <div className="space-y-3 rounded-lg border border-line bg-surface p-4">
+        <p className="om-eyebrow">Benvenuto</p>
+        <p className="text-sm text-ink-secondary">
+          Accedi per seguire gli amici, pubblicare e vedere chi sta ascoltando cosa.
+        </p>
+        <Link href={loginRedirectUrl(nextPath)} className={buttonClasses({ fullWidth: true })}>
+          <SignIn aria-hidden="true" weight="bold" />
+          Accedi
+        </Link>
+        <Link
+          href="/auth?mode=register"
+          className={buttonClasses({ variant: 'ghost', size: 'sm', fullWidth: true })}
+        >
+          Crea un account
+        </Link>
+      </div>
+    );
+  }
+
+  const name = displayNameOf(user);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch (err) {
+      notify({ tone: 'error', title: 'Uscita non riuscita', description: errorMessage(err) });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-line bg-surface p-3">
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          href="/profile"
+          className="group flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <Avatar
+            name={name}
+            src={user.avatarUrl}
+            size="sm"
+            status={user.isGhostMode ? 'ghost' : undefined}
+            decorative
+          />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-ink group-hover:underline">
+              {name}
+            </span>
+            <span className="block truncate font-mono text-[11px] text-ink-muted">
+              @{user.username}
+            </span>
+          </span>
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void handleLogout()}
+          loading={loggingOut}
+          aria-label="Esci da OpenMusic"
+          className="px-2"
+        >
+          <SignOut aria-hidden="true" weight="bold" />
+        </Button>
+      </div>
+      <GhostModeSwitch className="rounded-md bg-sunken px-2.5 py-2" />
+    </div>
+  );
+}

@@ -1,0 +1,198 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openmusic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d openmusic"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      CI: true
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openmusic?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openmusic_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+      # Catalog provider/import tests run on recorded fixtures through an injected fetch; the
+      # API also refuses live provider calls when NODE_ENV=test. Never hit Deezer/iTunes/MB here.
+      CATALOG_EXTERNAL_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: 1
+      TURBO_TELEMETRY_DISABLED: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Apply migrations
+        run: npm run db:migrate:deploy
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Mobile typecheck runs above with the other packages; its Jest suite runs in the `mobile` job.
+      - name: Test (shared, api incl. catalog fixtures, web)
+        run: npx turbo run test --filter=!@openmusic/mobile
+
+      - name: Build web
+        run: npx turbo run build --filter=@openmusic/web
+
+  mobile:
+    name: Mobile (typecheck, Jest, bundle export)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      CI: true
+      # Offline: no api.expo.dev dependency validation, only local bundling.
+      EXPO_OFFLINE: 1
+      EXPO_NO_TELEMETRY: 1
+      TURBO_TELEMETRY_DISABLED: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx turbo run typecheck --filter=@openmusic/mobile
+
+      - name: Jest
+        run: npm --workspace=@openmusic/mobile test -- --ci
+
+      - name: Export iOS and Android bundles
+        working-directory: apps/mobile
+        run: |
+          npx expo export --platform ios --output-dir "$RUNNER_TEMP/expo-ios"
+          npx expo export --platform android --output-dir "$RUNNER_TEMP/expo-android"
+
+  e2e:
+    name: E2E smoke (Playwright)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openmusic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d openmusic"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      CI: true
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openmusic?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+      CORS_ORIGIN: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      # Deterministic e2e data: no real-catalog upgrade of the seed, no live provider calls.
+      CATALOG_SEED_IMPORT: 'false'
+      CATALOG_EXTERNAL_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: 1
+      TURBO_TELEMETRY_DISABLED: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Migrate and seed
+        run: |
+          npm run db:migrate:deploy
+          npm run db:seed
+
+      - name: Build web
+        run: npx turbo run build --filter=@openmusic/web
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e smoke tests (starts API and web)
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/e2e/.results
+          retention-days: 7

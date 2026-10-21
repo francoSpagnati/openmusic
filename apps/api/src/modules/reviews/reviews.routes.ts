@@ -1,50 +1,29 @@
 import type { FastifyPluginAsync } from 'fastify';
-import {
-  CreateReviewInputSchema,
-  ToggleReactionInputSchema,
-} from '@openmusic/shared';
+import { z } from 'zod';
+import { CreateReviewInputSchema, ToggleReactionInputSchema } from '@openmusic/shared';
+import { requireAuth } from '../../lib/auth';
 import type { ReviewsService } from './reviews.service';
+
+const ReleaseParamSchema = z.object({ releaseId: z.string().uuid() });
 
 export function createReviewsRoutes(reviewsService: ReviewsService): FastifyPluginAsync {
   return async (fastify) => {
-    // 1. Pubblica o modifica una recensione (richiede autenticazione)
-    fastify.post('/', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const input = CreateReviewInputSchema.parse(request.body);
-        const review = await reviewsService.createOrUpdateReview(decoded.userId, input);
-        return reply.status(201).send(review);
-      } catch (err) {
-        return reply.status(401).send({ error: 'Richiesta non autorizzata o input non valido', details: String(err) });
-      }
+    // Create or update the caller's review (one per release).
+    fastify.post('/', { preHandler: fastify.authenticate }, async (request, reply) => {
+      const input = CreateReviewInputSchema.parse(request.body);
+      const review = await reviewsService.createOrUpdateReview(requireAuth(request).userId, input);
+      return reply.status(201).send(review);
     });
 
-    // 2. Ottieni tutte le recensioni di una release
-    fastify.get('/release/:releaseId', async (request, reply) => {
-      const { releaseId } = request.params as { releaseId: string };
-      let currentUserId: string | undefined;
-
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        currentUserId = decoded.userId;
-      } catch {
-        // Utente non autenticato: visualizzazione pubblica
-      }
-
-      const reviews = await reviewsService.getReleaseReviews(releaseId, currentUserId);
-      return reply.send(reviews);
+    fastify.get('/release/:releaseId', { preHandler: fastify.optionalAuth }, async (request) => {
+      const { releaseId } = ReleaseParamSchema.parse(request.params);
+      return reviewsService.getReleaseReviews(releaseId, request.auth?.userId);
     });
 
-    // 3. Aggiungi / Rimuovi una reazione costruttiva (richiede autenticazione)
-    fastify.post('/reaction', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const input = ToggleReactionInputSchema.parse(request.body);
-        const result = await reviewsService.toggleReaction(decoded.userId, input);
-        return reply.send(result);
-      } catch {
-        return reply.status(401).send({ error: 'Richiesta non autorizzata' });
-      }
+    // Toggle a constructive reaction (AGREE / WELL_WRITTEN / DISCOVERED / HEART).
+    fastify.post('/reaction', { preHandler: fastify.authenticate }, async (request) => {
+      const input = ToggleReactionInputSchema.parse(request.body);
+      return reviewsService.toggleReaction(requireAuth(request).userId, input);
     });
   };
 }

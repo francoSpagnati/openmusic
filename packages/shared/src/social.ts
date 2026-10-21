@@ -23,14 +23,46 @@ export const ChatMessageSchema = z.object({
   universalLinks: UniversalTrackLinksSchema.nullable().optional(),
   isListened: z.boolean().default(false),
   reaction: ChatReactionTypeSchema.nullable().optional(),
+  readAt: z.string().nullable(),
   createdAt: z.string(),
 });
 
-export const SendMessageInputSchema = z.object({
-  receiverId: z.string().uuid(),
-  content: z.string().max(1000).optional(),
-  trackId: z.string().optional(),
+export const SendMessageInputSchema = z
+  .object({
+    receiverId: z.string().uuid(),
+    content: z.string().trim().max(1000).optional(),
+    /**
+     * Internal catalog track UUID. Tracks found on Deezer/iTunes get one when the catalog search
+     * imports them; a provider id can be turned into one with `GET /api/catalog/resolve`.
+     */
+    trackId: z.string().uuid().optional(),
+  })
+  .refine((m) => (m.content !== undefined && m.content.length > 0) || m.trackId !== undefined, {
+    message: 'Il messaggio deve contenere testo o un brano',
+    path: ['content'],
+  });
+
+export const MarkListenedInputSchema = z.object({
+  messageId: z.string().uuid(),
 });
+
+/** Path param for `/api/chat/conversation/:otherUserId`. */
+export const ConversationParamSchema = z.object({ otherUserId: z.string().uuid() });
+
+/** One row of the chat inbox (`GET /api/chat/conversations`). */
+export const ConversationSummarySchema = z.object({
+  otherUser: z.object({
+    id: z.string().uuid(),
+    username: z.string(),
+    displayName: z.string().nullable(),
+    avatarUrl: z.string().url().nullable(),
+  }),
+  lastMessage: ChatMessageSchema,
+  /** Messages from `otherUser` not yet read by the viewer. */
+  unreadCount: z.number().int().nonnegative(),
+});
+
+export const ConversationListSchema = z.array(ConversationSummarySchema);
 
 export const ReactToMessageInputSchema = z.object({
   messageId: z.string().uuid(),
@@ -77,7 +109,7 @@ export const CreatePlaylistInputSchema = z.object({
 
 export const AddTrackToPlaylistInputSchema = z.object({
   playlistId: z.string().uuid(),
-  trackId: z.string(),
+  trackId: z.string().uuid(),
   side: PlaylistSideSchema.default('A'),
 });
 
@@ -100,17 +132,30 @@ export const NotificationPresenceSummarySchema = z.object({
   timestamp: z.number(),
 });
 
+export const PlaylistSummarySchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  description: z.string().nullable(),
+  coverUrl: z.string().nullable(),
+  isPublic: z.boolean(),
+  trackCount: z.number().int().nonnegative(),
+  createdAt: z.string(),
+});
+
+export type MarkListenedInput = z.infer<typeof MarkListenedInputSchema>;
+export type ConversationSummary = z.infer<typeof ConversationSummarySchema>;
+export type PlaylistSummary = z.infer<typeof PlaylistSummarySchema>;
 export type ChatReactionType = z.infer<typeof ChatReactionTypeSchema>;
 export type UniversalTrackLinks = z.infer<typeof UniversalTrackLinksSchema>;
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
-export type SendMessageInput = z.infer<typeof SendMessageInputSchema>;
+export type SendMessageInput = z.input<typeof SendMessageInputSchema>;
 export type ReactToMessageInput = z.infer<typeof ReactToMessageInputSchema>;
 
 export type PlaylistSide = z.infer<typeof PlaylistSideSchema>;
 export type PlaylistTrackItem = z.infer<typeof PlaylistTrackItemSchema>;
 export type PlaylistDetails = z.infer<typeof PlaylistDetailsSchema>;
-export type CreatePlaylistInput = z.infer<typeof CreatePlaylistInputSchema>;
-export type AddTrackToPlaylistInput = z.infer<typeof AddTrackToPlaylistInputSchema>;
+export type CreatePlaylistInput = z.input<typeof CreatePlaylistInputSchema>;
+export type AddTrackToPlaylistInput = z.input<typeof AddTrackToPlaylistInputSchema>;
 
 export type ActiveListeningFriendSummary = z.infer<typeof ActiveListeningFriendSummarySchema>;
 export type NotificationPresenceSummary = z.infer<typeof NotificationPresenceSummarySchema>;

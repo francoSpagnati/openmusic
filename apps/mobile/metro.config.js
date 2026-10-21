@@ -1,18 +1,19 @@
+// @ts-check
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
+const { projectRoot, shouldPreferMobile } = require('./tooling/mobile-first');
 
-const projectRoot = __dirname;
-const workspaceRoot = path.resolve(projectRoot, '../..');
-
+/** Expo SDK 58 configures monorepo watchFolders/nodeModulesPaths automatically. */
 const config = getDefaultConfig(projectRoot);
 
-// 1. Watch all files in monorepo
-config.watchFolders = [workspaceRoot];
+const upstreamResolve = config.resolver.resolveRequest;
 
-// 2. Resolve packages from both local and root node_modules
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(workspaceRoot, 'node_modules'),
-];
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const ctx = shouldPreferMobile(moduleName, context.originModulePath)
+    ? { ...context, originModulePath: `${projectRoot}/package.json` }
+    : context;
+  return upstreamResolve
+    ? upstreamResolve(ctx, moduleName, platform)
+    : ctx.resolveRequest(ctx, moduleName, platform);
+};
 
 module.exports = config;
