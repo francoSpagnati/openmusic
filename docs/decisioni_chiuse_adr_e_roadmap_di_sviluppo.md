@@ -7,18 +7,19 @@
 
 ## Indice
 
-| ADR | Titolo                                              | Stato decisione                    | Implementazione      |
-| --- | --------------------------------------------------- | ---------------------------------- | -------------------- |
-| 001 | Voto ibrido (stelle, media bayesiana, % gradimento) | Accettata                          | Parziale             |
-| 002 | Moderazione "safe space" e Ascolto Verificato       | Accettata                          | Sì                   |
-| 003 | Anteprime audio 30 s universali                     | Accettata, in discussione l'ordine | Parziale             |
-| 004 | Rilevamento musicale universale e notifica OS       | Accettata                          | Solo cloud (Spotify) |
-| 005 | Infrastruttura open source e hosting a costo zero   | Accettata                          | Solo locale          |
-| 006 | Account locali e modello di sessione                | Accettata                          | Sì                   |
-| 007 | Gestione centralizzata degli errori API             | Accettata                          | Sì                   |
-| 008 | Tipografia e token di design                        | Accettata                          | Web sì, mobile no    |
-| 009 | Tipi di reazione alle recensioni                    | Accettata                          | Sì                   |
-| 010 | Catalogo da database musicali aperti                | Accettata                          | Sì (testato offline) |
+| ADR | Titolo                                              | Stato decisione                | Implementazione      |
+| --- | --------------------------------------------------- | ------------------------------ | -------------------- |
+| 001 | Voto ibrido (stelle, media bayesiana, % gradimento) | Accettata                      | Parziale             |
+| 002 | Moderazione "safe space" e Ascolto Verificato       | Accettata                      | Sì                   |
+| 003 | Anteprime audio 30 s universali                     | Accettata, emendata da ADR-010 | Sì (Deezer → iTunes) |
+| 004 | Rilevamento musicale universale e notifica OS       | Accettata                      | Solo cloud (Spotify) |
+| 005 | Infrastruttura open source e hosting a costo zero   | Accettata                      | Solo locale          |
+| 006 | Account locali e modello di sessione                | Accettata                      | Sì                   |
+| 007 | Gestione centralizzata degli errori API             | Accettata                      | Sì                   |
+| 008 | Tipografia e token di design                        | Accettata                      | Sì (web e mobile)    |
+| 009 | Tipi di reazione alle recensioni                    | Accettata                      | Sì                   |
+| 010 | Catalogo da database musicali esterni               | Accettata                      | Sì, solo su fixture  |
+| 011 | App mobile: Expo SDK 58 ed expo-router              | Accettata                      | Mai su device        |
 
 ---
 
@@ -54,8 +55,12 @@
   muti.
 - **Decisione originale:** `PreviewResolverService` via ISRC, in ordine iTunes → Deezer → Spotify,
   con salvataggio dell'URL nella tabella `Track`.
-- **Stato:** `AudioPreviewResolverService` interroga **Deezer → iTunes**; Spotify non è usato. La
-  discrepanza è una **questione aperta** (`04` §5): va deciso se emendare l'ADR o il codice.
+- **Emendamento (2026-10, ADR-010):** l'ordine è **Deezer → iTunes**. Deezer è già la fonte
+  primaria del catalogo, quindi ISRC e anteprima arrivano spesso con l'import; iTunes copre i buchi.
+  Spotify è escluso dalle anteprime (i `preview_url` non sono garantiti per le nuove app). L'URL
+  viene salvato in `Track.previewUrl`, ma quelli Deezer sono firmati e scadono: il client richiama
+  `/api/catalog/preview` se la riproduzione fallisce.
+- **Stato:** implementato in `AudioPreviewResolverService`.
 
 ### ADR-004: Rilevamento musicale universale e notifica OS
 
@@ -146,23 +151,85 @@
   `FIRE`, `HEART`, `NOT_FOR_ME`.
 - **Motivo:** evitare una migrazione dei dati esistenti senza un guadagno di prodotto chiaro.
 
-### ADR-010: Catalogo da database musicali aperti
+### ADR-010: Catalogo da database musicali esterni
 
 - **Data:** 2026-10.
 - **Contesto:** il catalogo conteneva solo il seed con cover di Unsplash; la ricerca importava da
   Deezer con id `deezer-…` come chiave primaria, rifiutati da tutte le rotte che validano UUID.
-- **Decisione:** Deezer è la fonte primaria (cover 1000 px, tracklist con ISRC, UPC, anteprime,
-  nessuna chiave), iTunes Search il fallback, MusicBrainz la fonte canonica di arricchimento (MBID,
-  generi votati, etichetta) e Cover Art Archive la cover di riserva. Tutto passa da un client
-  upstream comune (cache Redis, rate limit per provider, retry, circuit breaker). Le entità hanno
-  **sempre UUID interni**; gli id esterni sono colonne uniche opzionali e la deduplica usa id →
-  UPC/ISRC → titolo + artista normalizzati. Nessuna dipendenza nuova: `fetch` globale e un
-  decoder PNG/JPEG-DC minimale per il colore dominante. Dettagli: `06` §8.
-- **Alternative scartate:** Spotify Web API (richiede app registrata e token, termini più
-  restrittivi sull'uso dei metadati); Discogs (token obbligatorio, 60 req/min); una libreria di
-  immagini (`sharp`) per il colore dominante, che aggiunge binari nativi.
-- **Conseguenze:** MusicBrainz a 1 req/s impone l'arricchimento in background o via script; senza
-  rete la ricerca restituisce solo risultati locali.
+  Serviva un catalogo reale (copertine, tracklist, ISRC, anteprime) utilizzabile da un progetto
+  open source senza costi, senza app registrate e senza segreti nel repository.
+- **Decisione:**
+  1. **Deezer** è la fonte **primaria**: ricerca di album/brani/artisti, dettaglio album con
+     tracklist e ISRC, UPC, etichetta, generi, cover fino a 1000 px, anteprime MP3 da 30 s.
+     Nessuna chiave API.
+  2. **MusicBrainz** è la fonte canonica di **arricchimento** (MBID di release, release group e
+     recording, etichetta, generi votati), interrogata per UPC, ISRC o titolo + artista, in
+     background o da script, a 1 req/s con `User-Agent` identificativo. **Cover Art Archive** dà
+     la copertina di riserva per MBID.
+  3. **iTunes Search API** è il **fallback**: ricerca quando Deezer fallisce o non trova nulla,
+     anteprime AAC quando Deezer non ne ha, artwork portato a 1000×1000.
+  4. **Spotify è facoltativo** e resta fuori dal catalogo: serve solo a chi collega il proprio
+     account (currently playing, scrobble, top artisti, export playlist). Senza credenziali Spotify
+     catalogo, ricerca e anteprime funzionano uguale.
+  5. Tutte le chiamate passano da un client comune per provider (`UpstreamClient`: cache Redis,
+     rate limit a token bucket con coda limitata, timeout 5 s, retry con `Retry-After`, circuit
+     breaker) e possono essere spente con `CATALOG_EXTERNAL_ENABLED=false`.
+  6. Le entità hanno **sempre UUID interni**; gli id esterni (`deezerId`, `itunesId`,
+     `musicbrainzId`, `upc`, `isrc`) sono colonne uniche opzionali. Deduplica: id → UPC/ISRC →
+     titolo + artista normalizzati. Le cover restano sui CDN dei provider.
+  7. Nessuna dipendenza nuova: `fetch` globale e un decoder PNG/JPEG-DC minimale per il colore
+     dominante. I test usano fixture registrate e un `fetch` iniettato; `npm run catalog:smoke`
+     verifica i servizi dal vivo.
+- **Dettagli:** `03` §8 e `06` §8.
+- **Alternative scartate:**
+  - **Spotify Web API come fonte primaria:** richiede un'app registrata e token client
+    credentials, i `preview_url` non sono più garantiti alle nuove app e i termini limitano il
+    salvataggio dei metadati. Rimane solo per l'account collegato.
+  - **Solo MusicBrainz:** dati aperti (CC0) e canonici, ma 1 req/s per IP, niente anteprime audio
+    e copertine non sempre presenti: inadatto alla ricerca interattiva.
+  - **Discogs:** token obbligatorio, 60 req/min, orientato alle edizioni fisiche.
+  - **Last.fm:** chiave obbligatoria, metadati di album e tracklist meno affidabili.
+  - **`sharp` o simili per il colore dominante:** binari nativi per un calcolo minimo.
+- **Conseguenze:**
+  - MusicBrainz a 1 req/s impone l'arricchimento in background; i limiti sono per processo.
+  - Senza rete la ricerca restituisce solo risultati locali (il resto dell'app funziona).
+  - Dipendiamo dai termini d'uso di Deezer e Apple (salvataggio dei metadati, attribuzione e link
+    allo store per le anteprime iTunes): da verificare prima della produzione (`04` §3).
+  - **Stato di verifica:** implementato e testato solo con fixture costruite sulla forma
+    documentata delle API; nessuna chiamata live riuscita finora (`04` §1.1).
+
+### ADR-011: App mobile su Expo SDK 58 con expo-router
+
+- **Data:** 2026-10.
+- **Contesto:** `apps/mobile` era un prototipo su Expo SDK 51 con dati mock e navigazione a stato
+  locale. Expo Go dagli store esegue solo l'SDK più recente, quindi l'app non si apriva più per chi
+  voleva provarla senza una build nativa. Il client doveva usare l'API reale con Bearer (ADR-006).
+- **Decisione:**
+  1. **Expo SDK 58** (React Native 0.88, React 19.3, New Architecture), managed workflow, versioni
+     allineate a `expo/bundledNativeModules.json`. Si prova con **Expo Go**; build native (EAS)
+     solo quando servono moduli propri (ADR-004).
+  2. **expo-router** con route a file in `app/`: gruppi `(auth)` e `(tabs)` (tab JS di
+     `expo-router/js-tabs`), `Stack.Protected` come guardia di autenticazione, deep link e URL
+     tipizzati gratis, stessa struttura mentale delle route di Next.js nel web.
+  3. JWT in **expo-secure-store** (logout se la lettura fallisce), `EXPO_PUBLIC_API_URL` come base
+     URL (inserita da Metro a build time, mai segreti), client tipizzato che valida le risposte con
+     gli schemi di `@openmusic/shared` come il web.
+  4. `expo-image` per le cover, `expo-audio` per le anteprime, font del design system
+     (`@expo-google-fonts/*`) inclusi nel bundle.
+  5. Nel monorepo il web resta su React 18: React 19 vive in `apps/mobile/node_modules` e un
+     resolver (`tooling/mobile-first.js`) lo impone a Metro e Jest.
+- **Alternative scartate:**
+  - **Restare su SDK 51:** niente Expo Go dagli store, dipendenze ferme.
+  - **React Navigation configurata a mano:** stessa libreria sotto expo-router, ma più codice di
+    configurazione e niente route a file né deep link automatici.
+  - **Bare React Native / prebuild subito:** costringe ogni contributore a toolchain Xcode/Android
+    prima di vedere una schermata.
+- **Conseguenze:**
+  - Node **>= 22.13** in tutto il monorepo (`.nvmrc`, `engines`, CI).
+  - Due versioni di React nel lockfile; il typecheck carica entrambi i tipi (`04` §4).
+  - I moduli nativi di ADR-004 richiederanno un development build al posto di Expo Go.
+  - **Stato di verifica:** typecheck, Jest ed `expo export` iOS/Android passano; l'app non è mai
+    stata eseguita su dispositivo, simulatore o Expo Go.
 
 ---
 
@@ -175,28 +242,32 @@ Legenda: **[x]** reale (API + web, su DB, testato) · **[~]** parziale · **[ ]*
 - [x] Monorepo Turborepo, Docker Compose, `.env.example`, Prisma con migrazioni e seed.
 - [x] Account locali, sessioni JWT con revoca, ruoli, error handler centrale (ADR-006, ADR-007).
 - [x] ESLint, Prettier, Vitest (unit + integrazione), Playwright, CI GitHub Actions.
-- [ ] Prima esecuzione verde della CI su GitHub.
+- [x] Prima esecuzione verde della CI su GitHub (round 1; il round catalogo/mobile non ancora).
 
 ### Milestone 1: Social e "Now Playing" — web
 
 - [x] Follow, feed post, like, salvati, notifiche persistenti e live.
 - [x] Presenza live via Socket.io autenticato, solo ai follower; Ghost Mode.
 - [x] Collegamento Spotify e Last.fm.
-- [~] Ritorno all'app dopo l'OAuth (oggi termina sul JSON dell'API).
-- [ ] Socket revocato a logout / cambio password; adapter Redis per più istanze.
+- [x] Ritorno all'app dopo l'OAuth (redirect a `/settings?oauth=…`).
+- [x] Socket revocato a logout / cambio password / scadenza.
+- [ ] Adapter Redis per più istanze.
 
 ### Milestone 2: Catalogo, recensioni e profilo — web
 
 - [x] Ricerca e import on-the-fly (Deezer/iTunes), browse per genere, scheda release SSR.
+- [~] Catalogo esterno con UUID interni, arricchimento MusicBrainz/CAA, `resolve`, import curato
+  (ADR-010): fatto, ma verificato solo su fixture; manca `catalog:smoke` con rete.
 - [x] Recensioni con Ascolto Verificato (1.5×), reazioni, bozza locale, punteggi pubblico/critica.
 - [x] Profilo con statistiche e heavy rotation.
 - [~] Media bayesiana (ADR-001) non applicata.
-- [ ] Recensione di brani importati da Deezer (id non UUID); eliminazione recensione.
+- [x] Recensione di brani importati (ora con UUID interni).
+- [ ] Eliminazione recensione.
 
 ### Milestone 3: Discovery — web
 
 - [x] Reels con anteprime pre-caricate; Roulette dei generi.
-- [~] Ordine del resolver anteprime da allineare (ADR-003).
+- [x] Ordine del resolver anteprime: Deezer → iTunes (ADR-003 emendato).
 - [ ] Undo nei Reels/Roulette, like/salvataggio reel, paginazione Reels.
 
 ### Milestone 4: Chat, playlist e notifica OS
@@ -212,11 +283,14 @@ Legenda: **[x]** reale (API + web, su DB, testato) · **[~]** parziale · **[ ]*
 - [x] Accredito critici con approvazione ADMIN, recensioni della critica, dual score.
 - [x] Video: pubblicazione per ruoli abilitati, feed, video per release.
 
-### Milestone 6: Mobile (prossima)
+### Milestone 6: Mobile (in corso, ADR-011)
 
-- [ ] Client API e login con token in secure store.
-- [ ] Socket con `auth: { token }`.
-- [ ] Sostituzione dei dati mock, navigazione, font del design system.
+- [x] Expo SDK 58, expo-router, client API e login con token in secure store.
+- [x] Socket con `auth: { token }`.
+- [x] Schermate su API reale (home, esplora, Reels, release, chat, notifiche, profili,
+      impostazioni), font del design system.
+- [ ] Prima esecuzione su dispositivo / Expo Go.
+- [ ] Collegamento Spotify/Last.fm, rimozione dalla playlist, paginazione Reels.
 - [ ] Moduli nativi (ADR-004).
 
 ### Milestone 7: Beta pubblica

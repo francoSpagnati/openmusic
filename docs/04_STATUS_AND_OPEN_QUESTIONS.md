@@ -19,10 +19,28 @@
 | `expo export` iOS + Android (`EXPO_OFFLINE=1`)        | passa (bundle Hermes ~5 MB per piattaforma)                   |
 | CI GitHub (`ci.yml`, job `verify` + `mobile` + `e2e`) | round 1 verde su GitHub; questo round non ancora eseguito     |
 
-Non verificabili nell'ambiente di sviluppo usato (senza rete esterna): chiamate live a Deezer,
-iTunes, MusicBrainz e Cover Art Archive (provider e import testati con fixture registrate sulla
-forma documentata; `npm run catalog:smoke` le verifica dal vivo), copertine reali, Google Fonts,
-OAuth Spotify/Last.fm reali.
+### 1.1 Verificato dal vivo o solo con fixture?
+
+L'ambiente in cui è stato sviluppato questo round blocca la rete verso i servizi musicali (il
+proxy risponde 403 a `CONNECT`). Quindi:
+
+| Area                                                       | Come è verificato                                                      | Live?                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------ |
+| Parsing delle risposte Deezer/iTunes/MusicBrainz/CAA       | test su fixture JSON scritte sulla forma **documentata** delle API     | **no**                               |
+| Import, deduplica, import concorrenti, `resolve`           | test di integrazione su Postgres reale + fixture                       | **no** (DB sì, provider no)          |
+| Cache, rate limiter, retry/`Retry-After`, circuit breaker  | test unitari con orologio e `fetch` finti                              | **no**                               |
+| `CATALOG_EXTERNAL_ENABLED=false` = zero chiamate in uscita | test che conta le chiamate                                             | n/a                                  |
+| Colore dominante                                           | test su immagini PNG/JPEG locali (`test/fixtures/images`)              | **no** (mai su cover reali dei CDN)  |
+| Copertine e anteprime reali in web e mobile                | nessuno                                                                | **no**                               |
+| `npm run catalog:smoke`                                    | eseguito: **6/6 falliti** per rete bloccata (nessun mock nello script) | **da rifare con rete**               |
+| Durata dei token delle anteprime Deezer (`hdnea=exp=…`)    | nessuno                                                                | **no**                               |
+| App mobile                                                 | typecheck, Jest (58), `expo export` iOS/Android                        | **no** (mai su device/simulatore/Go) |
+| OAuth Spotify/Last.fm, Google Fonts nella build via turbo  | nessuno                                                                | **no**                               |
+
+Le fixture sono plausibili ma non registrate da risposte reali: se un servizio restituisce un
+campo con forma diversa dalla documentazione, lo schema Zod del provider scarta la risposta e la
+ricerca ricade sui risultati locali. Il primo passo con la rete è `npm run catalog:smoke`, poi
+`npm run catalog:import -- --file curated-albums.json --dry-run --limit 5`.
 
 ## 2. Cosa è reale
 
@@ -74,16 +92,19 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 
 ### Test e strumenti
 
-- ESLint + Prettier configurati; CI con job `verify` (lint, typecheck, test, build) ed `e2e`.
-- 105 test Vitest (unit su `packages/shared`, integrazione su Postgres/Redis reali in `apps/api`).
-- Playwright smoke: registrazione, login, feed, apertura release, recensione, messaggio in chat.
+- ESLint + Prettier configurati; CI (Node 22 da `.nvmrc`) con job `verify` (lint, typecheck,
+  test con `CATALOG_EXTERNAL_ENABLED=false`, build), `mobile` (typecheck, Jest, export iOS/Android
+  offline) ed `e2e`.
+- Vitest: 41 test in `packages/shared`, 130 in `apps/api` (integrazione su Postgres/Redis reali,
+  catalogo su fixture). Jest: 58 test in `apps/mobile`.
+- Playwright (10 test): registrazione, login, feed, apertura release, recensione, messaggio in chat.
 
 ## 3. Cosa è parziale o manca
 
 ### Prodotto / API
 
 - [ ] **Media bayesiana** (ADR-001): non applicata, `audienceAvg` è una media pesata semplice.
-- [ ] **Ordine del resolver anteprime** diverso dall'ADR-003 (vedi §5).
+- [x] ~~Ordine del resolver anteprime diverso dall'ADR-003~~: ADR-003 emendato da ADR-010 (Deezer → iTunes).
 - [x] ~~Id Deezer (`deezer-…`)~~: ora ogni risultato esterno è importato con UUID interno; i vecchi
       id sono stati convertiti dalla migrazione e `resolve` accetta ancora `deezer-alb/trk-<n>`.
 - [x] ~~OAuth Spotify/Last.fm su JSON~~: i callback reindirizzano a `WEB_APP_URL`
@@ -94,6 +115,9 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - [ ] Apple Music, YouTube Music e deep-link nativi nei link universali: non implementati.
 - [x] ~~Colore dominante dal seed~~: calcolato all'import dalla cover (JPEG/PNG, `06` §8).
 - [ ] Undo nei Reels e nella Roulette (euristica di Nielsen #3).
+- [x] ~~Import concorrenti dello stesso album creavano righe duplicate~~: lock per chiave di match
+      e fusione sulla riga esistente in caso di conflitto unique (`03` §8.3), con test.
+- [x] ~~`/preview` chiamava Deezer/iTunes anche con `CATALOG_EXTERNAL_ENABLED=false`~~.
 - [ ] **Catalogo, dalla review dell'import** (non ancora corretti):
   - album omonimi dello stesso artista (es. i vari "Weezer") con id Deezer diversi vengono uniti
     sulla stessa riga per `matchKey` e le tracklist si sommano. Serve una regola (id diverso dello
@@ -167,9 +191,8 @@ Mancano / da decidere:
 1. **Next.js:** `14.2.15` → l'ultima patch `14.2.35` ha le stesse dipendenze e peer
    (React 18.2); va aggiornata insieme a `eslint-config-next` in una PR dedicata (cambia il
    lockfile).
-2. **Ordine del resolver anteprime (ADR-003):** il codice usa Deezer → iTunes, l'ADR dice
-   iTunes → Deezer → Spotify. Decidere se aggiornare l'ADR (Spotify è comunque inaffidabile per le
-   nuove app) o il codice.
+2. ~~Ordine del resolver anteprime (ADR-003)~~: risolto emendando l'ADR (Deezer → iTunes, Spotify
+   escluso; vedi ADR-010). Resta da verificare dal vivo la durata degli URL Deezer firmati.
 3. **Media bayesiana:** attivarla ora (con `m` e `C` dell'ADR-001) o quando il catalogo ha abbastanza
    recensioni?
 4. **Chi può scrivere in chat e vedere l'ascolto live:** solo mutual? follow con approvazione?

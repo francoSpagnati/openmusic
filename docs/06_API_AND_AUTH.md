@@ -155,7 +155,7 @@ sessione obbligatoria · **ROLE** ruolo richiesto.
 | GET        | `/api/catalog/releases?genre=&sort=&cursor=&limit=`   | —                               | `ReleasePage`                                                                                             |
 | GET        | `/api/catalog/genres`                                 | —                               | `GenreList`                                                                                               |
 | GET        | `/api/catalog/releases/:id`                           | —                               | `CatalogRelease` + tracce (import completo 1ª volta)                                                      |
-| GET        | `/api/catalog/preview?title=&artist=&isrc=`           | —                               | `AudioPreviewResult`                                                                                      |
+| GET        | `/api/catalog/preview?title=&artist=&isrc=`           | — (rate limit)                  | `AudioPreviewResult` (Deezer → iTunes, vedi §8)                                                           |
 | POST       | `/api/reviews`                                        | auth                            | crea/aggiorna, 201 `ReviewItem`                                                                           |
 | GET        | `/api/reviews/release/:releaseId`                     | opt                             | `ReviewItem[]`                                                                                            |
 | POST       | `/api/reviews/reaction`                               | auth                            | toggle, notifica REVIEW_REACTION                                                                          |
@@ -216,7 +216,12 @@ Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCur
 ## 6. Client web (`apps/web/src/lib`)
 
 `api.catalog.search(q | { q, type, page, limit, external })` e `api.catalog.resolve({ provider,
-type, id })` rispecchiano il §8.
+type, id })` rispecchiano il §8. La pagina `/releases/external/[provider]/[id]` chiama `resolve`
+lato server e reindirizza a `/releases/<uuid>`.
+
+Il client mobile (`apps/mobile/src/lib/api`) espone la stessa superficie (`api.catalog.search`,
+`api.auth.changePassword`...) con `Authorization: Bearer`, `credentials: 'omit'`, timeout 15 s e
+base URL da `EXPO_PUBLIC_API_URL` (vedi `apps/mobile/README.md`).
 
 ```ts
 import { api, ApiError, isApiError } from '@/lib/api';
@@ -247,6 +252,9 @@ cp .env.example .env            # poi imposta JWT_SECRET
 npm run db:migrate:deploy && npm run db:seed
 npm run dev                     # API :4000 + web :3000 (mobile: npm run dev:mobile)
 ```
+
+Per l'app mobile: `apps/mobile/.env` con `EXPO_PUBLIC_API_URL` raggiungibile dal telefono (IP LAN,
+`http://10.0.2.2:4000` sull'emulatore Android); istruzioni complete nel README alla radice.
 
 Tutti gli utenti del seed accedono con password `openmusic-dev` (es.
 `francospagnati@openmusic.test`; `admin@openmusic.test` ha ruolo ADMIN).
@@ -301,6 +309,25 @@ valido, 404 non trovato dal provider, 502 `UPSTREAM_ERROR` provider irraggiungib
 `CatalogRelease` ha in più `label`, `upc` (senza zeri iniziali), `trackCount`, `coverSource`
 (`DEEZER | ITUNES | COVER_ART_ARCHIVE | null`) ed `externalIds`; `CatalogTrack` ha `trackNumber`,
 `discNumber`, `externalIds`.
+
+**Anteprime** `GET /api/catalog/preview?title=&artist=&isrc=` → `AudioPreviewResult`
+`{ previewUrl, source: DEEZER | ITUNES | NONE, durationSeconds: 30 }`. Ordine: Deezer per ISRC,
+poi ricerca Deezer `artist + track`, poi iTunes. `title`/`artist` 1..300 caratteri, `isrc` max 32
+(oltre: 400). `SPOTIFY` esiste nell'enum ma il server non lo restituisce mai (ADR-003/ADR-010). Con
+`CATALOG_EXTERNAL_ENABLED=false` risponde `NONE` senza chiamate in uscita. Gli URL Deezer sono
+firmati e scadono: un client che riceve un errore di riproduzione deve richiamare `/preview`
+(il web lo fa, il mobile non ancora).
+
+**Rate limit e concorrenza.** `search`, `resolve` e `preview` sono limitati a 60 richieste/min per
+IP. Attenzione: la pagina web `/releases/external/...` chiama `resolve` dal server Next.js, quindi
+tutti i visitatori anonimi condividono il limite dell'IP del server web (aperto, `04` §3). Import
+paralleli dello stesso album convergono su una sola riga (lock per chiave di match + rilettura su
+conflitto unique, `03` §8.3).
+
+**Verifica.** I test (`apps/api/test/catalog-*.test.ts`) usano risposte registrate in
+`apps/api/test/fixtures/catalog` con un `fetch` iniettato; con `NODE_ENV=test` l'API non esegue
+mai chiamate reali. **Nessuna chiamata live è stata ancora verificata**: farlo con
+`npm run catalog:smoke` su una macchina con accesso ai domini elencati nel README.
 
 **Colore dominante** senza dipendenze (`apps/api/src/lib/dominant-color.ts`): si scarica una
 copia da 64 px della cover (Deezer e iTunes la generano su richiesta, CAA ha la miniatura 250 px)

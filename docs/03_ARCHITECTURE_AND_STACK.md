@@ -14,12 +14,15 @@
 | Database       | PostgreSQL 16 + Prisma 5 (migrazioni versionate)                                          | `packages/db`                                          |
 | Cache/presenza | Redis 7                                                                                   | Stato "Now Playing" con TTL, cache heavy rotation      |
 | Web            | Next.js 14.2 App Router, React 18, Tailwind, Phosphor                                     | `apps/web`                                             |
-| Mobile         | Expo SDK 51, React Native 0.74, Reanimated 3, FlashList                                   | `apps/mobile` (prototipo, vedi `04`)                   |
+| Mobile         | Expo SDK 58, React Native 0.88, React 19.3, expo-router, expo-secure-store, expo-audio    | `apps/mobile` (ADR-011; mai provato su device, `04`)   |
+| Catalogo       | Deezer, iTunes Search, MusicBrainz, Cover Art Archive via `fetch` globale (nessun SDK)    | §8 e ADR-010; testato solo con fixture                 |
 | Contratti      | Zod 3 in `packages/shared` (schemi, tipi, eventi WS, `THEME`)                             | Importati da api, web e mobile                         |
 | Test           | Vitest 2 (unit + integrazione), Playwright 1.56 (e2e)                                     | CI: `.github/workflows/ci.yml`                         |
 
 Non presenti, anche se citati in versioni precedenti dei documenti: NestJS, BullMQ, un pacchetto
-`ui-tokens` separato (i token stanno in `THEME`), MusicBrainz, Skia.
+`ui-tokens` separato (i token stanno in `THEME`), Skia, un SDK Spotify per il catalogo.
+
+Runtime: Node **>= 22.13** (`.nvmrc` = 22), richiesto da Expo SDK 58 / React Native 0.88.
 
 ## 2. Struttura
 
@@ -28,13 +31,20 @@ apps/api/src
 ├── app.ts                 # buildApp(): plugin, decorator auth, error handler, rotte
 ├── server.ts              # avvio HTTP + Socket.io + Redis
 ├── config/                # env validato (JWT_SECRET obbligatorio in produzione)
-├── lib/                   # auth, errors, error-handler, password, realtime, upstream, mappers, follows
-└── modules/<dominio>/     # <dominio>.routes.ts (validazione + auth) + <dominio>.service.ts (logica)
+├── lib/                   # auth, errors, error-handler, password, realtime, upstream, keyed-mutex,
+│                          # dominant-color, mappers, follows
+├── modules/<dominio>/     # <dominio>.routes.ts (validazione + auth) + <dominio>.service.ts (logica)
+└── modules/catalog/providers/  # un client per Deezer, iTunes, MusicBrainz, Cover Art Archive
+apps/api/scripts           # catalog-import.ts, catalog-smoke.ts
+apps/api/test/fixtures     # risposte registrate dei provider (catalog/) e immagini di test
 apps/web/src
 ├── app/                   # pagine App Router (/, auth, explore, releases/[id], reels, chat, ...)
 ├── components/ui          # primitive del design system
 ├── components/…           # componenti di dominio (discovery, web-social, web-core)
 └── lib/{api,auth,socket,url}  # client REST tipizzato, AuthProvider, hook socket, URL sicuri
+apps/mobile
+├── app/                   # route expo-router: (auth), (tabs), release/[id], profile/[id], chat/[userId]...
+└── src/{lib,features,components,theme}  # client Bearer, AuthProvider, socket, schermate, primitive
 packages/shared/src        # auth, social, review, catalog, critic-video, realtime, errors, theme...
 packages/db                # prisma/schema.prisma, prisma/migrations, src/seed.ts
 ```
@@ -85,7 +95,10 @@ L'elenco completo degli endpoint con livello di autenticazione è in `06` §4.
 
 **Limite attuale:** Socket.io usa l'adapter **in memoria**: tutto funziona con una sola istanza
 API. Per scalare orizzontalmente serve `@socket.io/redis-adapter` (Redis Pub/Sub), non ancora
-presente. Il token del socket è verificato solo alla connessione.
+presente. La sessione del socket è verificata alla connessione e ricontrollata sul DB agli eventi
+(al massimo ogni 15 s per socket); il socket si
+chiude alla scadenza del token, al logout (solo le connessioni di quella sessione) e al cambio
+password (`06` §5).
 
 ## 5. Algoritmi
 
@@ -158,3 +171,78 @@ Schema: `packages/db/prisma/schema.prisma`. Migrazioni: `packages/db/prisma/migr
 - Dati pubblici caricati lato server: `/releases/[id]` (con metadati OpenGraph e JSON-LD),
   `/explore` (prima pagina e generi) e `/videos`. Le pagine legate alla sessione (home, chat,
   notifiche, profilo, impostazioni, Reels, critici) caricano i dati lato client con il cookie.
+
+## 8. Catalogo esterno: livello dei provider
+
+Scelta dei servizi e alternative: ADR-010. Riferimento operativo (endpoint, opzioni degli script,
+variabili): `06` §8. Qui la struttura.
+
+```text
+catalog.routes.ts ──> CatalogService ──> CatalogImportService ──> Prisma (Release/Track/Artist)
+                          │                    │  KeyedMutex per chiave di match
+                          │                    └─> CatalogEnrichmentService (coda in-process, 2 alla volta)
+                          │                           MusicBrainz → Cover Art Archive → colore dominante
+                          ├─> AudioPreviewResolverService (Deezer → iTunes)
+                          └─> CatalogProviders (providers/index.ts)
+                                 deezer · itunes · musicbrainz · coverArtArchive
+                                 └─> UpstreamClient (lib/upstream.ts), uno per provider
+```
+
+### 8.1 Provider
+
+Ogni provider (`providers/<nome>.provider.ts`) conosce gli URL del servizio, valida la risposta con
+uno schema Zod scritto sulla **forma documentata** dell'API e la converte nei tipi neutri di
+`providers/types.ts` (album, brano, artista con `externalId`, ISRC, UPC, cover, anteprima). Il resto
+dell'API non vede mai il JSON di Deezer o di Apple. Tutti usano il `fetch` globale di Node: nessun
+SDK, nessuna dipendenza npm aggiunta. `createCatalogProviders()` accetta un `fetch` iniettabile: i
+test lo sostituiscono con le fixture di `apps/api/test/fixtures/catalog`, e in modalità test
+l'API rifiuta le chiamate reali.
+
+| Provider          | Ruolo                                      | Limite (token bucket)    | Cache Redis                 |
+| ----------------- | ------------------------------------------ | ------------------------ | --------------------------- |
+| Deezer            | primario: ricerca, album, brani, ISRC, UPC | burst 10, poi 1 / 110 ms | ricerche 1 h, dettagli 24 h |
+| iTunes Search     | fallback ricerca/anteprime, artwork        | burst 3, poi 1 / 3 s     | ricerche 6 h, lookup 24 h   |
+| MusicBrainz       | arricchimento canonico (MBID, generi)      | 1 / 1,1 s, User-Agent    | 7 giorni                    |
+| Cover Art Archive | cover di riserva per MBID                  | 1 / 250 ms               | 7 giorni (404: 24 h)        |
+
+### 8.2 `UpstreamClient`
+
+Un'istanza per provider, con:
+
+- **cache** `upstream:<provider>:<sha1(url)>` in Redis (in memoria negli script), anche per i 404;
+- **rate limiter** a token bucket in ordine FIFO con **coda limitata** (oltre la coda la chiamata
+  fallisce subito invece di accumulare latenza);
+- **timeout** 5 s per richiesta, **retry** con backoff esponenziale su 429/5xx/errori di rete, nel
+  rispetto di `Retry-After`;
+- **circuit breaker**: dopo 3 errori consecutivi il provider è saltato per 30 s;
+- interruttore globale `CATALOG_EXTERNAL_ENABLED=false`: ricerca solo locale, `resolve` e
+  `preview` senza alcuna chiamata in uscita (coperto da un test che conta le chiamate).
+
+Limiti noti: rate limiter e circuit breaker sono **per processo** (con più istanze API, o con
+`catalog:import` lanciato accanto al server, lo stesso IP può superare 1 req/s su MusicBrainz).
+
+### 8.3 Identità: UUID interni, id esterni come attributi
+
+- `Release`, `Track` e `Artist` hanno sempre un **UUID interno**: è l'unico id che i client vedono
+  e che le rotte accettano (recensioni, chat, playlist). Gli id esterni sono colonne opzionali e
+  uniche: `deezerId`, `itunesId`, `musicbrainzId` (+ release group / recording), `upc`, `isrc`.
+- Ordine di match per non creare duplicati: id dello stesso provider → UPC (release) / ISRC
+  (brano) → `matchKey` = titolo + artista normalizzati (`catalogMatchKey` in `@openmusic/shared`).
+  Così lo stesso album da Deezer, iTunes, MusicBrainz o dal seed converge su una riga, e le righe
+  del seed vengono arricchite sul posto senza perdere recensioni e post collegati.
+- `coverSource` (`DEEZER | ITUNES | COVER_ART_ARCHIVE`), `metadataSyncedAt` ed `enrichedAt`
+  registrano provenienza e freschezza.
+- **Concorrenza:** "cerca la riga, altrimenti creala" è serializzato per chiave di match con
+  `KeyedMutex` (`lib/keyed-mutex.ts`) dentro un processo; tra processi diversi decidono i vincoli
+  unique, e su un conflitto l'importer rilegge la riga vincente e la aggiorna invece di inserirne
+  un'altra. Testato con import paralleli su fixture.
+- Limite noto: album omonimi dello stesso artista (es. i vari "Weezer") condividono il `matchKey`
+  e vengono uniti (`04` §3).
+
+### 8.4 Immagini e colore dominante
+
+Le cover restano sui CDN dei provider (nessuna copia locale). Il web le ottimizza solo per gli
+host di `apps/web/image-hosts.mjs`; l'API scarica soltanto una miniatura da 64 px, e solo da URL
+restituiti da un provider con host esatto o sottodominio (`dzcdn.net`, `mzstatic.com`,
+`coverartarchive.org`, `archive.org`), per calcolare `dominantColor` con un decoder PNG/JPEG-DC in
+TypeScript (`lib/dominant-color.ts`, con limiti di dimensione contro le decompression bomb).
