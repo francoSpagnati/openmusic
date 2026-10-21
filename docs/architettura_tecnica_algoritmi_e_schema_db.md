@@ -40,6 +40,8 @@ Dove:
 - $m = 3.25$ è la media a priori globale del catalogo.
 - $C = 10$ è la costante di confidenza (soglia di stabilizzazione).
 
+> **Stato implementazione (2026-10):** i pesi $w_i$ (1.5 / 1.0) sono applicati sia alla media sia alla percentuale di gradimento (`apps/api/src/modules/reviews/score.ts`). Il termine bayesiano ($C$, $m$) non è ancora applicato: `audienceAvg` è oggi una media pesata semplice. Lo schema Prisma reale usa `audienceAvg`/`audienceFreshPct` invece di `audienceBayesian`/`audienceAcclaim`.
+
 ### C. Percentuale di Gradimento / Acclaim Score (Stile Rotten Tomatoes)
 Accanto alla media su $5.00$, viene mostrata la percentuale di utenti che consigliano l'opera (voto $\ge 3.5$ stelle, ovvero $\ge 70/100$):
 

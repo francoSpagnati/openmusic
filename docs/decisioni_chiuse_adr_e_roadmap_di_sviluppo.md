@@ -16,13 +16,16 @@
 ### ADR-002: Moderazione "Safe Space" e Badge "Ascolto Verificato"
 - **Problema:** Come mantenere il social un luogo sereno dove tutti possano esprimere i propri gusti senza subire flame, review-bombing o guerre tra fandom.
 - **Decisione:**
-  1. **Niente commenti pubblici caotici:** Sotto le recensioni non ci sono thread pubblici aperti a sconosciuti, ma **4 Reazioni Curate costruttive** (`INSIGHTFUL 💡`, `CONVINCED 🎧`, `AGREE 🤝`, `VIBE ✨`).
+  1. **Niente commenti pubblici caotici:** Sotto le recensioni non ci sono thread pubblici aperti a sconosciuti, ma **4 Reazioni Curate costruttive** (`AGREE`, `WELL_WRITTEN`, `DISCOVERED`, `HEART`).
+     - *Aggiornamento 2026-10:* il codice (enum Prisma `ReactionType`, `ReactionTypeSchema`) è la fonte di verità; i nomi originari `INSIGHTFUL / CONVINCED / VIBE` sono stati abbandonati per non migrare dati esistenti.
   2. **Discussioni tra Amici:** Se vuoi discutere una recensione con un amico, il tasto *"Discuti recensione"* apre una conversazione diretta allegando la card della recensione.
   3. **Badge "Ascolto Verificato":** Se l'utente ha ascoltato il brano/album (verificato tramite `ScrobbleLog`), la recensione riceve il badge *Ascolto Verificato* e pesa $1.5\times$ nella media rispetto ai voti inseriti senza ascolto registrato, neutralizzando il review-bombing.
+     - *Implementazione:* `apps/api/src/modules/reviews/score.ts` (peso 1.5 verificato / 1.0 non verificato su media e % Fresh). Verifica: ≥ 3 brani distinti dell'album nello storico scrobble (tutti, se l'album ne ha meno), oppure 1 scrobble per la recensione di un brano. La media bayesiana (ADR-001) non è ancora applicata: oggi è una media pesata semplice.
 
 ### ADR-003: Risoluzione Universale delle Anteprime Audio da 30s
 - **Problema:** Le API di Spotify limitano spesso i `preview_url` per le nuove app, rischiando di lasciare muti i *Music Reels* e la *Roulette*.
 - **Decisione:** Creazione del modulo backend `PreviewResolverService` basato sul codice universale **ISRC** che interroga in ordine **Apple iTunes Search API** (AAC $256\text{ kbps}$ gratuito), **Deezer API** (MP3 $128\text{ kbps}$ gratuito) e **Spotify API**, salvando l'URL della clip da $30\text{ s}$ direttamente nella tabella `Track`.
+- *Stato implementazione:* `AudioPreviewResolverService` interroga oggi **Deezer → iTunes** (Spotify non è usato perché le preview sono limitate per le nuove app). Allineare l'ordine all'ADR è un'attività aperta.
 
 ### ADR-004: Rilevamento Musicale Universale e Notifica OS
 - **Problema:** Supportare utenti su diverse app di musica e offrire il riepilogo rapido degli amici nello spazio notifiche del telefono.

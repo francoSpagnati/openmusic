@@ -40,6 +40,10 @@
 - [x] Sezione multimediale per la condivisione di video-contenuti a tema musicale (`VideosService`, rotte `/api/videos/*`, modello `MusicVideoContent`).
 - [x] Componenti Mobile: `<DualScoreCard />` (Tomatometer stile Pitchfork/Rotten Tomatoes con badge Fresh/Rotten per Critica e Pubblico), `<CriticReviewCard />` (scheda editoriale con testata e link articolo esterno) e `<MusicVideoPlayerCard />` (video-saggi con durata e tag).
 
+- [x] Fase "fondamenta": account locali email+password (scrypt, JWT in cookie httpOnly / Bearer), error handler centrale, rate limit, helmet, Socket.io autenticato con presenza solo ai follower, ruolo `ADMIN` e verifica accrediti critici, feed post/like/salvati, follow, notifiche persistenti + live, inbox chat, peso 1.5x ascolto verificato, test d'integrazione su DB reale, client API tipizzato per il web (`docs/06_API_AND_AUTH.md`).
+- [ ] Pagine web ancora su dati mock: da collegare al client `apps/web/src/lib/api` nella fase successiva.
+- [ ] App mobile: il socket usa ancora `auth: { userId }` e va migrato a `auth: { token }`.
+
 ---
 
 ## 3. Open Questions / Cose da Definire (TBD)

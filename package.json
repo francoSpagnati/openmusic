@@ -7,7 +7,7 @@
   ],
   "packageManager": "npm@10.2.4",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@openmusic/api --filter=@openmusic/web",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
@@ -19,7 +19,10 @@
     "db:migrate": "npm --workspace=@openmusic/db run migrate",
     "db:migrate:deploy": "npm --workspace=@openmusic/db run migrate:deploy",
     "db:seed": "npm --workspace=@openmusic/db run seed",
-    "db:test:prepare": "node scripts/prepare-test-db.mjs"
+    "db:test:prepare": "node scripts/prepare-test-db.mjs",
+    "dev:api": "turbo run dev --filter=@openmusic/api",
+    "dev:web": "turbo run dev --filter=@openmusic/web",
+    "dev:mobile": "npm --workspace=@openmusic/mobile run start"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.1",
