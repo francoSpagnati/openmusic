@@ -1,4 +1,4 @@
-import type { ReleaseType } from '@openmusic/shared';
+import type { CatalogSource, ReleaseType } from '@openmusic/shared';
 
 /** `m:ss` from seconds (player clock). */
 export function formatClock(totalSeconds: number): string {
@@ -89,3 +89,12 @@ export function ratingToStars(rating: number): number {
 export function formatStars(stars: number): string {
   return stars.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
+
+/** Display names of the catalog databases (attribution next to imported data). */
+export const CATALOG_SOURCE_LABEL: Record<CatalogSource, string> = {
+  LOCAL: 'OpenMusic',
+  DEEZER: 'Deezer',
+  ITUNES: 'Apple iTunes',
+  MUSICBRAINZ: 'MusicBrainz',
+  COVER_ART_ARCHIVE: 'Cover Art Archive',
+};

@@ -51,8 +51,13 @@ export default defineConfig({
       url: `${API_URL}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
-      // Many registrations from one IP during a run; keep the auth limiter out of the way.
-      env: { AUTH_RATE_LIMIT_MAX: '1000' },
+      env: {
+        // Many registrations from one IP during a run; keep the auth limiter out of the way.
+        AUTH_RATE_LIMIT_MAX: '1000',
+        // Seeded data only: no Deezer/iTunes/MusicBrainz calls, so runs are deterministic and
+        // work offline (CI sets the same). Export CATALOG_EXTERNAL_ENABLED=true to override.
+        CATALOG_EXTERNAL_ENABLED: process.env.CATALOG_EXTERNAL_ENABLED ?? 'false',
+      },
     },
     {
       command: 'npx next start -p 3000',

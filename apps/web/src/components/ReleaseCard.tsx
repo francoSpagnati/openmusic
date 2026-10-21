@@ -35,6 +35,7 @@ export const ReleaseCard: React.FC<ReleaseCardProps> = ({
       <div className="relative">
         <CoverArt
           src={release.coverUrl}
+          placeholderColor={release.dominantColor}
           alt=""
           sizes="(min-width: 1024px) 220px, (min-width: 640px) 33vw, 50vw"
           priority={priority}

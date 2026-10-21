@@ -10,7 +10,7 @@ import { ReleaseHero } from './ReleaseHero';
 import { ReleaseScoreProvider } from './ReleaseScoreContext';
 import { ReleaseTracklistClient } from './ReleaseTracklistClient';
 import { ReleaseVideos } from './ReleaseVideos';
-import { getRelease, settled } from './data';
+import { getRelease, redirectLegacyId, settled } from './data';
 
 interface Props {
   params: { id: string };
@@ -43,6 +43,7 @@ function scoreSentence(release: CatalogRelease): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  redirectLegacyId(params.id);
   const release = await getRelease(params.id);
   // Throwing here (before streaming starts) makes unknown ids answer with a real 404 status.
   if (!release) notFound();
@@ -91,6 +92,7 @@ function jsonLd(release: CatalogRelease): string {
 }
 
 export default async function ReleaseDetailPage({ params }: Props) {
+  redirectLegacyId(params.id);
   const release = await getRelease(params.id);
   if (!release) notFound();
 

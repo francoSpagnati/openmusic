@@ -8,9 +8,12 @@ import {
   type FriendPresence,
   type NowPlayingTrack,
   type ServerToClientEvents,
+  type SessionRevoked,
   type WsAck,
 } from '@openmusic/shared';
 import { API_URL } from './api/config';
+import { authApi } from './api/auth';
+import { isApiError } from './api/errors';
 import { nowPlayingApi } from './api/social';
 import { useAuth } from './auth/AuthProvider';
 
@@ -191,4 +194,57 @@ export function useFriendsPresence(): FriendsPresenceState {
   );
 
   return { friends: Array.from(byId.values()), connected, error, updateTrack, setGhostMode };
+}
+
+/**
+ * Reacts to `session:revoked`, sent right before the server closes the socket. socket.io does
+ * not reconnect after a server-side disconnect, so once the old socket is closed:
+ * - `PASSWORD_CHANGED`: reconnect. If the password was changed here this browser already has a
+ *   fresh cookie; if it was changed elsewhere the handshake fails with `UNAUTHORIZED`;
+ * - other reasons (logout, expiry, invalid session): reconnect only if `/api/auth/me` still
+ *   accepts the cookie (e.g. another tab signed in again).
+ * When the cookie is no longer valid the session is refreshed, which turns the app anonymous
+ * (and disconnects the socket), and `onSignedOut` lets the UI explain why.
+ * Mount once, in the layout.
+ */
+export function useSessionRevocation(
+  onSignedOut: (reason: SessionRevoked['reason']) => void
+): void {
+  const { socket: s } = useSocket();
+  const { refresh } = useAuth();
+  const onSignedOutRef = useRef(onSignedOut);
+  onSignedOutRef.current = onSignedOut;
+
+  useSocketEvent(WS_EVENTS.SERVER_SESSION_REVOKED, ({ reason }) => {
+    if (!s) return;
+    const signOut = () => {
+      refresh().catch(() => undefined);
+      // This tab's own logout already says goodbye.
+      if (reason !== 'LOGOUT') onSignedOutRef.current(reason);
+    };
+    // true = cookie still valid, false = signed out (401), null = network trouble (leave it).
+    const sessionValid = () =>
+      authApi
+        .me()
+        .then(() => true)
+        .catch((err: unknown) => (isApiError(err) && err.status === 401 ? false : null));
+    const reconnectIfValid = () =>
+      void sessionValid().then((valid) => {
+        if (valid === true) s.connect();
+        else if (valid === false) signOut();
+      });
+
+    s.once('disconnect', () => {
+      if (reason !== 'PASSWORD_CHANGED') {
+        reconnectIfValid();
+        return;
+      }
+      // The fresh cookie from the password change may land just after this event: on a
+      // rejected handshake, check the session once more before giving up.
+      s.once('connect_error', (err: Error) => {
+        if (err.message === 'UNAUTHORIZED') reconnectIfValid();
+      });
+      s.connect();
+    });
+  });
 }

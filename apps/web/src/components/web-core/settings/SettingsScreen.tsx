@@ -127,8 +127,7 @@ export function SettingsScreen() {
                   getLoginUrl={() => api.auth.lastFmLoginUrl()}
                 />
                 <p className="text-xs text-ink-muted">
-                  Dopo aver autorizzato il servizio torna su questa scheda: lo stato si aggiorna da
-                  solo.
+                  Dopo l’autorizzazione tornerai su questa pagina con l’esito del collegamento.
                 </p>
               </div>
             </SettingsSection>

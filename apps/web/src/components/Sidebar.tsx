@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { PlusCircle, SignIn, SignOut } from '@phosphor-icons/react';
 import { useAuth, loginRedirectUrl } from '@/lib/auth';
 import { Avatar, Button, Skeleton, buttonClasses, cn, useToast } from '@/components/ui';
+import { CatalogQuickSearch } from './discovery/CatalogQuickSearch';
 import { BrandMark } from './web-core/shell/BrandMark';
 import { GhostModeSwitch } from './web-core/GhostModeSwitch';
 import { NAV_ITEMS, isActivePath } from './web-core/navigation';
@@ -32,6 +33,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
     >
       <div className="space-y-6">
         <BrandMark />
+
+        {/* Explore has its own, bigger search box. */}
+        {!isActivePath(pathname, '/explore') && <CatalogQuickSearch />}
 
         <nav aria-label="Sezioni">
           <ul className="space-y-0.5">

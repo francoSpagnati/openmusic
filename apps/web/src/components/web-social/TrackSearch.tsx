@@ -32,7 +32,7 @@ export function TrackSearch({
   const debounced = useDebouncedValue(query.trim(), 300);
   const ready = debounced.length >= MIN_QUERY;
   const search = useApiResource(ready ? `tracks:${debounced}` : null, () =>
-    api.catalog.search(debounced).then((r) => r.tracks)
+    api.catalog.search({ q: debounced, type: 'tracks', limit: 10 }).then((r) => r.tracks)
   );
   const groupName = useId();
   const typing = query.trim() !== debounced;

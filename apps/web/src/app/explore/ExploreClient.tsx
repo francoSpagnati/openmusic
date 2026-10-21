@@ -87,6 +87,7 @@ export function ExploreClient({ initialParams, initialGenres, initialPage }: Exp
           state={search}
           onRetry={search.retry}
           onClear={() => setQuery('')}
+          onLoadMore={() => void search.loadMore()}
         />
       ) : (
         <section aria-labelledby="browse-heading" className="space-y-5">

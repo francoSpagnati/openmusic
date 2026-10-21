@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { redirect } from 'next/navigation';
 import type { CatalogRelease } from '@openmusic/shared';
 import { api, isApiError } from '../../../lib/api';
 
@@ -18,4 +19,15 @@ export const getRelease = cache(async (id: string): Promise<CatalogRelease | nul
 /** Settled value or a fallback, so one failing side panel never takes the page down. */
 export function settled<T, F>(result: PromiseSettledResult<T>, fallback: F): T | F {
   return result.status === 'fulfilled' ? result.value : fallback;
+}
+
+/**
+ * Old catalog search ids (`deezer-alb-302127`, `deezer-trk-3135556`) are no longer valid release
+ * ids: send them through the external resolver, which imports the album and redirects to its
+ * internal UUID. No-op for any other id.
+ */
+export function redirectLegacyId(id: string): void {
+  const legacy = /^deezer-(alb|trk)-(\d{1,20})$/.exec(id);
+  if (!legacy) return;
+  redirect(`/releases/external/deezer/${legacy[2]}${legacy[1] === 'trk' ? '?type=track' : ''}`);
 }

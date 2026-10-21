@@ -5,6 +5,7 @@ import { ArrowSquareOut, Clock, Play } from '@phosphor-icons/react/dist/ssr';
 import type { MusicVideoItem } from '@openmusic/shared';
 import { Badge, Card } from '../../components/ui';
 import { externalHref } from '../../lib/url';
+import { isOptimizableImage } from '../../lib/images';
 import { formatDate, formatLongDuration } from '../../components/discovery/format';
 import { CATEGORY_LABEL, fallbackThumbnail, videoHost } from './videoMeta';
 
@@ -36,6 +37,7 @@ export function VideoCard({
             alt=""
             fill
             priority={priority}
+            unoptimized={!isOptimizableImage(thumb)}
             sizes="(min-width: 1024px) 420px, (min-width: 640px) 50vw, 100vw"
             className="object-cover transition-transform duration-slow ease-standard group-hover:scale-[1.03]"
           />

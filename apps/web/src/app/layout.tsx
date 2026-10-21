@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { THEME } from '@openmusic/shared';
+import { Suspense } from 'react';
 import { Fraunces, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '../components/Navbar';
@@ -8,6 +9,8 @@ import { AudioPlayerProvider } from '../context/AudioPlayerContext';
 import { AudioPlayerBar } from '../components/AudioPlayerBar';
 import { ToastProvider } from '../components/ui';
 import { AuthProvider } from '../lib/auth';
+import { OAuthReturnNotice } from '../components/web-core/shell/OAuthReturnNotice';
+import { SessionRevocationNotice } from '../components/web-core/shell/SessionRevocationNotice';
 
 // Typography decision (docs/05_DESIGN_SYSTEM.md §2):
 // Fraunces = editorial voice (headlines, reviews), variable with opsz/SOFT/WONK axes.
@@ -82,6 +85,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-om-bg text-om-text flex flex-col selection:bg-om-amber selection:text-om-bg font-sans">
         <AuthProvider>
           <ToastProvider>
+            {/* useSearchParams() needs a Suspense boundary for static rendering. */}
+            <Suspense fallback={null}>
+              <OAuthReturnNotice />
+            </Suspense>
+            <SessionRevocationNotice />
             <AudioPlayerProvider>
               <Navbar />
               <main className="flex-1 pb-16">{children}</main>

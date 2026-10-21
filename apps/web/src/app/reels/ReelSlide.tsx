@@ -98,6 +98,7 @@ export function ReelSlide({
         </span>
         <CoverArt
           src={release.coverUrl ?? track.coverUrl}
+          placeholderColor={release.dominantColor}
           alt={`Copertina di ${release.title}`}
           sizes="(min-width: 640px) 24rem, 72vw"
           priority={index === 0}

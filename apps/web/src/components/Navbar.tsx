@@ -7,6 +7,7 @@ import { Bell, List, SignIn, SignOut, X } from '@phosphor-icons/react';
 import { loginRedirectUrl, useAuth } from '@/lib/auth';
 import { useFriendsPresence } from '@/lib/socket';
 import { Avatar, IconButton, buttonClasses, cn } from '@/components/ui';
+import { CatalogQuickSearch } from './discovery/CatalogQuickSearch';
 import { BrandMark } from './web-core/shell/BrandMark';
 import { GhostModeSwitch } from './web-core/GhostModeSwitch';
 import { NAV_ITEMS, isActivePath } from './web-core/navigation';
@@ -94,6 +95,7 @@ export const Navbar: React.FC = () => {
         hidden={!open}
         className="border-t border-line bg-surface px-4 pb-4 pt-2 sm:px-6"
       >
+        {!isActivePath(pathname, '/explore') && <CatalogQuickSearch className="mb-2 mt-1" />}
         <ul className="grid gap-0.5 sm:grid-cols-2">
           {items.map((item) => {
             const Icon = item.icon;

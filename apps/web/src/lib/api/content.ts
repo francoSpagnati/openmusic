@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AudioPreviewResultSchema,
   CatalogReleaseSchema,
+  CatalogResolveResultSchema,
   CriticAccreditationStatusSchema,
   CriticReviewItemSchema,
   DiscoveryFeedResponseSchema,
@@ -23,6 +24,9 @@ import {
   type AudioPreviewResult,
   type BrowseReleasesQuery,
   type CatalogRelease,
+  type CatalogResolveQuery,
+  type CatalogResolveResult,
+  type CatalogSearchQuery,
   type CreatePlaylistInput,
   type CreateReviewInput,
   type CreateVideoContentInput,
@@ -50,8 +54,19 @@ import {
 import { apiRequest } from './client';
 
 export const catalogApi = {
-  search: (q: string): Promise<SearchResult> =>
-    apiRequest('/api/catalog/search', { query: { q }, schema: SearchResultSchema }),
+  /**
+   * Local catalog first, then Deezer/iTunes results imported on the fly: every id is an internal
+   * UUID. Pass an object for paging/filters (`{ q, type, page, limit, external }`).
+   */
+  search: (query: string | CatalogSearchQuery): Promise<SearchResult> =>
+    apiRequest('/api/catalog/search', {
+      query: typeof query === 'string' ? { q: query } : { ...query },
+      schema: SearchResultSchema,
+    }),
+
+  /** External id (Deezer / iTunes / MusicBrainz) -> internal release, imported on first use. */
+  resolve: (query: CatalogResolveQuery): Promise<CatalogResolveResult> =>
+    apiRequest('/api/catalog/resolve', { query: { ...query }, schema: CatalogResolveResultSchema }),
 
   browse: (query: BrowseReleasesQuery = {}): Promise<ReleasePage> =>
     apiRequest('/api/catalog/releases', { query: { ...query }, schema: ReleasePageSchema }),

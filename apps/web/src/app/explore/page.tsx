@@ -40,6 +40,8 @@ export default async function ExplorePage({ searchParams }: { searchParams: RawS
       />
 
       <ExploreClient
+        // A new `?q=` from the global search box starts a fresh search.
+        key={params.q}
         initialParams={params}
         initialGenres={initialGenres}
         initialPage={initialPage}

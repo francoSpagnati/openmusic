@@ -115,6 +115,7 @@ function ReleaseSleeve({ post }: { post: Post }) {
       <div className="relative aspect-square w-full shrink-0 bg-sunken sm:w-40">
         <CoverArt
           src={release.coverUrl}
+          placeholderColor={release.dominantColor}
           alt={`Copertina di ${release.title}`}
           sizes="(min-width: 640px) 160px, 100vw"
           className="h-full w-full"

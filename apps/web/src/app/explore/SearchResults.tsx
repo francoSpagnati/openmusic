@@ -4,11 +4,15 @@ import React from 'react';
 import Link from 'next/link';
 import { MagnifyingGlass } from '@phosphor-icons/react';
 import type { SearchResult } from '@openmusic/shared';
-import { EmptyState, ErrorState, Skeleton } from '../../components/ui';
+import { Button, EmptyState, ErrorState, Skeleton, Spinner } from '../../components/ui';
 import { CoverArt } from '../../components/discovery/CoverArt';
 import { PreviewPlayButton } from '../../components/discovery/PreviewPlayButton';
 import { toPlayingTrack } from '../../components/discovery/ReleasePreviewButton';
-import { formatTrackDuration, plural } from '../../components/discovery/format';
+import {
+  CATALOG_SOURCE_LABEL,
+  formatTrackDuration,
+  plural,
+} from '../../components/discovery/format';
 import type { SearchState } from './useCatalogSearch';
 import { ReleaseGrid, ReleaseGridSkeleton } from './ReleaseGrid';
 
@@ -17,11 +21,13 @@ export function SearchResults({
   state,
   onRetry,
   onClear,
+  onLoadMore,
 }: {
   query: string;
   state: SearchState;
   onRetry: () => void;
   onClear: () => void;
+  onLoadMore: () => void;
 }) {
   if (state.status === 'error') {
     return (
@@ -47,15 +53,37 @@ export function SearchResults({
   }
 
   const total = result.releases.length + result.tracks.length;
-  return (
-    <div className="space-y-8" aria-busy={state.status === 'loading'}>
-      <p role="status" className="font-mono text-xs tabular-nums text-ink-secondary">
-        {state.status === 'loading'
-          ? 'Aggiorno i risultati…'
-          : `${plural(total, 'risultato', 'risultati')} per “${query.trim()}”`}
-      </p>
+  // Local catalog answered, Deezer/iTunes still searching.
+  const searchingExternal = state.status === 'ready' && state.phase === 'local';
+  const done = state.status === 'ready' && state.phase === 'complete';
+  const external = result.sources.filter((source) => source !== 'LOCAL');
 
-      {total === 0 && state.status === 'ready' && (
+  return (
+    <div className="space-y-8" aria-busy={state.status === 'loading' || searchingExternal}>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p role="status" className="font-mono text-xs tabular-nums text-ink-secondary">
+          {state.status === 'loading'
+            ? 'Aggiorno i risultati…'
+            : `${plural(total, 'risultato', 'risultati')} per “${query.trim()}”`}
+        </p>
+        {searchingExternal ? (
+          <p className="inline-flex items-center gap-2 font-mono text-xs text-ink-muted">
+            <Spinner size="sm" label={null} />
+            Cerco anche su Deezer e iTunes…
+          </p>
+        ) : (
+          external.length > 0 && (
+            <p className="font-mono text-xs text-ink-muted">
+              Copertine e metadati da{' '}
+              {external.map((source) => CATALOG_SOURCE_LABEL[source]).join(', ')}
+            </p>
+          )
+        )}
+      </div>
+
+      {total === 0 && searchingExternal && <ReleaseGridSkeleton count={4} />}
+
+      {total === 0 && done && (
         <EmptyState
           icon={<MagnifyingGlass />}
           title="Nessun disco su questo scaffale"
@@ -98,7 +126,7 @@ export function SearchResults({
                 <div className="min-w-0 flex-1">
                   {track.releaseId ? (
                     <Link
-                      href={`/releases/${track.releaseId}`}
+                      href={`/releases/${track.releaseId}#track-${track.id}`}
                       className="block truncate text-sm font-semibold text-ink hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                     >
                       {track.title}
@@ -116,6 +144,24 @@ export function SearchResults({
             ))}
           </ul>
         </section>
+      )}
+
+      {state.status === 'ready' && state.result.hasMore && (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <Button
+            variant="secondary"
+            loading={state.loadingMore}
+            loadingLabel="Cerco altri risultati…"
+            onClick={onLoadMore}
+          >
+            Altri risultati
+          </Button>
+          {state.loadMoreFailed && (
+            <p role="alert" className="text-sm text-rotten">
+              Non sono riuscito a caricarne altri. Riprova.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

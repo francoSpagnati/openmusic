@@ -81,6 +81,8 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const requestRef = useRef(0);
   const currentTrackRef = useRef<PlayingTrack | null>(null);
   currentTrackRef.current = currentTrack;
+  /** Audio failures go through this ref so `attach` (created once) always calls the latest one. */
+  const audioFailedRef = useRef<() => void>(() => setStatus('error'));
 
   const attach = useCallback((audio: HTMLAudioElement) => {
     detachRef.current?.abort();
@@ -104,7 +106,7 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       },
       opts
     );
-    audio.addEventListener('error', () => setStatus('error'), opts);
+    audio.addEventListener('error', () => audioFailedRef.current(), opts);
     detachRef.current = controller;
     audioRef.current = audio;
   }, []);
@@ -180,11 +182,46 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       } catch (err) {
         if (request !== requestRef.current) return;
         const blocked = err instanceof DOMException && err.name === 'NotAllowedError';
-        setStatus(blocked ? 'blocked' : 'error');
+        if (blocked) setStatus('blocked');
+        else audioFailedRef.current();
       }
     },
     [attach]
   );
+
+  /**
+   * Deezer preview URLs stored with a track are signed and expire after a while. When one fails
+   * to load, ask the resolver (ADR-003) for a fresh URL once before giving up.
+   */
+  const retriedRef = useRef<string | null>(null);
+  const retryingRef = useRef(false);
+  audioFailedRef.current = () => {
+    const track = currentTrackRef.current;
+    if (!track) return;
+    if (retriedRef.current === track.id) {
+      // Already retrying (or retried) this track: the second failure is final.
+      if (retryingRef.current) return;
+      setStatus('error');
+      return;
+    }
+    if (!track.previewUrl) {
+      setStatus('error');
+      return;
+    }
+    retriedRef.current = track.id;
+    retryingRef.current = true;
+    const request = requestRef.current;
+    setStatus('resolving');
+    void resolvePreviewUrl({ ...track, previewUrl: null }).then((url) => {
+      retryingRef.current = false;
+      if (request !== requestRef.current) return;
+      if (!url || url === track.previewUrl) {
+        setStatus(url ? 'error' : 'unavailable');
+        return;
+      }
+      void startPlayback(url, request);
+    });
+  };
 
   const resume = useCallback(() => {
     const audio = audioRef.current;
