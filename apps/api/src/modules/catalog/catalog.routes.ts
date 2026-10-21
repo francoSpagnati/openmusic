@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import {
   AudioPreviewResolveQuerySchema,
   BrowseReleasesQuerySchema,
+  CatalogResolveQuerySchema,
   CatalogSearchQuerySchema,
   IdParamSchema,
 } from '@openmusic/shared';
@@ -17,9 +18,14 @@ const upstreamRateLimit = { config: { rateLimit: { max: 60, timeWindow: '1 minut
 export function createCatalogRoutes(catalogService: CatalogService): FastifyPluginAsync {
   return async (fastify) => {
     fastify.get('/search', upstreamRateLimit, async (request) => {
-      const { q } = CatalogSearchQuerySchema.parse(request.query);
-      if (!q) return { releases: [], tracks: [] };
-      return catalogService.search(q);
+      const query = CatalogSearchQuerySchema.parse(request.query);
+      return catalogService.search(query);
+    });
+
+    // External id (Deezer / iTunes / MusicBrainz) -> internal release, imported on first use.
+    fastify.get('/resolve', upstreamRateLimit, async (request) => {
+      const query = CatalogResolveQuerySchema.parse(request.query);
+      return catalogService.resolve(query);
     });
 
     // Explore: browse releases by genre, most reviewed or most recent first.
@@ -30,6 +36,8 @@ export function createCatalogRoutes(catalogService: CatalogService): FastifyPlug
 
     fastify.get('/genres', async () => catalogService.listGenres());
 
+    // Opening a release known only from a search hit fetches its tracklist from the provider
+    // (once). Not rate limited: the web SSR calls it from a single server IP.
     fastify.get('/releases/:id', async (request) => {
       const { id } = IdParamSchema.parse(request.params);
       const release = await catalogService.getReleaseById(id);

@@ -237,7 +237,9 @@ describe('review hardening', () => {
         url: '/api/auth/lastfm/callback?token=attacker-token',
         headers,
       });
-      expect(res.statusCode).toBe(403);
+      // The browser is sent back to the web app with the error, never to a JSON body.
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toMatch(/\/settings\?oauth=lastfm&status=error&code=FORBIDDEN$/);
       expect(getSession).not.toHaveBeenCalled();
     });
 
@@ -256,7 +258,8 @@ describe('review hardening', () => {
         url: `/api/auth/lastfm/callback?token=t1&state=${first.state}`,
         headers: { ...owner.headers, cookie: first.cookie },
       });
-      expect(linked.statusCode).toBe(200);
+      expect(linked.statusCode).toBe(302);
+      expect(linked.headers.location).toMatch(/\/settings\?oauth=lastfm&status=success$/);
 
       const second = await startLink(other.headers);
       const stolen = await ctx.app.inject({
@@ -264,7 +267,8 @@ describe('review hardening', () => {
         url: `/api/auth/lastfm/callback?token=t2&state=${second.state}`,
         headers: { ...other.headers, cookie: second.cookie },
       });
-      expect(stolen.statusCode).toBe(409);
+      expect(stolen.statusCode).toBe(302);
+      expect(stolen.headers.location).toMatch(/status=error&code=CONFLICT$/);
       const link = await prisma.connectedAccount.findFirstOrThrow({
         where: { provider: 'LASTFM', providerId: 'shared_scrobbler' },
       });

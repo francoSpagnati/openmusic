@@ -13,8 +13,10 @@ import {
   type MeResponse,
   type OAuthUrlResponse,
 } from '@openmusic/shared';
-import { requireAuth } from '../../lib/auth';
-import { BadRequestError, ForbiddenError } from '../../lib/errors';
+import { requireAuth, requestSessionToken } from '../../lib/auth';
+import { toApiError } from '../../lib/error-handler';
+import { BadRequestError, ForbiddenError, UnauthorizedError } from '../../lib/errors';
+import type { SessionSockets } from '../now-playing/now-playing.gateway';
 import type { NowPlayingService } from '../now-playing/now-playing.service';
 import type { AuthService } from './auth.service';
 
@@ -26,7 +28,13 @@ export interface AuthRoutesOptions {
   cookieSecure: boolean;
   /** Ghost Mode must also clear the live presence and notify followers, not just set the flag. */
   presence: Pick<NowPlayingService, 'setGhostMode'>;
+  /** Closes live sockets when a session ends (logout) or is revoked (password change). */
+  sockets: SessionSockets;
+  /** Web app origin: OAuth callbacks redirect the browser back there. */
+  webAppUrl: string;
 }
+
+type OAuthProvider = 'spotify' | 'lastfm';
 
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -64,8 +72,11 @@ export function createAuthRoutes(
       return reply.send(await withSession(reply, session));
     });
 
-    fastify.post('/logout', async (_request, reply) => {
+    fastify.post('/logout', { preHandler: fastify.optionalAuth }, async (request, reply) => {
+      const token = requestSessionToken(request);
       fastify.clearSession(reply);
+      // Close the sockets opened with this session (other devices stay connected).
+      if (request.auth && token) await options.sockets.revoke(request.auth.userId, 'LOGOUT', token);
       return reply.status(204).send();
     });
 
@@ -89,6 +100,8 @@ export function createAuthRoutes(
         // Revokes every other session; this device gets a fresh cookie and stays signed in.
         await authService.changePassword(userId, input);
         await fastify.issueSession(reply, userId);
+        // Every open socket carries the old session version: close them all.
+        await options.sockets.revoke(userId, 'PASSWORD_CHANGED');
         return reply.status(204).send();
       }
     );
@@ -131,18 +144,55 @@ export function createAuthRoutes(
       return reply.send(body);
     });
 
+    /**
+     * The provider sends the BROWSER here, so the outcome is a redirect back to the web app, never
+     * a JSON body: `<WEB_APP_URL><path>?oauth=<provider>&status=success|error[&code=<ApiErrorCode>]`.
+     * Only fixed paths on the configured origin are used (no open redirect).
+     */
+    async function oauthRedirect(
+      reply: FastifyReply,
+      provider: OAuthProvider,
+      paths: { success: string; error: string },
+      action: () => Promise<void>
+    ): Promise<FastifyReply> {
+      const params = new URLSearchParams({ oauth: provider });
+      let path = paths.success;
+      try {
+        await action();
+        params.set('status', 'success');
+      } catch (err) {
+        const body = toApiError(err);
+        if (body.statusCode >= 500) fastify.log.error({ err, provider }, 'OAuth callback failed');
+        params.set('status', 'error');
+        params.set('code', body.code);
+        path = paths.error;
+      }
+      return reply.redirect(`${options.webAppUrl}${path}?${params.toString()}`, 302);
+    }
+
     fastify.get(
       '/spotify/callback',
       { preHandler: fastify.optionalAuth },
       async (request, reply) => {
-        const query = SpotifyAuthCallbackQuerySchema.parse(request.query);
-        consumeOAuthState(request, reply, query.state);
-        if (query.error || !query.code) {
-          throw new BadRequestError('Autorizzazione Spotify negata o codice mancante');
-        }
-
-        const session = await authService.handleSpotifyCallback(query.code, request.auth?.userId);
-        return reply.send(await withSession(reply, session));
+        // Signed in = linking from the settings page; anonymous = "sign in with Spotify".
+        const linking = request.auth !== null;
+        return oauthRedirect(
+          reply,
+          'spotify',
+          { success: linking ? '/settings' : '/', error: linking ? '/settings' : '/auth' },
+          async () => {
+            const query = SpotifyAuthCallbackQuerySchema.parse(request.query);
+            consumeOAuthState(request, reply, query.state);
+            if (query.error || !query.code) {
+              throw new BadRequestError('Autorizzazione Spotify negata o codice mancante');
+            }
+            const session = await authService.handleSpotifyCallback(
+              query.code,
+              request.auth?.userId
+            );
+            await withSession(reply, session);
+          }
+        );
       }
     );
 
@@ -153,12 +203,20 @@ export function createAuthRoutes(
 
     fastify.get(
       '/lastfm/callback',
-      { preHandler: fastify.authenticate },
+      { preHandler: fastify.optionalAuth },
       async (request, reply) => {
-        const query = LastFmAuthCallbackQuerySchema.parse(request.query);
-        consumeOAuthState(request, reply, query.state);
-        if (!query.token) throw new BadRequestError('Token Last.fm mancante');
-        return authService.handleLastFmCallback(query.token, requireAuth(request).userId);
+        return oauthRedirect(
+          reply,
+          'lastfm',
+          { success: '/settings', error: '/settings' },
+          async () => {
+            const query = LastFmAuthCallbackQuerySchema.parse(request.query);
+            consumeOAuthState(request, reply, query.state);
+            if (!request.auth) throw new UnauthorizedError();
+            if (!query.token) throw new BadRequestError('Token Last.fm mancante');
+            await authService.handleLastFmCallback(query.token, request.auth.userId);
+          }
+        );
       }
     );
 

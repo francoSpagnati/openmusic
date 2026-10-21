@@ -18,6 +18,7 @@
 | 007 | Gestione centralizzata degli errori API             | Accettata                          | Sì                   |
 | 008 | Tipografia e token di design                        | Accettata                          | Web sì, mobile no    |
 | 009 | Tipi di reazione alle recensioni                    | Accettata                          | Sì                   |
+| 010 | Catalogo da database musicali aperti                | Accettata                          | Sì (testato offline) |
 
 ---
 
@@ -144,6 +145,24 @@
   reazione una volta per recensione (toggle). Le reazioni in chat sono un insieme separato:
   `FIRE`, `HEART`, `NOT_FOR_ME`.
 - **Motivo:** evitare una migrazione dei dati esistenti senza un guadagno di prodotto chiaro.
+
+### ADR-010: Catalogo da database musicali aperti
+
+- **Data:** 2026-10.
+- **Contesto:** il catalogo conteneva solo il seed con cover di Unsplash; la ricerca importava da
+  Deezer con id `deezer-…` come chiave primaria, rifiutati da tutte le rotte che validano UUID.
+- **Decisione:** Deezer è la fonte primaria (cover 1000 px, tracklist con ISRC, UPC, anteprime,
+  nessuna chiave), iTunes Search il fallback, MusicBrainz la fonte canonica di arricchimento (MBID,
+  generi votati, etichetta) e Cover Art Archive la cover di riserva. Tutto passa da un client
+  upstream comune (cache Redis, rate limit per provider, retry, circuit breaker). Le entità hanno
+  **sempre UUID interni**; gli id esterni sono colonne uniche opzionali e la deduplica usa id →
+  UPC/ISRC → titolo + artista normalizzati. Nessuna dipendenza nuova: `fetch` globale e un
+  decoder PNG/JPEG-DC minimale per il colore dominante. Dettagli: `06` §8.
+- **Alternative scartate:** Spotify Web API (richiede app registrata e token, termini più
+  restrittivi sull'uso dei metadati); Discogs (token obbligatorio, 60 req/min); una libreria di
+  immagini (`sharp`) per il colore dominante, che aggiunge binari nativi.
+- **Conseguenze:** MusicBrainz a 1 req/s impone l'arricchimento in background o via script; senza
+  rete la ricerca restituisce solo risultati locali.
 
 ---
 

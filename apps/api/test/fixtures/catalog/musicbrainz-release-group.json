@@ -1,0 +1,32 @@
+{
+  "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+  "title": "In Rainbows",
+  "primary-type": "Album",
+  "first-release-date": "2007-10-10",
+  "genres": [
+    {
+      "id": "ceeaa283-5d7b-4202-8d1d-e25d116b2a18",
+      "name": "alternative rock",
+      "count": 12,
+      "disambiguation": ""
+    },
+    {
+      "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+      "name": "art rock",
+      "count": 15,
+      "disambiguation": ""
+    },
+    {
+      "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+      "name": "electronic",
+      "count": 4,
+      "disambiguation": ""
+    }
+  ],
+  "tags": [
+    {
+      "name": "2007",
+      "count": 3
+    }
+  ]
+}

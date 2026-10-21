@@ -55,6 +55,9 @@ cp .env.example packages/db/.env   # la CLI Prisma legge DATABASE_URL da qui
 npm run db:generate          # client Prisma
 npm run db:migrate:deploy    # applica le migrazioni in packages/db/prisma/migrations
 npm run db:seed              # utenti, release, recensioni e post di esempio
+                             # (+ cover e tracklist reali dei dischi del seed se Deezer risponde)
+npm run catalog:import -- --file curated-albums.json   # opzionale: ~46 album reali
+npm run catalog:smoke        # verifica la raggiungibilità di Deezer/iTunes/MusicBrainz/CAA
 ```
 
 Tutti gli utenti del seed hanno password `openmusic-dev` (es. `francospagnati@openmusic.test`;

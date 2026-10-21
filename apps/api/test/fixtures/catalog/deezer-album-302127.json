@@ -1,0 +1,293 @@
+{
+  "id": 302127,
+  "title": "In Rainbows",
+  "cover": "https://api.deezer.com/album/302127/image",
+  "cover_small": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/56x56-000000-80-0-0.jpg",
+  "cover_medium": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/250x250-000000-80-0-0.jpg",
+  "cover_big": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/500x500-000000-80-0-0.jpg",
+  "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/1000x1000-000000-80-0-0.jpg",
+  "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+  "tracklist": "https://api.deezer.com/album/302127/tracks",
+  "type": "album",
+  "upc": "0634904032463",
+  "link": "https://www.deezer.com/album/302127",
+  "share": "https://www.deezer.com/album/302127?utm_source=deezer",
+  "genre_id": 85,
+  "genres": {
+    "data": [
+      {
+        "id": 85,
+        "name": "alternative",
+        "picture": "https://api.deezer.com/genre/85/image",
+        "type": "genre"
+      },
+      {
+        "id": 152,
+        "name": "Rock",
+        "picture": "https://api.deezer.com/genre/152/image",
+        "type": "genre"
+      }
+    ]
+  },
+  "label": "XL Recordings",
+  "nb_tracks": 10,
+  "duration": 2554,
+  "fans": 512345,
+  "release_date": "2007-12-28",
+  "record_type": "album",
+  "available": true,
+  "explicit_lyrics": false,
+  "explicit_content_lyrics": 0,
+  "explicit_content_cover": 0,
+  "contributors": [
+    {
+      "id": 399,
+      "name": "Radiohead",
+      "link": "https://www.deezer.com/artist/399",
+      "picture": "https://api.deezer.com/artist/399/image",
+      "picture_small": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/56x56-000000-80-0-0.jpg",
+      "picture_medium": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/250x250-000000-80-0-0.jpg",
+      "picture_big": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/500x500-000000-80-0-0.jpg",
+      "picture_xl": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/1000x1000-000000-80-0-0.jpg",
+      "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+      "type": "artist",
+      "role": "Main"
+    }
+  ],
+  "artist": {
+    "id": 399,
+    "name": "Radiohead",
+    "link": "https://www.deezer.com/artist/399",
+    "picture": "https://api.deezer.com/artist/399/image",
+    "picture_small": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/56x56-000000-80-0-0.jpg",
+    "picture_medium": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/250x250-000000-80-0-0.jpg",
+    "picture_big": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/500x500-000000-80-0-0.jpg",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+    "type": "artist"
+  },
+  "tracks": {
+    "data": [
+      {
+        "id": 3135553,
+        "readable": true,
+        "title": "15 Step",
+        "title_short": "15 Step",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135553",
+        "duration": 237,
+        "rank": 700000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135553.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135553.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135554,
+        "readable": true,
+        "title": "Bodysnatchers",
+        "title_short": "Bodysnatchers",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135554",
+        "duration": 242,
+        "rank": 699000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135554.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135554.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135555,
+        "readable": true,
+        "title": "Nude",
+        "title_short": "Nude",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135555",
+        "duration": 255,
+        "rank": 698000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135555.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135555.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135556,
+        "readable": true,
+        "title": "Weird Fishes/Arpeggi",
+        "title_short": "Weird Fishes/Arpeggi",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135556",
+        "duration": 318,
+        "rank": 697000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135556.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135556.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135557,
+        "readable": true,
+        "title": "All I Need",
+        "title_short": "All I Need",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135557",
+        "duration": 228,
+        "rank": 696000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135557.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135557.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135558,
+        "readable": true,
+        "title": "Faust Arp",
+        "title_short": "Faust Arp",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135558",
+        "duration": 129,
+        "rank": 695000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135558.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135558.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135559,
+        "readable": true,
+        "title": "Reckoner",
+        "title_short": "Reckoner",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135559",
+        "duration": 290,
+        "rank": 694000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135559.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135559.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135560,
+        "readable": true,
+        "title": "House Of Cards",
+        "title_short": "House Of Cards",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135560",
+        "duration": 328,
+        "rank": 693000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135560.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135560.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135561,
+        "readable": true,
+        "title": "Jigsaw Falling Into Place",
+        "title_short": "Jigsaw Falling Into Place",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135561",
+        "duration": 248,
+        "rank": 692000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135561.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135561.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 3135562,
+        "readable": true,
+        "title": "Videotape",
+        "title_short": "Videotape",
+        "title_version": "",
+        "link": "https://www.deezer.com/track/3135562",
+        "duration": 279,
+        "rank": 691000,
+        "explicit_lyrics": false,
+        "explicit_content_lyrics": 0,
+        "explicit_content_cover": 0,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc3135562.mp3?hdnea=exp=1761050000~acl=/api/1/1/a/b/c/0/abc3135562.mp3*~hmac=deadbeef",
+        "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+        "artist": {
+          "id": 399,
+          "name": "Radiohead",
+          "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+          "type": "artist"
+        },
+        "type": "track"
+      }
+    ]
+  }
+}

@@ -41,22 +41,22 @@ packages/db                # prisma/schema.prisma, prisma/migrations, src/seed.t
 
 ### Moduli API
 
-| Modulo          | Prefisso                    | Responsabilità                                                                   |
-| --------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| `auth`          | `/api/auth`                 | Registrazione/login locali, profilo, password, OAuth Spotify e Last.fm collegati |
-| `users`         | `/api/users`                | Ricerca, suggerimenti, follow/unfollow, follower/seguiti, post di un utente      |
-| `feed`          | `/api`                      | `/feed`, `/posts` (crea, elimina, like, salva)                                   |
-| `catalog`       | `/api/catalog`              | Ricerca (DB + Deezer/iTunes on-the-fly), elenco release, generi, anteprime 30 s  |
-| `reviews`       | `/api/reviews`              | Recensioni (upsert), reazioni, ricalcolo punteggi pubblico/critica               |
-| `profile`       | `/api/profile`              | Profilo, statistiche, heavy rotation, diario                                     |
-| `discovery`     | `/api/discovery`            | Reels e Roulette dei generi                                                      |
-| `chat`          | `/api/chat`                 | Inbox, conversazioni, messaggi con brano, reazioni, "ascoltato"                  |
-| `playlists`     | `/api/playlists`            | Playlist Lato A / Lato B                                                         |
-| `notifications` | `/api/notifications`        | Notifiche persistenti, non lette, riepilogo presenza                             |
-| `now-playing`   | `/api/now-playing` + socket | Presenza live in Redis, Ghost Mode, gateway Socket.io                            |
-| `critic`        | `/api/critic`               | Accredito critici (coda ADMIN), recensioni della critica, dual score             |
-| `videos`        | `/api/videos`               | Video-recensioni (pubblicazione riservata a CRITIC/MODERATOR/ADMIN)              |
-| `spotify`       | `/api/spotify`              | Currently playing, sync playback → scrobble, top artisti, export playlist        |
+| Modulo          | Prefisso                    | Responsabilità                                                                       |
+| --------------- | --------------------------- | ------------------------------------------------------------------------------------ |
+| `auth`          | `/api/auth`                 | Registrazione/login locali, profilo, password, OAuth Spotify e Last.fm collegati     |
+| `users`         | `/api/users`                | Ricerca, suggerimenti, follow/unfollow, follower/seguiti, post di un utente          |
+| `feed`          | `/api`                      | `/feed`, `/posts` (crea, elimina, like, salva)                                       |
+| `catalog`       | `/api/catalog`              | Ricerca locale + import da Deezer/iTunes/MusicBrainz/CAA, resolve, generi, anteprime |
+| `reviews`       | `/api/reviews`              | Recensioni (upsert), reazioni, ricalcolo punteggi pubblico/critica                   |
+| `profile`       | `/api/profile`              | Profilo, statistiche, heavy rotation, diario                                         |
+| `discovery`     | `/api/discovery`            | Reels e Roulette dei generi                                                          |
+| `chat`          | `/api/chat`                 | Inbox, conversazioni, messaggi con brano, reazioni, "ascoltato"                      |
+| `playlists`     | `/api/playlists`            | Playlist Lato A / Lato B                                                             |
+| `notifications` | `/api/notifications`        | Notifiche persistenti, non lette, riepilogo presenza                                 |
+| `now-playing`   | `/api/now-playing` + socket | Presenza live in Redis, Ghost Mode, gateway Socket.io                                |
+| `critic`        | `/api/critic`               | Accredito critici (coda ADMIN), recensioni della critica, dual score                 |
+| `videos`        | `/api/videos`               | Video-recensioni (pubblicazione riservata a CRITIC/MODERATOR/ADMIN)                  |
+| `spotify`       | `/api/spotify`              | Currently playing, sync playback → scrobble, top artisti, export playlist            |
 
 L'elenco completo degli endpoint con livello di autenticazione è in `06` §4.
 
@@ -116,6 +116,8 @@ mostrare 5.0. Il salvataggio di una recensione e il ricalcolo non sono nella ste
 1. **Deezer** (`/track/isrc:{ISRC}` o ricerca `artist + track`) → MP3 30 s;
 2. **iTunes Search API** come fallback → AAC 30 s.
 
+Usa gli stessi provider del catalogo (cache Redis, rate limiting, retry): vedi `06` §8.
+
 Spotify non è interrogato. L'ADR-003 prevedeva iTunes → Deezer → Spotify: la discrepanza è aperta
 (vedi `04`). Il client web pre-carica le anteprime nei Reels; il buffer circolare a 3 player è
 previsto solo per mobile.
@@ -138,7 +140,10 @@ Schema: `packages/db/prisma/schema.prisma`. Migrazioni: `packages/db/prisma/migr
 
 - **Utenti e social:** `User` (ruolo, `passwordHash`, `sessionVersion`, `isGhostMode`),
   `ConnectedAccount` (Spotify/Last.fm/Apple Music), `Follows`, `Notification`.
-- **Catalogo:** `Release` (punteggi pubblico/critica, `dominantColor`), `Track` (ISRC, `previewUrl`).
+- **Catalogo:** `Release` (punteggi pubblico/critica, `dominantColor`, id esterni `deezerId`/
+  `itunesId`/`musicbrainzId`/`upc`, `coverSource`, `matchKey`, `metadataSyncedAt`, `enrichedAt`),
+  `Track` (ISRC, `previewUrl`, numeri traccia, id esterni), `Artist` (id esterni). Import e
+  deduplica: `06` §8.
 - **Recensioni:** `Review` (una per utente e release, una per utente e brano), `ReviewReaction`
   (enum `ReactionType`), `ScrobbleLog`.
 - **Contenuti:** `Post`, `PostLike`, `PostSave`, `Playlist`, `PlaylistTrack` (lato A/B),

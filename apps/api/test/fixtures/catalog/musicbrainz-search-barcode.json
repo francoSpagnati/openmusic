@@ -1,0 +1,53 @@
+{
+  "created": "2026-10-21T09:00:00.000Z",
+  "count": 1,
+  "offset": 0,
+  "releases": [
+    {
+      "id": "0a5d4e66-3a5e-4a69-8ad5-1b0f4d1e1a01",
+      "score": 100,
+      "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+      "count": 1,
+      "title": "In Rainbows",
+      "status": "Official",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "joinphrase": "",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+        "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+        "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+        "title": "In Rainbows",
+        "primary-type": "Album"
+      },
+      "date": "2008-01-01",
+      "country": "GB",
+      "barcode": "634904032463",
+      "label-info": [
+        {
+          "catalog-number": "XLCD324",
+          "label": {
+            "id": "c6ed3b5a-1b2e-4e1b-8d3a-6b1c2e3d4f5a",
+            "name": "XL Recordings"
+          }
+        }
+      ],
+      "track-count": 10,
+      "media": [
+        {
+          "format": "CD",
+          "disc-count": 1,
+          "track-count": 10
+        }
+      ]
+    }
+  ]
+}

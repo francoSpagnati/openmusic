@@ -5,6 +5,7 @@ export * from './now-playing';
 export * from './auth';
 export * from './users';
 export * from './catalog';
+export * from './catalog-match';
 export * from './review';
 export * from './feed';
 export * from './notifications';

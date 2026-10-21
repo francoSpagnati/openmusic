@@ -1,0 +1,39 @@
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "wrapperType": "collection",
+      "collectionType": "Album",
+      "artistId": 657515,
+      "collectionId": 1109714933,
+      "amgArtistId": 41092,
+      "artistName": "Radiohead",
+      "collectionName": "In Rainbows",
+      "collectionCensoredName": "In Rainbows",
+      "artistViewUrl": "https://music.apple.com/it/artist/radiohead/657515?uo=4",
+      "collectionViewUrl": "https://music.apple.com/it/album/in-rainbows/1109714933?uo=4",
+      "artworkUrl60": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/1d/2e/3f/1d2e3f40-5a6b-7c8d-9e0f-a1b2c3d4e5f6/634904032463.png/60x60bb.jpg",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/1d/2e/3f/1d2e3f40-5a6b-7c8d-9e0f-a1b2c3d4e5f6/634904032463.png/100x100bb.jpg",
+      "collectionPrice": 9.99,
+      "collectionExplicitness": "notExplicit",
+      "trackCount": 10,
+      "copyright": "℗ 2007 XL Recordings Ltd",
+      "country": "ITA",
+      "currency": "EUR",
+      "releaseDate": "2007-10-10T07:00:00Z",
+      "primaryGenreName": "Alternative"
+    },
+    {
+      "wrapperType": "collection",
+      "collectionType": "Album",
+      "artistId": 657515,
+      "collectionId": 1097862870,
+      "artistName": "Radiohead",
+      "collectionName": "Reckoner - Single",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/1d/2e/3f/1d2e3f40-5a6b-7c8d-9e0f-a1b2c3d4e5f6/634904032463.png/100x100bb.jpg",
+      "trackCount": 1,
+      "releaseDate": "2008-09-15T07:00:00Z",
+      "primaryGenreName": "Alternative"
+    }
+  ]
+}

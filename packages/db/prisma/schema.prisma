@@ -22,6 +22,14 @@ enum NotificationType {
   CRITIC_APPROVED // un admin ha approvato il tuo accredito critico
 }
 
+/// External open databases the catalog imports from (see apps/api/src/modules/catalog/providers).
+enum CatalogSource {
+  DEEZER
+  ITUNES
+  MUSICBRAINZ
+  COVER_ART_ARCHIVE
+}
+
 enum ReleaseType {
   ALBUM
   SINGLE
@@ -95,17 +103,53 @@ model Follows {
   @@index([followingId])
 }
 
+/// Imported from external databases; internal UUID, external ids in the *Id columns.
+model Artist {
+  id            String   @id @default(uuid())
+  name          String
+  /// normalizeCatalogArtist(name), for matching without a shared id.
+  matchKey      String
+  deezerId      String?  @unique
+  itunesId      String?  @unique
+  musicbrainzId String?  @unique
+  pictureUrl    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  releases Release[]
+  tracks   Track[]
+
+  @@index([matchKey])
+}
+
 model Release {
-  id            String      @id @default(uuid())
-  musicbrainzId String?     @unique
-  spotifyId     String?     @unique
-  title         String
-  artistName    String
-  releaseType   ReleaseType @default(ALBUM)
-  coverUrl      String?
-  dominantColor String?     @default("#26262B")
-  genres        String[]
-  releaseDate   DateTime?
+  id                        String         @id @default(uuid())
+  /// MusicBrainz release MBID (a specific edition).
+  musicbrainzId             String?        @unique
+  spotifyId                 String?        @unique
+  deezerId                  String?        @unique
+  itunesId                  String?        @unique
+  /// Barcode as returned by the provider (UPC-A / EAN-13).
+  upc                       String?        @unique
+  musicbrainzReleaseGroupId String?
+  title                     String
+  artistName                String
+  artistId                  String?
+  releaseType               ReleaseType    @default(ALBUM)
+  coverUrl                  String?
+  coverSource               CatalogSource?
+  dominantColor             String?        @default("#26262B")
+  genres                    String[]
+  releaseDate               DateTime?
+  label                     String?
+  trackCount                Int?
+  /// catalogMatchKey(title, artistName) from @openmusic/shared; null for rows created by hand.
+  matchKey                  String?
+  /// Last full import of the provider detail (tracklist, label, date); null = only a search hit.
+  metadataSyncedAt          DateTime?
+  /// Last MusicBrainz / Cover Art Archive enrichment attempt.
+  enrichedAt                DateTime?
+  createdAt                 DateTime       @default(now())
 
   // ADR-001: Sistema di Rating Duale (Pubblico + Critica)
   audienceAvg      Float? // Media 0.5 - 5.0
@@ -115,11 +159,15 @@ model Release {
   criticFreshPct   Int?
   criticCount      Int    @default(0)
 
+  artist        Artist?             @relation(fields: [artistId], references: [id], onDelete: SetNull)
   tracks        Track[]
   reviews       Review[]
   scrobbleLogs  ScrobbleLog[]
   videoContents MusicVideoContent[]
   posts         Post[]
+
+  @@index([matchKey])
+  @@index([artistId])
 }
 
 model Track {
@@ -127,17 +175,29 @@ model Track {
   isrc           String?         @unique // Chiave universale per traduzione link e fallback audio
   spotifyId      String?         @unique
   deezerId       String?         @unique
+  itunesId       String?         @unique
+  /// MusicBrainz recording MBID.
+  musicbrainzId  String?         @unique
   title          String
   artistName     String
+  artistId       String?
   durationMs     Int
+  trackNumber    Int?
+  discNumber     Int?
+  /// catalogMatchKey(title, artistName); matches tracks inside a release without an ISRC.
+  matchKey       String?
   previewUrl     String? // Clip 30s risolta tramite ADR-003 (Spotify -> Deezer -> iTunes)
   releaseId      String
   release        Release         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  artist         Artist?         @relation(fields: [artistId], references: [id], onDelete: SetNull)
   reviews        Review[]
   scrobbleLogs   ScrobbleLog[]
   playlistTracks PlaylistTrack[]
   chatMessages   ChatMessage[]
   posts          Post[]
+
+  @@index([releaseId, matchKey])
+  @@index([artistId])
 }
 
 model Review {

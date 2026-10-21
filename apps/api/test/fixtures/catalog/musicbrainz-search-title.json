@@ -1,0 +1,52 @@
+{
+  "created": "2026-10-21T09:00:00.000Z",
+  "count": 2,
+  "offset": 0,
+  "releases": [
+    {
+      "id": "0a5d4e66-3a5e-4a69-8ad5-1b0f4d1e1a01",
+      "score": 100,
+      "title": "In Rainbows",
+      "status": "Official",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "joinphrase": "",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+        "title": "In Rainbows",
+        "primary-type": "Album"
+      },
+      "date": "2008-01-01",
+      "barcode": "634904032463"
+    },
+    {
+      "id": "1b2c3d4e-5f60-4718-8293-a4b5c6d7e8f9",
+      "score": 62,
+      "title": "In Rainbows Disk 2",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "joinphrase": "",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "2c3d4e5f-6071-4829-93a4-b5c6d7e8f901",
+        "title": "In Rainbows Disk 2",
+        "primary-type": "EP"
+      }
+    }
+  ]
+}

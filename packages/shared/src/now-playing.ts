@@ -53,4 +53,5 @@ export const WS_EVENTS = {
   SERVER_INITIAL_FRIENDS_STATE: 'now_playing:initial_friends_state',
   SERVER_NOTIFICATION: 'notification:new',
   SERVER_CHAT_MESSAGE: 'chat:message',
+  SERVER_SESSION_REVOKED: 'session:revoked',
 } as const;

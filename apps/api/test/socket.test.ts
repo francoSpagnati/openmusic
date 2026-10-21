@@ -35,7 +35,8 @@ describe('Socket.io gateway', () => {
   const sockets: ClientSocket[] = [];
 
   beforeAll(async () => {
-    ctx = await createTestApp();
+    // Re-check the session on every event and use a short now-playing throttle window.
+    ctx = await createTestApp({ sessionRecheckMs: 0, nowPlayingIntervalMs: 300 });
     await ctx.app.listen({ port: 0, host: '127.0.0.1' });
     const { port } = ctx.app.server.address() as AddressInfo;
     url = `http://127.0.0.1:${port}`;
@@ -223,5 +224,102 @@ describe('Socket.io gateway', () => {
     });
     const notification: NotificationItem = await live;
     expect(notification).toMatchObject({ type: 'FOLLOW', actor: { id: bob.id } });
+  });
+
+  it('closes only the logged-out session sockets on logout', async () => {
+    const user = await createUser();
+    const tokenA = ctx.app.jwt.sign({ sub: user.id });
+    const tokenB = ctx.app.jwt.sign({ sub: user.id, sv: 0 });
+    expect(tokenA).not.toBe(tokenB);
+    const a = open({ token: tokenA });
+    const b = open({ cookie: `${SESSION_COOKIE_NAME}=${tokenB}` });
+    await Promise.all([ready(a), ready(b)]);
+
+    const revoked = next(a, WS_EVENTS.SERVER_SESSION_REVOKED);
+    const closed = new Promise((resolve) => a.once('disconnect', resolve));
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      headers: { authorization: `Bearer ${tokenA}` },
+    });
+    expect(res.statusCode).toBe(204);
+    expect(await revoked).toEqual({ reason: 'LOGOUT' });
+    expect(await closed).toBe('io server disconnect');
+    expect(b.connected).toBe(true);
+  });
+
+  it('closes every socket of the user on password change', async () => {
+    const reg = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { email: 'sock-pw@example.com', username: 'sock_pw', password: 'a long password 1' },
+    });
+    const { token } = reg.json() as { token: string };
+    const a = open({ token });
+    const b = open({ cookie: `${SESSION_COOKIE_NAME}=${token}` });
+    await Promise.all([ready(a), ready(b)]);
+
+    const revokedA = next(a, WS_EVENTS.SERVER_SESSION_REVOKED);
+    const revokedB = next(b, WS_EVENTS.SERVER_SESSION_REVOKED);
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/auth/password',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currentPassword: 'a long password 1', newPassword: 'a new long password 2' },
+    });
+    expect(res.statusCode).toBe(204);
+    expect(await revokedA).toEqual({ reason: 'PASSWORD_CHANGED' });
+    expect(await revokedB).toEqual({ reason: 'PASSWORD_CHANGED' });
+    // The old token can no longer open a socket.
+    expect((await connectError(open({ token }))).message).toBe('UNAUTHORIZED');
+  });
+
+  it('re-validates the session on events and disconnects revoked sessions', async () => {
+    const user = await createUser();
+    const socket = open({ token: tokenFor(ctx, user.id) });
+    await ready(socket);
+    // Revoked out of band (e.g. password changed on another API instance).
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { sessionVersion: { increment: 1 } },
+    });
+
+    const revoked = next(socket, WS_EVENTS.SERVER_SESSION_REVOKED);
+    const ack = await emitWithAck(socket, WS_EVENTS.CLIENT_UPDATE_TRACK, TRACK);
+    expect(ack).toMatchObject({ ok: false, code: 'UNAUTHORIZED' });
+    expect(await revoked).toEqual({ reason: 'INVALID' });
+  });
+
+  it('disconnects a socket when its token expires', async () => {
+    const user = await createUser();
+    const token = ctx.app.jwt.sign({ sub: user.id }, { expiresIn: 1 });
+    const socket = open({ token });
+    await ready(socket);
+    expect(await next(socket, WS_EVENTS.SERVER_SESSION_REVOKED, 3_000)).toEqual({
+      reason: 'EXPIRED',
+    });
+  });
+
+  it('throttles now-playing updates: first at once, then only the latest per window', async () => {
+    const dj = await createUser();
+    const follower = await createUser();
+    await prisma.follows.create({ data: { followerId: follower.id, followingId: dj.id } });
+    const djSocket = open({ token: tokenFor(ctx, dj.id) });
+    const followerSocket = open({ token: tokenFor(ctx, follower.id) });
+    await Promise.all([ready(djSocket), ready(followerSocket)]);
+
+    const received: string[] = [];
+    followerSocket.on(WS_EVENTS.SERVER_FRIEND_PRESENCE_CHANGED, (p) => {
+      if (p.currentlyPlaying) received.push(p.currentlyPlaying.title);
+    });
+    for (let i = 1; i <= 5; i++) {
+      const ack = await emitWithAck(djSocket, WS_EVENTS.CLIENT_UPDATE_TRACK, {
+        ...TRACK,
+        title: `Track ${i}`,
+      });
+      expect(ack).toEqual({ ok: true });
+    }
+    await new Promise((r) => setTimeout(r, 600));
+    expect(received).toEqual(['Track 1', 'Track 5']);
   });
 });

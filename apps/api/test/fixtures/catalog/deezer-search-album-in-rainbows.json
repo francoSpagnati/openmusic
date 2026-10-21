@@ -1,0 +1,92 @@
+{
+  "data": [
+    {
+      "id": 302127,
+      "title": "In Rainbows",
+      "cover": "https://api.deezer.com/album/302127/image",
+      "cover_small": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/56x56-000000-80-0-0.jpg",
+      "cover_medium": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/250x250-000000-80-0-0.jpg",
+      "cover_big": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/500x500-000000-80-0-0.jpg",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/1000x1000-000000-80-0-0.jpg",
+      "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+      "tracklist": "https://api.deezer.com/album/302127/tracks",
+      "type": "album",
+      "link": "https://www.deezer.com/album/302127",
+      "genre_id": 85,
+      "nb_tracks": 10,
+      "record_type": "album",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 399,
+        "name": "Radiohead",
+        "link": "https://www.deezer.com/artist/399",
+        "picture": "https://api.deezer.com/artist/399/image",
+        "picture_small": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/56x56-000000-80-0-0.jpg",
+        "picture_medium": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/250x250-000000-80-0-0.jpg",
+        "picture_big": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/500x500-000000-80-0-0.jpg",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/1000x1000-000000-80-0-0.jpg",
+        "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+        "type": "artist"
+      }
+    },
+    {
+      "id": 9216881,
+      "title": "In Rainbows",
+      "cover": "https://api.deezer.com/album/9216881/image",
+      "cover_small": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/56x56-000000-80-0-0.jpg",
+      "cover_medium": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/250x250-000000-80-0-0.jpg",
+      "cover_big": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/500x500-000000-80-0-0.jpg",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3/1000x1000-000000-80-0-0.jpg",
+      "md5_image": "0b0b5e1c4dd2c4d5ef6ed7fe0d40e2b3",
+      "tracklist": "https://api.deezer.com/album/9216881/tracks",
+      "type": "album",
+      "link": "https://www.deezer.com/album/9216881",
+      "genre_id": 85,
+      "nb_tracks": 10,
+      "record_type": "album",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 399,
+        "name": "Radiohead",
+        "link": "https://www.deezer.com/artist/399",
+        "picture": "https://api.deezer.com/artist/399/image",
+        "picture_small": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/56x56-000000-80-0-0.jpg",
+        "picture_medium": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/250x250-000000-80-0-0.jpg",
+        "picture_big": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/500x500-000000-80-0-0.jpg",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/1000x1000-000000-80-0-0.jpg",
+        "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+        "type": "artist"
+      }
+    },
+    {
+      "id": 1159838,
+      "title": "In Rainbows (Disk 2)",
+      "cover": "https://api.deezer.com/album/1159838/image",
+      "cover_small": "https://cdn-images.dzcdn.net/images/cover/a6c4e2f1b3d5978e0c1d2e3f4a5b6c7d/56x56-000000-80-0-0.jpg",
+      "cover_medium": "https://cdn-images.dzcdn.net/images/cover/a6c4e2f1b3d5978e0c1d2e3f4a5b6c7d/250x250-000000-80-0-0.jpg",
+      "cover_big": "https://cdn-images.dzcdn.net/images/cover/a6c4e2f1b3d5978e0c1d2e3f4a5b6c7d/500x500-000000-80-0-0.jpg",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a6c4e2f1b3d5978e0c1d2e3f4a5b6c7d/1000x1000-000000-80-0-0.jpg",
+      "md5_image": "a6c4e2f1b3d5978e0c1d2e3f4a5b6c7d",
+      "tracklist": "https://api.deezer.com/album/1159838/tracks",
+      "type": "album",
+      "link": "https://www.deezer.com/album/1159838",
+      "genre_id": 85,
+      "nb_tracks": 8,
+      "record_type": "album",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 399,
+        "name": "Radiohead",
+        "link": "https://www.deezer.com/artist/399",
+        "picture": "https://api.deezer.com/artist/399/image",
+        "picture_small": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/56x56-000000-80-0-0.jpg",
+        "picture_medium": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/250x250-000000-80-0-0.jpg",
+        "picture_big": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/500x500-000000-80-0-0.jpg",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/5ab3a6f0b7b41e0bb7b7a0f9d7cf3a6c/1000x1000-000000-80-0-0.jpg",
+        "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+        "type": "artist"
+      }
+    }
+  ],
+  "total": 3
+}

@@ -39,6 +39,23 @@ const EnvSchema = z
     /** Max login/register attempts per IP per minute. */
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
 
+    /**
+     * Public URL of the web app. OAuth callbacks (Spotify, Last.fm) redirect the browser back
+     * here (`/settings?oauth=<provider>&status=success|error`) instead of showing raw JSON.
+     */
+    WEB_APP_URL: z.string().url().default('http://localhost:3000'),
+
+    // External catalog (Deezer, iTunes, MusicBrainz, Cover Art Archive)
+    /** false = search/open use only the local catalog (no outbound calls). */
+    CATALOG_EXTERNAL_ENABLED: booleanFromString.default('true'),
+    /** Contact (URL or email) in the MusicBrainz User-Agent, required by their API policy. */
+    MUSICBRAINZ_CONTACT: z.string().min(3).default('https://github.com/francoSpagnati/openmusic'),
+    /** iTunes storefront for search/lookup (ISO 3166-1 alpha-2). */
+    ITUNES_COUNTRY: z
+      .string()
+      .regex(/^[A-Za-z]{2}$/)
+      .default('IT'),
+
     // Spotify OAuth
     SPOTIFY_CLIENT_ID: z.string().optional().default(''),
     SPOTIFY_CLIENT_SECRET: z.string().optional().default(''),
@@ -75,6 +92,7 @@ export const env = {
   ...raw,
   JWT_SECRET: raw.JWT_SECRET ?? randomBytes(48).toString('base64url'),
   COOKIE_SECURE: raw.COOKIE_SECURE ?? raw.NODE_ENV === 'production',
+  WEB_APP_URL: raw.WEB_APP_URL.replace(/\/+$/, ''),
   CORS_ORIGINS: raw.CORS_ORIGIN.split(',')
     .map((o) => o.trim())
     .filter((o) => o.length > 0),

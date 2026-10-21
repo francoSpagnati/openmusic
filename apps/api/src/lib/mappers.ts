@@ -1,5 +1,11 @@
 import type { Release, Track, User } from '@openmusic/db';
-import type { AuthUser, CatalogTrack, PublicUser, UserSummary } from '@openmusic/shared';
+import type {
+  AuthUser,
+  CatalogRelease,
+  CatalogTrack,
+  PublicUser,
+  UserSummary,
+} from '@openmusic/shared';
 
 export function toAuthUser(user: User): AuthUser {
   return {
@@ -64,6 +70,48 @@ export function toCatalogTrack(
     previewUrl: track.previewUrl,
     releaseId: track.releaseId,
     coverUrl: track.release.coverUrl,
+    trackNumber: track.trackNumber,
+    discNumber: track.discNumber,
+    externalIds: {
+      deezer: track.deezerId,
+      itunes: track.itunesId,
+      musicbrainz: track.musicbrainzId,
+      spotify: track.spotifyId,
+    },
+  };
+}
+
+const DEFAULT_DOMINANT_COLOR = '#26262B';
+
+/** Release row (optionally with its tracks, already ordered) -> API shape. */
+export function toCatalogRelease(release: Release, tracks?: Track[]): CatalogRelease {
+  return {
+    id: release.id,
+    title: release.title,
+    artistName: release.artistName,
+    releaseType: release.releaseType,
+    coverUrl: release.coverUrl,
+    dominantColor: release.dominantColor ?? DEFAULT_DOMINANT_COLOR,
+    releaseDate: release.releaseDate?.toISOString() ?? null,
+    genres: release.genres,
+    label: release.label,
+    upc: release.upc,
+    trackCount: release.trackCount,
+    coverSource: release.coverSource,
+    externalIds: {
+      deezer: release.deezerId,
+      itunes: release.itunesId,
+      musicbrainz: release.musicbrainzId,
+      musicbrainzReleaseGroup: release.musicbrainzReleaseGroupId,
+      spotify: release.spotifyId,
+    },
+    audienceAvg: release.audienceAvg,
+    audienceFreshPct: release.audienceFreshPct,
+    audienceCount: release.audienceCount,
+    criticAvg: release.criticAvg,
+    criticFreshPct: release.criticFreshPct,
+    criticCount: release.criticCount,
+    tracks: tracks?.map((t) => toCatalogTrack({ ...t, release })),
   };
 }
 

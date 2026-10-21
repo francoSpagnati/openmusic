@@ -1,0 +1,281 @@
+{
+  "$comment": "Curated real albums imported by `npm run catalog:import -- --file curated-albums.json`. Matching uses artist + title (+ year to break ties); add `deezerId` or `upc` to pin an exact edition. `genres` are OpenMusic explore categories merged before the provider genres.",
+  "albums": [
+    {
+      "artist": "Radiohead",
+      "title": "In Rainbows",
+      "year": 2007,
+      "genres": ["Art Rock", "Alternative Rock"]
+    },
+    {
+      "artist": "Daft Punk",
+      "title": "Random Access Memories",
+      "year": 2013,
+      "genres": ["Electronic", "Disco"]
+    },
+    {
+      "artist": "Kendrick Lamar",
+      "title": "To Pimp a Butterfly",
+      "year": 2015,
+      "genres": ["Hip-Hop", "Jazz Rap"]
+    },
+    {
+      "artist": "Frank Ocean",
+      "title": "Blonde",
+      "year": 2016,
+      "genres": ["R&B", "Alternative R&B"]
+    },
+    {
+      "artist": "Afterhours",
+      "title": "Hai paura del buio?",
+      "year": 1997,
+      "genres": ["Rock Italiano", "Alternative Rock"]
+    },
+    {
+      "artist": "Weyes Blood",
+      "title": "Titanic Rising",
+      "year": 2019,
+      "genres": ["Chamber Pop", "Indie"]
+    },
+    {
+      "artist": "Radiohead",
+      "title": "OK Computer",
+      "year": 1997,
+      "genres": ["Art Rock", "Alternative Rock"]
+    },
+    {
+      "artist": "Nirvana",
+      "title": "Nevermind",
+      "year": 1991,
+      "genres": ["Grunge", "Alternative Rock"]
+    },
+    {
+      "artist": "Pink Floyd",
+      "title": "The Dark Side of the Moon",
+      "year": 1973,
+      "genres": ["Progressive Rock", "Rock"]
+    },
+    {
+      "artist": "The Beatles",
+      "title": "Abbey Road",
+      "year": 1969,
+      "genres": ["Rock", "Pop"]
+    },
+    {
+      "artist": "Fleetwood Mac",
+      "title": "Rumours",
+      "year": 1977,
+      "genres": ["Soft Rock", "Rock"]
+    },
+    {
+      "artist": "Arctic Monkeys",
+      "title": "AM",
+      "year": 2013,
+      "genres": ["Indie Rock", "Rock"]
+    },
+    {
+      "artist": "The Strokes",
+      "title": "Is This It",
+      "year": 2001,
+      "genres": ["Indie Rock", "Garage Rock"]
+    },
+    {
+      "artist": "Arcade Fire",
+      "title": "Funeral",
+      "year": 2004,
+      "genres": ["Indie Rock", "Chamber Pop"]
+    },
+    {
+      "artist": "My Bloody Valentine",
+      "title": "Loveless",
+      "year": 1991,
+      "genres": ["Shoegaze", "Alternative Rock"]
+    },
+    {
+      "artist": "Metallica",
+      "title": "Master of Puppets",
+      "year": 1986,
+      "genres": ["Metal", "Thrash Metal"]
+    },
+    {
+      "artist": "Daft Punk",
+      "title": "Discovery",
+      "year": 2001,
+      "genres": ["Electronic", "French House"]
+    },
+    {
+      "artist": "Aphex Twin",
+      "title": "Selected Ambient Works 85-92",
+      "year": 1992,
+      "genres": ["Electronic", "Ambient"]
+    },
+    {
+      "artist": "The Avalanches",
+      "title": "Since I Left You",
+      "year": 2000,
+      "genres": ["Electronic", "Plunderphonics"]
+    },
+    {
+      "artist": "Burial",
+      "title": "Untrue",
+      "year": 2007,
+      "genres": ["Electronic", "UK Garage"]
+    },
+    {
+      "artist": "Brian Eno",
+      "title": "Ambient 1: Music for Airports",
+      "year": 1978,
+      "genres": ["Ambient", "Electronic"]
+    },
+    {
+      "artist": "Kendrick Lamar",
+      "title": "good kid, m.A.A.d city",
+      "year": 2012,
+      "genres": ["Hip-Hop", "West Coast Hip-Hop"]
+    },
+    {
+      "artist": "Lauryn Hill",
+      "title": "The Miseducation of Lauryn Hill",
+      "year": 1998,
+      "genres": ["Hip-Hop", "Neo-Soul"]
+    },
+    {
+      "artist": "Nas",
+      "title": "Illmatic",
+      "year": 1994,
+      "genres": ["Hip-Hop", "East Coast Hip-Hop"]
+    },
+    {
+      "artist": "Kanye West",
+      "title": "My Beautiful Dark Twisted Fantasy",
+      "year": 2010,
+      "genres": ["Hip-Hop"]
+    },
+    {
+      "artist": "Madvillain",
+      "title": "Madvillainy",
+      "year": 2004,
+      "genres": ["Hip-Hop", "Abstract Hip-Hop"]
+    },
+    {
+      "artist": "Frank Ocean",
+      "title": "channel ORANGE",
+      "year": 2012,
+      "genres": ["R&B", "Neo-Soul"]
+    },
+    {
+      "artist": "Beyoncé",
+      "title": "Lemonade",
+      "year": 2016,
+      "genres": ["R&B", "Pop"]
+    },
+    {
+      "artist": "Amy Winehouse",
+      "title": "Back To Black",
+      "year": 2006,
+      "genres": ["Soul", "R&B"]
+    },
+    {
+      "artist": "Marvin Gaye",
+      "title": "What's Going On",
+      "year": 1971,
+      "genres": ["Soul"]
+    },
+    {
+      "artist": "Michael Jackson",
+      "title": "Thriller",
+      "year": 1982,
+      "genres": ["Pop", "Funk"]
+    },
+    {
+      "artist": "Lorde",
+      "title": "Melodrama",
+      "year": 2017,
+      "genres": ["Pop", "Art Pop"]
+    },
+    {
+      "artist": "Adele",
+      "title": "21",
+      "year": 2011,
+      "genres": ["Pop", "Soul"]
+    },
+    {
+      "artist": "Miles Davis",
+      "title": "Kind of Blue",
+      "year": 1959,
+      "genres": ["Jazz", "Modal Jazz"]
+    },
+    {
+      "artist": "John Coltrane",
+      "title": "A Love Supreme",
+      "year": 1965,
+      "genres": ["Jazz", "Spiritual Jazz"]
+    },
+    {
+      "artist": "Kamasi Washington",
+      "title": "The Epic",
+      "year": 2015,
+      "genres": ["Jazz", "Spiritual Jazz"]
+    },
+    {
+      "artist": "Bon Iver",
+      "title": "For Emma, Forever Ago",
+      "year": 2007,
+      "genres": ["Indie Folk", "Folk"]
+    },
+    {
+      "artist": "Sufjan Stevens",
+      "title": "Carrie & Lowell",
+      "year": 2015,
+      "genres": ["Indie Folk", "Folk"]
+    },
+    {
+      "artist": "Joni Mitchell",
+      "title": "Blue",
+      "year": 1971,
+      "genres": ["Folk", "Singer-Songwriter"]
+    },
+    {
+      "artist": "Phoebe Bridgers",
+      "title": "Punisher",
+      "year": 2020,
+      "genres": ["Indie", "Indie Folk"]
+    },
+    {
+      "artist": "Franco Battiato",
+      "title": "La voce del padrone",
+      "year": 1981,
+      "genres": ["Pop Italiano", "Synth-Pop"]
+    },
+    {
+      "artist": "Fabrizio De André",
+      "title": "Crêuza de mä",
+      "year": 1984,
+      "genres": ["Cantautorato", "World"]
+    },
+    {
+      "artist": "Lucio Battisti",
+      "title": "Anima latina",
+      "year": 1974,
+      "genres": ["Pop Italiano", "Progressive Rock"]
+    },
+    {
+      "artist": "Buena Vista Social Club",
+      "title": "Buena Vista Social Club",
+      "year": 1997,
+      "genres": ["Latin", "Son Cubano"]
+    },
+    {
+      "artist": "Bad Bunny",
+      "title": "Un Verano Sin Ti",
+      "year": 2022,
+      "genres": ["Latin", "Reggaeton"]
+    },
+    {
+      "artist": "Max Richter",
+      "title": "The Blue Notebooks",
+      "year": 2004,
+      "genres": ["Modern Classical", "Ambient"]
+    }
+  ]
+}

@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "catalog:import": "tsx scripts/catalog-import.ts",
+    "catalog:smoke": "tsx scripts/catalog-smoke.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^9.3.1",

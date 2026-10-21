@@ -75,6 +75,55 @@ export async function resolveSessionToken(
   return loadPrincipal(prisma, payload);
 }
 
+export interface VerifiedSession {
+  auth: AuthContext;
+  /** `sv` claim: compared with `User.sessionVersion` when the session is re-checked. */
+  sessionVersion: number;
+  /** Token expiry (ms since epoch), null when the token has no `exp`. */
+  expiresAt: number | null;
+}
+
+/** Like `resolveSessionToken`, keeping the claims long-lived connections need to re-check. */
+export async function verifySessionToken(
+  app: FastifyInstance,
+  prisma: PrismaClient,
+  token: string
+): Promise<VerifiedSession | null> {
+  let payload: SessionTokenPayload & { exp?: number };
+  try {
+    payload = app.jwt.verify<SessionTokenPayload & { exp?: number }>(token);
+  } catch {
+    return null;
+  }
+  const auth = await loadPrincipal(prisma, payload);
+  if (!auth) return null;
+  return {
+    auth,
+    sessionVersion: payload.sv ?? 0,
+    expiresAt: typeof payload.exp === 'number' ? payload.exp * 1000 : null,
+  };
+}
+
+/** True while the user exists and still has the session version the token was issued with. */
+export async function isSessionVersionCurrent(
+  prisma: PrismaClient,
+  userId: string,
+  sessionVersion: number
+): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { sessionVersion: true },
+  });
+  return user !== null && user.sessionVersion === sessionVersion;
+}
+
+/** The raw session token of a request (Bearer header first, then the cookie), if any. */
+export function requestSessionToken(request: FastifyRequest): string | null {
+  const header = /^Bearer\s+(.+)$/i.exec(request.headers.authorization ?? '');
+  if (header?.[1]) return header[1].trim();
+  return request.cookies?.[SESSION_COOKIE_NAME] ?? null;
+}
+
 async function loadPrincipal(
   prisma: PrismaClient,
   payload: SessionTokenPayload

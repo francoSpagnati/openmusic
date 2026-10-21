@@ -48,6 +48,22 @@ impostazioni).
 e Last.fm lo rimanda insieme al `token`. Un account Last.fm già collegato a un altro utente dà 409
 (non viene mai spostato). Le chiamate a Last.fm usano HTTPS.
 
+I callback (`/spotify/callback`, `/lastfm/callback`) sono aperti dal **browser**, quindi non
+rispondono mai con JSON: reindirizzano (302) a `WEB_APP_URL` con l'esito in query string.
+
+| Caso                                   | Redirect                                                   |
+| -------------------------------------- | ---------------------------------------------------------- |
+| Spotify collegato da utente loggato    | `/settings?oauth=spotify&status=success`                   |
+| Accesso con Spotify (nessuna sessione) | `/?oauth=spotify&status=success` (+ cookie di sessione)    |
+| Errore Spotify, utente loggato         | `/settings?oauth=spotify&status=error&code=<ApiErrorCode>` |
+| Errore Spotify, anonimo                | `/auth?oauth=spotify&status=error&code=<ApiErrorCode>`     |
+| Last.fm                                | `/settings?oauth=lastfm&status=success\|error[&code=...]`  |
+
+`code` è uno degli `ApiErrorCode` (`FORBIDDEN` = `state` non valido, `BAD_REQUEST` = consenso
+negato, `CONFLICT` = account già collegato ad altri, `UNAUTHORIZED` = sessione assente per
+Last.fm, `UPSTREAM_ERROR` = provider irraggiungibile). Il percorso è sempre fisso: nessun open
+redirect.
+
 ## 2. Formato degli errori
 
 Ogni risposta non-2xx ha il corpo `ApiErrorBody` (`packages/shared/src/errors.ts`):
@@ -95,73 +111,74 @@ Ruoli: `USER`, `CRITIC`, `MODERATOR`, `ADMIN`. Gli account `ADMIN` si creano sol
 Legenda auth: **—** pubblico · **opt** sessione facoltativa (personalizza la risposta) · **auth**
 sessione obbligatoria · **ROLE** ruolo richiesto.
 
-| Metodo     | Path                                                | Auth                            | Note                                             |
-| ---------- | --------------------------------------------------- | ------------------------------- | ------------------------------------------------ |
-| GET        | `/health`                                           | —                               |                                                  |
-| POST       | `/api/auth/register`                                | — (rate limit)                  | 201 `AuthSessionResponse` + cookie               |
-| POST       | `/api/auth/login`                                   | — (rate limit)                  | `AuthSessionResponse` + cookie                   |
-| POST       | `/api/auth/logout`                                  | —                               | 204, cancella il cookie                          |
-| GET        | `/api/auth/me`                                      | auth                            | `MeResponse`                                     |
-| PATCH      | `/api/auth/me`                                      | auth                            | `UpdateProfileSchema` (strict) → `MeResponse`    |
-| POST       | `/api/auth/password`                                | auth (rate limit)               | 204 + cookie nuovo; revoca le altre sessioni     |
-| GET        | `/api/auth/spotify/login`                           | —                               | `{ url }` + cookie di stato                      |
-| GET        | `/api/auth/spotify/callback`                        | opt                             | collega o accede; 403 se `state` non valido      |
-| GET        | `/api/auth/lastfm/login`                            | —                               | `{ url }` + cookie di stato                      |
-| GET        | `/api/auth/lastfm/callback`                         | auth                            | collega Last.fm; 403 `state`, 409 già collegato  |
-| DELETE     | `/api/auth/providers/:provider`                     | auth                            | scollega SPOTIFY/LASTFM/APPLE_MUSIC              |
-| GET        | `/api/users/search?q=`                              | opt                             | `UserSummaryPage`                                |
-| GET        | `/api/users/suggestions?limit=`                     | opt                             | utenti da seguire                                |
-| GET        | `/api/users/:userId/followers`                      | opt                             | `UserSummaryPage`                                |
-| GET        | `/api/users/:userId/following`                      | opt                             | `UserSummaryPage`                                |
-| PUT        | `/api/users/:userId/follow`                         | auth                            | idempotente → `FollowState`, notifica FOLLOW     |
-| DELETE     | `/api/users/:userId/follow`                         | auth                            | `FollowState`                                    |
-| GET        | `/api/users/:userId/posts`                          | opt                             | `PostPage`                                       |
-| GET        | `/api/feed?scope=following\|global`                 | opt                             | `PostPage` (anonimi: sempre global)              |
-| POST       | `/api/posts`                                        | auth                            | 201 `Post`                                       |
-| GET        | `/api/posts/saved`                                  | auth                            | `PostPage`                                       |
-| GET        | `/api/posts/:id`                                    | opt                             | `Post`                                           |
-| DELETE     | `/api/posts/:id`                                    | auth (autore, MODERATOR, ADMIN) | 204                                              |
-| PUT/DELETE | `/api/posts/:id/like`                               | auth                            | `PostLikeState`, notifica POST_LIKE              |
-| PUT/DELETE | `/api/posts/:id/save`                               | auth                            | `PostSaveState`                                  |
-| GET        | `/api/notifications?unreadOnly=`                    | auth                            | `NotificationPage`                               |
-| GET        | `/api/notifications/unread-count`                   | auth                            | `{ count }`                                      |
-| POST       | `/api/notifications/read`                           | auth                            | `{ ids? }` → `{ updated }`                       |
-| GET        | `/api/notifications/presence-summary`               | auth                            | ADR-004                                          |
-| GET        | `/api/now-playing/friends`                          | auth                            | `FriendPresence[]`                               |
-| GET        | `/api/chat/conversations`                           | auth                            | `ConversationSummary[]` (inbox)                  |
-| GET        | `/api/chat/conversation/:otherUserId`               | auth                            | ultimi 50 messaggi, dal più vecchio              |
-| POST       | `/api/chat/conversation/:otherUserId/read`          | auth                            | `{ updated }`                                    |
-| POST       | `/api/chat/messages`                                | auth                            | 201 `ChatMessage`, push `chat:message`           |
-| POST       | `/api/chat/reaction`                                | auth (solo destinatario)        | `ChatMessage`                                    |
-| POST       | `/api/chat/listened`                                | auth (solo destinatario)        | `ChatMessage`, notifica TRACK_LISTENED           |
-| GET        | `/api/catalog/search?q=`                            | —                               | `SearchResult`                                   |
-| GET        | `/api/catalog/releases?genre=&sort=&cursor=&limit=` | —                               | `ReleasePage`                                    |
-| GET        | `/api/catalog/genres`                               | —                               | `GenreList`                                      |
-| GET        | `/api/catalog/releases/:id`                         | —                               | `CatalogRelease`                                 |
-| GET        | `/api/catalog/preview?title=&artist=&isrc=`         | —                               | `AudioPreviewResult`                             |
-| POST       | `/api/reviews`                                      | auth                            | crea/aggiorna, 201 `ReviewItem`                  |
-| GET        | `/api/reviews/release/:releaseId`                   | opt                             | `ReviewItem[]`                                   |
-| POST       | `/api/reviews/reaction`                             | auth                            | toggle, notifica REVIEW_REACTION                 |
-| GET        | `/api/profile/me`                                   | auth                            | `UserProfileData`                                |
-| GET        | `/api/profile/by-username/:username`                | opt                             | `UserProfileData` (senza email)                  |
-| GET        | `/api/profile/:userId`                              | opt                             | `UserProfileData` (senza email)                  |
-| GET        | `/api/discovery/reels`                              | opt                             |                                                  |
-| GET        | `/api/discovery/roulette`                           | opt                             |                                                  |
-| POST       | `/api/playlists`                                    | auth                            | 201 `PlaylistDetails`                            |
-| POST       | `/api/playlists/track`                              | auth (proprietario)             | `PlaylistDetails`                                |
-| GET        | `/api/playlists/user/:userId`                       | opt                             | solo pubbliche, salvo proprietario               |
-| GET        | `/api/playlists/:id`                                | opt                             | 404 se privata e non tua                         |
-| POST       | `/api/critic/accredit`                              | auth                            | richiesta in attesa (`PENDING`), ruolo invariato |
-| GET        | `/api/critic/accreditation`                         | auth                            | stato della propria richiesta                    |
-| GET        | `/api/critic/requests`                              | ADMIN                           | coda richieste                                   |
-| POST       | `/api/critic/verify`                                | ADMIN                           | `{ userId, approve }`, notifica CRITIC_APPROVED  |
-| POST       | `/api/critic/reviews`                               | auth + ruolo CRITIC             | 201 `CriticReviewItem`                           |
-| GET        | `/api/critic/dual-score/:releaseId`                 | —                               |                                                  |
-| GET        | `/api/critic/release/:releaseId`                    | —                               |                                                  |
-| POST       | `/api/videos`                                       | CRITIC, MODERATOR, ADMIN        | 201                                              |
-| GET        | `/api/videos/feed?category=`                        | —                               |                                                  |
-| GET        | `/api/videos/release/:releaseId`                    | —                               |                                                  |
-| GET/POST   | `/api/spotify/*`                                    | auth + Spotify collegato        | 409 se non collegato, 502 se Spotify fallisce    |
+| Metodo     | Path                                                  | Auth                            | Note                                                 |
+| ---------- | ----------------------------------------------------- | ------------------------------- | ---------------------------------------------------- |
+| GET        | `/health`                                             | —                               |                                                      |
+| POST       | `/api/auth/register`                                  | — (rate limit)                  | 201 `AuthSessionResponse` + cookie                   |
+| POST       | `/api/auth/login`                                     | — (rate limit)                  | `AuthSessionResponse` + cookie                       |
+| POST       | `/api/auth/logout`                                    | —                               | 204, cancella il cookie                              |
+| GET        | `/api/auth/me`                                        | auth                            | `MeResponse`                                         |
+| PATCH      | `/api/auth/me`                                        | auth                            | `UpdateProfileSchema` (strict) → `MeResponse`        |
+| POST       | `/api/auth/password`                                  | auth (rate limit)               | 204 + cookie nuovo; revoca le altre sessioni         |
+| GET        | `/api/auth/spotify/login`                             | —                               | `{ url }` + cookie di stato                          |
+| GET        | `/api/auth/spotify/callback`                          | opt                             | 302 verso il web (vedi §1 "OAuth collegati")         |
+| GET        | `/api/auth/lastfm/login`                              | —                               | `{ url }` + cookie di stato                          |
+| GET        | `/api/auth/lastfm/callback`                           | opt                             | 302 verso il web; serve una sessione                 |
+| DELETE     | `/api/auth/providers/:provider`                       | auth                            | scollega SPOTIFY/LASTFM/APPLE_MUSIC                  |
+| GET        | `/api/users/search?q=`                                | opt                             | `UserSummaryPage`                                    |
+| GET        | `/api/users/suggestions?limit=`                       | opt                             | utenti da seguire                                    |
+| GET        | `/api/users/:userId/followers`                        | opt                             | `UserSummaryPage`                                    |
+| GET        | `/api/users/:userId/following`                        | opt                             | `UserSummaryPage`                                    |
+| PUT        | `/api/users/:userId/follow`                           | auth                            | idempotente → `FollowState`, notifica FOLLOW         |
+| DELETE     | `/api/users/:userId/follow`                           | auth                            | `FollowState`                                        |
+| GET        | `/api/users/:userId/posts`                            | opt                             | `PostPage`                                           |
+| GET        | `/api/feed?scope=following\|global`                   | opt                             | `PostPage` (anonimi: sempre global)                  |
+| POST       | `/api/posts`                                          | auth                            | 201 `Post`                                           |
+| GET        | `/api/posts/saved`                                    | auth                            | `PostPage`                                           |
+| GET        | `/api/posts/:id`                                      | opt                             | `Post`                                               |
+| DELETE     | `/api/posts/:id`                                      | auth (autore, MODERATOR, ADMIN) | 204                                                  |
+| PUT/DELETE | `/api/posts/:id/like`                                 | auth                            | `PostLikeState`, notifica POST_LIKE                  |
+| PUT/DELETE | `/api/posts/:id/save`                                 | auth                            | `PostSaveState`                                      |
+| GET        | `/api/notifications?unreadOnly=`                      | auth                            | `NotificationPage`                                   |
+| GET        | `/api/notifications/unread-count`                     | auth                            | `{ count }`                                          |
+| POST       | `/api/notifications/read`                             | auth                            | `{ ids? }` → `{ updated }`                           |
+| GET        | `/api/notifications/presence-summary`                 | auth                            | ADR-004                                              |
+| GET        | `/api/now-playing/friends`                            | auth                            | `FriendPresence[]`                                   |
+| GET        | `/api/chat/conversations`                             | auth                            | `ConversationSummary[]` (inbox)                      |
+| GET        | `/api/chat/conversation/:otherUserId`                 | auth                            | ultimi 50 messaggi, dal più vecchio                  |
+| POST       | `/api/chat/conversation/:otherUserId/read`            | auth                            | `{ updated }`                                        |
+| POST       | `/api/chat/messages`                                  | auth                            | 201 `ChatMessage`, push `chat:message`               |
+| POST       | `/api/chat/reaction`                                  | auth (solo destinatario)        | `ChatMessage`                                        |
+| POST       | `/api/chat/listened`                                  | auth (solo destinatario)        | `ChatMessage`, notifica TRACK_LISTENED               |
+| GET        | `/api/catalog/search?q=&type=&page=&limit=&external=` | — (rate limit)                  | `SearchResult` (vedi §8)                             |
+| GET        | `/api/catalog/resolve?provider=&type=&id=`            | — (rate limit)                  | `CatalogResolveResult` (vedi §8)                     |
+| GET        | `/api/catalog/releases?genre=&sort=&cursor=&limit=`   | —                               | `ReleasePage`                                        |
+| GET        | `/api/catalog/genres`                                 | —                               | `GenreList`                                          |
+| GET        | `/api/catalog/releases/:id`                           | —                               | `CatalogRelease` + tracce (import completo 1ª volta) |
+| GET        | `/api/catalog/preview?title=&artist=&isrc=`           | —                               | `AudioPreviewResult`                                 |
+| POST       | `/api/reviews`                                        | auth                            | crea/aggiorna, 201 `ReviewItem`                      |
+| GET        | `/api/reviews/release/:releaseId`                     | opt                             | `ReviewItem[]`                                       |
+| POST       | `/api/reviews/reaction`                               | auth                            | toggle, notifica REVIEW_REACTION                     |
+| GET        | `/api/profile/me`                                     | auth                            | `UserProfileData`                                    |
+| GET        | `/api/profile/by-username/:username`                  | opt                             | `UserProfileData` (senza email)                      |
+| GET        | `/api/profile/:userId`                                | opt                             | `UserProfileData` (senza email)                      |
+| GET        | `/api/discovery/reels`                                | opt                             |                                                      |
+| GET        | `/api/discovery/roulette`                             | opt                             |                                                      |
+| POST       | `/api/playlists`                                      | auth                            | 201 `PlaylistDetails`                                |
+| POST       | `/api/playlists/track`                                | auth (proprietario)             | `PlaylistDetails`                                    |
+| GET        | `/api/playlists/user/:userId`                         | opt                             | solo pubbliche, salvo proprietario                   |
+| GET        | `/api/playlists/:id`                                  | opt                             | 404 se privata e non tua                             |
+| POST       | `/api/critic/accredit`                                | auth                            | richiesta in attesa (`PENDING`), ruolo invariato     |
+| GET        | `/api/critic/accreditation`                           | auth                            | stato della propria richiesta                        |
+| GET        | `/api/critic/requests`                                | ADMIN                           | coda richieste                                       |
+| POST       | `/api/critic/verify`                                  | ADMIN                           | `{ userId, approve }`, notifica CRITIC_APPROVED      |
+| POST       | `/api/critic/reviews`                                 | auth + ruolo CRITIC             | 201 `CriticReviewItem`                               |
+| GET        | `/api/critic/dual-score/:releaseId`                   | —                               |                                                      |
+| GET        | `/api/critic/release/:releaseId`                      | —                               |                                                      |
+| POST       | `/api/videos`                                         | CRITIC, MODERATOR, ADMIN        | 201                                                  |
+| GET        | `/api/videos/feed?category=`                          | —                               |                                                      |
+| GET        | `/api/videos/release/:releaseId`                      | —                               |                                                      |
+| GET/POST   | `/api/spotify/*`                                      | auth + Spotify collegato        | 409 se non collegato, 502 se Spotify fallisce        |
 
 Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCursor }`
 (`nextCursor` è `null` all'ultima pagina).
@@ -179,9 +196,26 @@ Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCur
   `{ ok: false, code, message }`); payload non validi ricevono `VALIDATION_ERROR` senza
   disconnessione.
 - Server → client: `now_playing:initial_friends_state`, `now_playing:friend_presence_changed`,
-  `notification:new`, `chat:message`. Tipi in `packages/shared/src/realtime.ts`.
+  `notification:new`, `chat:message`, `session:revoked`. Tipi in
+  `packages/shared/src/realtime.ts`.
+- **Fine sessione:** il server invia `session:revoked` `{ reason }` e chiude il socket quando
+  - `POST /api/auth/logout` → solo i socket aperti con **quel** token (`LOGOUT`);
+  - `POST /api/auth/password` → tutti i socket dell'utente (`PASSWORD_CHANGED`); il dispositivo
+    che ha cambiato password ha già il cookie nuovo e può richiamare `socket.connect()`;
+  - il token scade mentre il socket è aperto (`EXPIRED`);
+  - un evento client trova la sessione non più valida (`INVALID`: `sessionVersion` cambiata o
+    utente cancellato; ricontrollo sul DB al massimo ogni 15 s per socket). L'evento riceve prima
+    l'ack `{ ok: false, code: 'UNAUTHORIZED' }`.
+    Una disconnessione decisa dal server non viene ritentata da socket.io-client.
+- **Throttling now-playing:** `now_playing:update_track` viene inoltrato ai follower al massimo
+  una volta ogni 2 s per utente; gli aggiornamenti intermedi sono fusi e parte solo l'ultimo alla
+  fine della finestra (l'ack è comunque `{ ok: true }`). Attivare Ghost Mode scarta l'eventuale
+  aggiornamento in sospeso.
 
 ## 6. Client web (`apps/web/src/lib`)
+
+`api.catalog.search(q | { q, type, page, limit, external })` e `api.catalog.resolve({ provider,
+type, id })` rispecchiano il §8.
 
 ```ts
 import { api, ApiError, isApiError } from '@/lib/api';
@@ -215,3 +249,78 @@ npm run dev                     # API :4000 + web :3000 (mobile: npm run dev:mob
 
 Tutti gli utenti del seed accedono con password `openmusic-dev` (es.
 `francospagnati@openmusic.test`; `admin@openmusic.test` ha ruolo ADMIN).
+
+## 8. Catalogo da database musicali esterni
+
+Release, brani e artisti reali arrivano da database aperti, senza chiavi API:
+
+| Provider          | Uso                                                                                                                                                                                      | Limite rispettato        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Deezer            | primario: ricerca album/brani/artisti, dettaglio album con tracklist e ISRC, cover 1000 px, anteprime, generi, data, etichetta, UPC                                                      | burst 10, poi 1 / 110 ms |
+| iTunes Search     | fallback di ricerca, artwork portato a 1000×1000, anteprime                                                                                                                              | burst 3, poi 1 / 3 s     |
+| MusicBrainz       | arricchimento canonico (MBID release / release group / recording, etichetta, generi votati) via UPC, ISRC o titolo + artista; `User-Agent: OpenMusic/<versione> ( MUSICBRAINZ_CONTACT )` | 1 richiesta / 1,1 s      |
+| Cover Art Archive | cover di riserva per MBID                                                                                                                                                                | 1 richiesta / 250 ms     |
+
+Codice: `apps/api/src/modules/catalog/providers/*` (un provider per servizio, risposte validate
+con Zod sulla forma documentata) sopra `UpstreamClient` (`apps/api/src/lib/upstream.ts`): cache
+Redis (`upstream:<provider>:<sha1(url)>`, TTL 1 h ricerche – 7 giorni MusicBrainz, anche i 404),
+timeout 5 s, retry con backoff esponenziale su 429/5xx/rete (rispetta `Retry-After`), rate
+limiter a token bucket per provider con coda limitata, circuit breaker (3 errori consecutivi → provider saltato
+per 30 s).
+
+**Import e id.** `CatalogImportService` trasforma i risultati in righe locali con **UUID interni**
+e id esterni nelle colonne `deezerId`, `itunesId`, `musicbrainzId`, `upc`, `isrc` (+ tabella
+`Artist`). Cerca la riga esistente per id del provider → UPC/ISRC → titolo + artista normalizzati
+(`catalogMatchKey` in `@openmusic/shared`), quindi lo stesso album da Deezer, iTunes, MusicBrainz o
+dal seed converge su **una** release e ripetere l'import non crea duplicati. Le righe del seed
+(senza id esterni) vengono aggiornate sul posto: copertina, data, etichetta, tracklist e ISRC reali,
+recensioni e post restano collegati. I client ricevono **sempre** UUID: gli id `deezer-…` non
+esistono più (la migrazione `20261021180000_catalog_external_ids` ha convertito quelli vecchi).
+
+**Ricerca** `GET /api/catalog/search` — query `q`, `type=all|releases|tracks`, `page>=1`,
+`limit 1..25` (default 10), `external=true|false`. Risposta `SearchResult`:
+`{ releases, tracks, page, hasMore, sources }`. Prima i risultati locali, poi quelli esterni
+(Deezer; iTunes se Deezer fallisce o non trova nulla, solo a pagina 1) importati al volo e
+deduplicati (UPC/ISRC/titolo + artista); ogni lista ha al massimo `limit` elementi. Le pagine
+sono indipendenti: chi accoda pagine deduplica per `id`. Se i provider non rispondono la ricerca
+restituisce comunque i risultati locali (`sources: ['LOCAL']`): la parte esterna ha un budget
+totale di 3,5 s (le chiamate in ritardo continuano e riempiono la cache) e, aperti i circuit
+breaker, non aggiunge latenza.
+
+**Apertura** `GET /api/catalog/releases/:id` — una release nota solo come risultato di ricerca
+viene completata dal provider la prima volta (tracklist con ISRC e numeri traccia, etichetta,
+data, generi, UPC). Colore dominante della cover e arricchimento MusicBrainz/Cover Art Archive
+partono in background (coda in-process, max 2 in parallelo).
+
+**Risoluzione** `GET /api/catalog/resolve?provider=deezer|itunes|musicbrainz&type=release|track&id=`
+→ `CatalogResolveResult` `{ release: CatalogRelease (con tracce), trackId: uuid | null }`.
+Importa al primo uso; accetta anche i vecchi id `deezer-alb-<n>` / `deezer-trk-<n>`. 400 id non
+valido, 404 non trovato dal provider, 502 `UPSTREAM_ERROR` provider irraggiungibile.
+
+`CatalogRelease` ha in più `label`, `upc` (senza zeri iniziali), `trackCount`, `coverSource`
+(`DEEZER | ITUNES | COVER_ART_ARCHIVE | null`) ed `externalIds`; `CatalogTrack` ha `trackNumber`,
+`discNumber`, `externalIds`.
+
+**Colore dominante** senza dipendenze (`apps/api/src/lib/dominant-color.ts`): si scarica una
+copia da 64 px della cover (Deezer e iTunes la generano su richiesta, CAA ha la miniatura 250 px)
+e si decodifica in puro TypeScript: PNG completo (zlib di Node), JPEG baseline/progressive
+leggendo solo i coefficienti DC dei blocchi 8×8 (la media del blocco). Istogramma pesato verso i
+colori saturi.
+
+**Script**
+
+```bash
+npm run catalog:smoke                                   # verifica live di ogni provider (exit 1 se uno fallisce)
+npm run catalog:import -- --file curated-albums.json    # ~46 album reali (apps/api/data)
+npm run catalog:import -- --file curated-albums.json --dry-run --limit 5
+npm run db:seed          # seed offline + upgrade dei dischi del seed con dati reali se Deezer risponde
+npm run db:seed:offline  # solo seed offline
+```
+
+Opzioni di `catalog:import`: `--dry-run`, `--no-enrich` (salta MusicBrainz, 1 req/s),
+`--only-local` (solo album già nel DB), `--if-online` (esce con 0 se Deezer è irraggiungibile),
+`--limit N`, `--seed-hook` (= `--only-local --if-online --no-enrich`, disattivato da
+`CATALOG_SEED_IMPORT=false`).
+
+Variabili: `CATALOG_EXTERNAL_ENABLED` (default `true`; `false` = solo catalogo locale),
+`MUSICBRAINZ_CONTACT`, `ITUNES_COUNTRY` (default `IT`), `CATALOG_SEED_IMPORT`, `WEB_APP_URL`.

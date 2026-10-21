@@ -240,12 +240,49 @@ describe('auth: local accounts', () => {
     expect((await login('pw@example.com', PASSWORD)).statusCode).toBe(401);
   });
 
-  it('rejects the Spotify callback without a matching OAuth state', async () => {
+  it('rejects the Spotify callback without a matching OAuth state (redirect to the web app)', async () => {
     const res = await ctx.app.inject({
       method: 'GET',
       url: '/api/auth/spotify/callback?code=abc&state=forged',
     });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe(
+      'http://localhost:3000/auth?oauth=spotify&status=error&code=FORBIDDEN'
+    );
+  });
+
+  it('redirects OAuth callbacks back to the web app with an error status', async () => {
+    const state = 'state-for-test-1234567890';
+    const cookies = { om_oauth_state: state };
+
+    // User denied consent on Spotify while signed in: back to the settings page.
+    const reg = await register({
+      email: 'oauth@example.com',
+      username: 'oauth_u',
+      password: PASSWORD,
+    });
+    const { token } = AuthSessionResponseSchema.parse(reg.json());
+    const denied = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/auth/spotify/callback?error=access_denied&state=${state}`,
+      cookies,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(denied.statusCode).toBe(302);
+    expect(denied.headers.location).toBe(
+      'http://localhost:3000/settings?oauth=spotify&status=error&code=BAD_REQUEST'
+    );
+
+    // Last.fm needs a signed-in user: no JSON 401, a redirect the web can show.
+    const anonymous = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/auth/lastfm/callback?token=t0k3n&state=${state}`,
+      cookies,
+    });
+    expect(anonymous.statusCode).toBe(302);
+    expect(anonymous.headers.location).toBe(
+      'http://localhost:3000/settings?oauth=lastfm&status=error&code=UNAUTHORIZED'
+    );
   });
 
   it('sends security headers and never leaks internals on unknown errors', async () => {

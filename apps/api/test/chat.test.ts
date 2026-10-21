@@ -48,15 +48,15 @@ describe('chat', () => {
     expect(message.readAt).toBeNull();
   });
 
-  it('shares tracks imported from catalog search (non-UUID ids) and rejects unknown ones', async () => {
+  it('shares tracks imported from external catalogs by internal UUID only', async () => {
     const alice = await signedInUser(ctx);
     const bob = await signedInUser(ctx);
     const release = await prisma.release.create({
-      data: { id: `deezer-alb-${Date.now()}`, title: 'Imported', artistName: 'Someone' },
+      data: { title: 'Imported', artistName: 'Someone', deezerId: String(Date.now()) },
     });
     const track = await prisma.track.create({
       data: {
-        id: `deezer-trk-${Date.now()}`,
+        deezerId: String(Date.now()),
         title: 'Imported track',
         artistName: 'Someone',
         durationMs: 180_000,
@@ -66,11 +66,17 @@ describe('chat', () => {
 
     const ok = await send(alice.headers, { receiverId: bob.user.id, trackId: track.id });
     expect(ok.statusCode).toBe(201);
-    expect(ChatMessageSchema.parse(ok.json()).track?.id).toBe(track.id);
+    const message = ChatMessageSchema.parse(ok.json());
+    expect(message.track?.id).toBe(track.id);
+    expect(message.universalLinks?.deezer).toBe(`https://www.deezer.com/track/${track.deezerId}`);
 
+    // Provider ids are never accepted as catalog ids (use /api/catalog/resolve).
+    const legacy = await send(alice.headers, { receiverId: bob.user.id, trackId: 'deezer-trk-1' });
+    expect(legacy.statusCode).toBe(400);
+    expect(legacy.json().code).toBe('VALIDATION_ERROR');
     const missing = await send(alice.headers, {
       receiverId: bob.user.id,
-      trackId: 'deezer-trk-does-not-exist',
+      trackId: '00000000-0000-4000-8000-000000000000',
     });
     expect(missing.statusCode).toBe(400);
   });

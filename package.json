@@ -18,12 +18,15 @@
     "format:check": "prettier --check .",
     "db:migrate": "npm --workspace=@openmusic/db run migrate",
     "db:migrate:deploy": "npm --workspace=@openmusic/db run migrate:deploy",
-    "db:seed": "npm --workspace=@openmusic/db run seed",
+    "db:seed": "npm --workspace=@openmusic/db run seed && npm --workspace=@openmusic/api run catalog:import -- --seed-hook",
     "db:test:prepare": "node scripts/prepare-test-db.mjs",
     "dev:api": "turbo run dev --filter=@openmusic/api",
     "dev:web": "turbo run dev --filter=@openmusic/web",
     "dev:mobile": "npm --workspace=@openmusic/mobile run start",
-    "e2e": "npm --workspace=@openmusic/web run e2e"
+    "e2e": "npm --workspace=@openmusic/web run e2e",
+    "db:seed:offline": "npm --workspace=@openmusic/db run seed",
+    "catalog:import": "npm --workspace=@openmusic/api run catalog:import --",
+    "catalog:smoke": "npm --workspace=@openmusic/api run catalog:smoke"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.1",

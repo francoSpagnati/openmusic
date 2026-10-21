@@ -31,8 +31,11 @@ export const SendMessageInputSchema = z
   .object({
     receiverId: z.string().uuid(),
     content: z.string().trim().max(1000).optional(),
-    /** Catalog track id: a UUID, or an imported id such as `deezer-trk-123` (catalog search). */
-    trackId: z.string().min(1).max(64).optional(),
+    /**
+     * Internal catalog track UUID. Tracks found on Deezer/iTunes get one when the catalog search
+     * imports them; a provider id can be turned into one with `GET /api/catalog/resolve`.
+     */
+    trackId: z.string().uuid().optional(),
   })
   .refine((m) => (m.content !== undefined && m.content.length > 0) || m.trackId !== undefined, {
     message: 'Il messaggio deve contenere testo o un brano',

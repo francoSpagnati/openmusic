@@ -10,6 +10,11 @@ import { prisma } from '@openmusic/db';
 import { SESSION_COOKIE_NAME } from '@openmusic/shared';
 import { env } from './config/env';
 import { registerAuth } from './lib/auth';
+import { BackgroundQueue } from './lib/background';
+import { RedisResponseCache, type Clock, type FetchLike } from './lib/upstream';
+import { createCatalogProviders, type CatalogProviders } from './modules/catalog/providers';
+import { CatalogImportService } from './modules/catalog/catalog-import.service';
+import { CatalogEnrichmentService } from './modules/catalog/catalog-enrichment.service';
 import { registerErrorHandling } from './lib/error-handler';
 import { createRealtimeEmitter, type OpenMusicIo } from './lib/realtime';
 import { NowPlayingService } from './modules/now-playing/now-playing.service';
@@ -53,6 +58,11 @@ export interface AppContext {
   authService: AuthService;
   nowPlayingService: NowPlayingService;
   catalogService: CatalogService;
+  catalogProviders: CatalogProviders;
+  catalogImportService: CatalogImportService;
+  catalogEnrichmentService: CatalogEnrichmentService;
+  /** Background catalog work (dominant colors, MusicBrainz enrichment). */
+  catalogBackground: BackgroundQueue;
   reviewsService: ReviewsService;
   profileService: ProfileService;
   discoveryService: DiscoveryService;
@@ -70,7 +80,22 @@ export interface AppContext {
 export interface BuildAppOptions {
   /** Overrides AUTH_RATE_LIMIT_MAX (tests use a high value except in the rate-limit test). */
   authRateLimitMax?: number;
+  /**
+   * `fetch` used for external catalogs. Tests inject a fixture-backed fake; when omitted in
+   * NODE_ENV=test every outbound catalog call fails immediately (tests never hit the network).
+   */
+  catalogFetch?: FetchLike;
+  /** Clock for upstream rate limiting/backoff (tests pass one that does not really sleep). */
+  catalogClock?: Clock;
+  /** Overrides CATALOG_EXTERNAL_ENABLED. */
+  catalogExternalEnabled?: boolean;
+  /** Socket gateway tuning (tests shorten these). */
+  nowPlayingIntervalMs?: number;
+  sessionRecheckMs?: number;
 }
+
+const offlineFetch: FetchLike = () =>
+  Promise.reject(new Error('External catalog calls are disabled in tests'));
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<AppContext> {
   const app = Fastify({
@@ -118,8 +143,36 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
   const lastFmService = new LastFmService();
   const authService = new AuthService(prisma, spotifyService, lastFmService);
 
-  const previewResolver = new AudioPreviewResolverService();
-  const catalogService = new CatalogService(prisma, previewResolver);
+  const catalogProviders = createCatalogProviders({
+    fetch: options.catalogFetch ?? (env.NODE_ENV === 'test' ? offlineFetch : undefined),
+    clock: options.catalogClock,
+    cache: new RedisResponseCache(redis),
+    musicbrainzContact: env.MUSICBRAINZ_CONTACT,
+    itunesCountry: env.ITUNES_COUNTRY,
+  });
+  const catalogBackground = new BackgroundQueue(app.log);
+  app.addHook('onClose', async () => catalogBackground.close());
+  const catalogImportService = new CatalogImportService(prisma, catalogProviders);
+  const catalogEnrichmentService = new CatalogEnrichmentService(
+    prisma,
+    catalogProviders,
+    catalogImportService
+  );
+  const previewResolver = new AudioPreviewResolverService(catalogProviders);
+  const catalogService = new CatalogService(
+    prisma,
+    previewResolver,
+    catalogProviders,
+    catalogImportService,
+    catalogEnrichmentService,
+    catalogBackground,
+    app.log,
+    {
+      externalEnabled:
+        options.catalogExternalEnabled ??
+        (env.NODE_ENV === 'test' && !options.catalogFetch ? false : env.CATALOG_EXTERNAL_ENABLED),
+    }
+  );
   const reviewsService = new ReviewsService(prisma, notificationsService);
   const profileService = new ProfileService(prisma);
   const discoveryService = new DiscoveryService(prisma, previewResolver);
@@ -139,7 +192,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
   const usersService = new UsersService(prisma, notificationsService);
   const feedService = new FeedService(prisma, notificationsService);
 
-  registerNowPlayingGateway(app, io, prisma, nowPlayingService);
+  const sessionSockets = registerNowPlayingGateway(app, io, prisma, nowPlayingService, {
+    nowPlayingIntervalMs: options.nowPlayingIntervalMs,
+    sessionRecheckMs: options.sessionRecheckMs,
+  });
 
   // 4. Routes
   app.get('/health', async () => ({
@@ -153,6 +209,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
       rateLimitMax: options.authRateLimitMax ?? env.AUTH_RATE_LIMIT_MAX,
       cookieSecure: env.COOKIE_SECURE,
       presence: nowPlayingService,
+      sockets: sessionSockets,
+      webAppUrl: env.WEB_APP_URL,
     }),
     { prefix: '/api/auth' }
   );
@@ -179,6 +237,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     authService,
     nowPlayingService,
     catalogService,
+    catalogProviders,
+    catalogImportService,
+    catalogEnrichmentService,
+    catalogBackground,
     reviewsService,
     profileService,
     discoveryService,
