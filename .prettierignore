@@ -8,3 +8,5 @@ coverage
 package-lock.json
 *.tsbuildinfo
 packages/db/prisma/migrations
+apps/web/e2e/.results
+apps/web/playwright-report

@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "next lint --dir src --dir e2e",
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@next/env": "^14.2.15",
@@ -20,6 +21,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@prisma/client": "^5.17.0",
     "@types/node": "^20.14.0",
     "@types/react": "~18.2.79",
     "@types/react-dom": "~18.2.25",

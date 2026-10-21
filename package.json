@@ -22,7 +22,8 @@
     "db:test:prepare": "node scripts/prepare-test-db.mjs",
     "dev:api": "turbo run dev --filter=@openmusic/api",
     "dev:web": "turbo run dev --filter=@openmusic/web",
-    "dev:mobile": "npm --workspace=@openmusic/mobile run start"
+    "dev:mobile": "npm --workspace=@openmusic/mobile run start",
+    "e2e": "npm --workspace=@openmusic/web run e2e"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.1",
