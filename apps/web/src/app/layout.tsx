@@ -6,6 +6,8 @@ import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { AudioPlayerProvider } from '../context/AudioPlayerContext';
 import { AudioPlayerBar } from '../components/AudioPlayerBar';
+import { ToastProvider } from '../components/ui';
+import { AuthProvider } from '../lib/auth';
 
 // Typography decision (docs/05_DESIGN_SYSTEM.md §2):
 // Fraunces = editorial voice (headlines, reviews), variable with opsz/SOFT/WONK axes.
@@ -78,12 +80,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${fraunces.variable} ${jakarta.variable} ${jetbrainsMono.variable} dark`}
     >
       <body className="min-h-screen bg-om-bg text-om-text flex flex-col selection:bg-om-amber selection:text-om-bg font-sans">
-        <AudioPlayerProvider>
-          <Navbar />
-          <main className="flex-1 pb-16">{children}</main>
-          <Footer />
-          <AudioPlayerBar />
-        </AudioPlayerProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AudioPlayerProvider>
+              <Navbar />
+              <main className="flex-1 pb-16">{children}</main>
+              <Footer />
+              <AudioPlayerBar />
+            </AudioPlayerProvider>
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );
