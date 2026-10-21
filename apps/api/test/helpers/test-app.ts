@@ -1,13 +1,14 @@
 import { prisma } from '@openmusic/db';
-import { buildApp, type AppContext } from '../../src/app';
+import { buildApp, type AppContext, type BuildAppOptions } from '../../src/app';
 
 /**
  * Builds the real Fastify app (routes, services, Socket.io) against the local
  * `openmusic_test` Postgres database and Redis logical DB 15 (see vitest.config.ts).
  */
-export async function createTestApp(): Promise<AppContext> {
+export async function createTestApp(options: BuildAppOptions = {}): Promise<AppContext> {
   assertTestEnvironment();
-  const ctx = await buildApp();
+  // Many suites register/login repeatedly from the same IP; only rate-limit.test.ts lowers this.
+  const ctx = await buildApp({ authRateLimitMax: 10_000, ...options });
   await ctx.redis.connect();
   await ctx.app.ready();
   return ctx;

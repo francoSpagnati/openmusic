@@ -1,3 +1,4 @@
+import { UpstreamError } from '../../lib/errors';
 import { env } from '../../config/env';
 import type {
   SpotifyCurrentlyPlaying,
@@ -74,7 +75,10 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Spotify token exchange failed (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Spotify',
+        `Spotify token exchange failed (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -113,7 +117,10 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Spotify token refresh failed (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Spotify',
+        `Spotify token refresh failed (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -138,7 +145,10 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Failed to fetch Spotify profile (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Spotify',
+        `Failed to fetch Spotify profile (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -148,7 +158,7 @@ export class SpotifyService {
       images?: Array<{ url: string }>;
     };
 
-    const avatarUrl = data.images && data.images.length > 0 ? data.images[0]?.url ?? null : null;
+    const avatarUrl = data.images && data.images.length > 0 ? (data.images[0]?.url ?? null) : null;
 
     return {
       id: data.id,
@@ -175,7 +185,10 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Failed to get currently playing (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Spotify',
+        `Failed to get currently playing (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -243,7 +256,10 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Failed to get recently played (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Spotify',
+        `Failed to get recently played (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -302,7 +318,7 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Failed to get top tracks (${response.status}): ${err}`);
+      throw new UpstreamError('Spotify', `Failed to get top tracks (${response.status}): ${err}`);
     }
 
     const data = (await response.json()) as {
@@ -355,7 +371,7 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Failed to get top artists (${response.status}): ${err}`);
+      throw new UpstreamError('Spotify', `Failed to get top artists (${response.status}): ${err}`);
     }
 
     const data = (await response.json()) as {
@@ -399,7 +415,10 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Spotify track search failed (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Spotify',
+        `Spotify track search failed (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -460,7 +479,10 @@ export class SpotifyService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Failed to create Spotify playlist (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Spotify',
+        `Failed to create Spotify playlist (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -501,7 +523,10 @@ export class SpotifyService {
 
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(`Failed to add tracks to Spotify playlist (${response.status}): ${err}`);
+        throw new UpstreamError(
+          'Spotify',
+          `Failed to add tracks to Spotify playlist (${response.status}): ${err}`
+        );
       }
     }
   }

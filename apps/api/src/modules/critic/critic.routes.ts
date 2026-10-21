@@ -1,56 +1,60 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { CriticAccreditationRequestSchema } from '@openmusic/shared';
+import {
+  CriticAccreditationRequestSchema,
+  CriticVerifyInputSchema,
+  PublishCriticReviewInputSchema,
+} from '@openmusic/shared';
+import { requireAuth } from '../../lib/auth';
+import { NotFoundError } from '../../lib/errors';
 import type { CriticService } from './critic.service';
 
-const PublishCriticReviewSchema = z.object({
-  releaseId: z.string().uuid(),
-  rating: z.number().int().min(10).max(100),
-  content: z.string().min(10).max(5000),
-  originalReviewUrl: z.string().url().optional(),
-});
+const ReleaseParamSchema = z.object({ releaseId: z.string().uuid() });
 
 export function createCriticRoutes(criticService: CriticService): FastifyPluginAsync {
   return async (fastify) => {
-    // 1. Richiesta di accreditamento Critico / Webzine
-    fastify.post('/accredit', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const input = CriticAccreditationRequestSchema.parse(request.body);
-        const result = await criticService.applyForAccreditation(decoded.userId, input);
-        return reply.send(result);
-      } catch (err) {
-        return reply.status(401).send({ error: 'Operazione non autorizzata', details: String(err) });
-      }
+    // Accreditation request (pending until an ADMIN verifies it).
+    fastify.post('/accredit', { preHandler: fastify.authenticate }, async (request) => {
+      const input = CriticAccreditationRequestSchema.parse(request.body);
+      return criticService.applyForAccreditation(requireAuth(request).userId, input);
     });
 
-    // 2. Pubblica una recensione della Critica Accreditata
-    fastify.post('/reviews', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const input = PublishCriticReviewSchema.parse(request.body);
-        const review = await criticService.publishCriticReview(decoded.userId, input);
-        return reply.status(201).send(review);
-      } catch (err) {
-        return reply.status(403).send({ error: 'Impossibile pubblicare recensione della critica', details: String(err) });
-      }
+    fastify.get('/accreditation', { preHandler: fastify.authenticate }, async (request) => {
+      return criticService.getAccreditationStatus(requireAuth(request).userId);
     });
 
-    // 3. Punteggio Duale dell'album (Audience + Critic Score)
-    fastify.get('/dual-score/:releaseId', async (request, reply) => {
-      const { releaseId } = request.params as { releaseId: string };
+    fastify.get(
+      '/requests',
+      { preHandler: [fastify.authenticate, fastify.requireRole('ADMIN')] },
+      async () => criticService.listPendingRequests()
+    );
+
+    fastify.post(
+      '/verify',
+      { preHandler: [fastify.authenticate, fastify.requireRole('ADMIN')] },
+      async (request) => {
+        const { userId, approve } = CriticVerifyInputSchema.parse(request.body);
+        return criticService.verify(requireAuth(request).userId, userId, approve);
+      }
+    );
+
+    // Accredited critics only (role checked in the service against the current DB role).
+    fastify.post('/reviews', { preHandler: fastify.authenticate }, async (request, reply) => {
+      const input = PublishCriticReviewInputSchema.parse(request.body);
+      const review = await criticService.publishCriticReview(requireAuth(request).userId, input);
+      return reply.status(201).send(review);
+    });
+
+    fastify.get('/dual-score/:releaseId', async (request) => {
+      const { releaseId } = ReleaseParamSchema.parse(request.params);
       const scores = await criticService.getDualScores(releaseId);
-      if (!scores) {
-        return reply.status(404).send({ error: 'Album non trovato' });
-      }
-      return reply.send(scores);
+      if (!scores) throw new NotFoundError('Album non trovato');
+      return scores;
     });
 
-    // 4. Recensioni dei critici per un'opera
-    fastify.get('/release/:releaseId', async (request, reply) => {
-      const { releaseId } = request.params as { releaseId: string };
-      const reviews = await criticService.getReleaseCriticReviews(releaseId);
-      return reply.send(reviews);
+    fastify.get('/release/:releaseId', async (request) => {
+      const { releaseId } = ReleaseParamSchema.parse(request.params);
+      return criticService.getReleaseCriticReviews(releaseId);
     });
   };
 }

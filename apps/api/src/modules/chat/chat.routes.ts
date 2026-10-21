@@ -1,58 +1,45 @@
 import type { FastifyPluginAsync } from 'fastify';
 import {
-  SendMessageInputSchema,
+  ConversationParamSchema,
+  MarkListenedInputSchema,
   ReactToMessageInputSchema,
+  SendMessageInputSchema,
 } from '@openmusic/shared';
+import { requireAuth } from '../../lib/auth';
 import type { ChatService } from './chat.service';
 
 export function createChatRoutes(chatService: ChatService): FastifyPluginAsync {
   return async (fastify) => {
-    // 1. Invia messaggio / canzone consigliata
+    fastify.addHook('preHandler', fastify.authenticate);
+
+    fastify.get('/conversations', async (request) => {
+      return chatService.listConversations(requireAuth(request).userId);
+    });
+
     fastify.post('/messages', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const input = SendMessageInputSchema.parse(request.body);
-        const message = await chatService.sendMessage(decoded.userId, input);
-        return reply.status(201).send(message);
-      } catch (err) {
-        return reply.status(401).send({ error: 'Non autorizzato o input non valido', details: String(err) });
-      }
+      const input = SendMessageInputSchema.parse(request.body);
+      const message = await chatService.sendMessage(requireAuth(request).userId, input);
+      return reply.status(201).send(message);
     });
 
-    // 2. Recupera la conversazione tra l'utente corrente e un amico
-    fastify.get('/conversation/:otherUserId', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const { otherUserId } = request.params as { otherUserId: string };
-        const messages = await chatService.getConversation(decoded.userId, otherUserId);
-        return reply.send(messages);
-      } catch {
-        return reply.status(401).send({ error: 'Non autorizzato' });
-      }
+    fastify.get('/conversation/:otherUserId', async (request) => {
+      const { otherUserId } = ConversationParamSchema.parse(request.params);
+      return chatService.getConversation(requireAuth(request).userId, otherUserId);
     });
 
-    // 3. Aggiunge una reazione rapida a un brano consigliato (FIRE / HEART / NOT_FOR_ME)
-    fastify.post('/reaction', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const { messageId, reaction } = ReactToMessageInputSchema.parse(request.body);
-        const updated = await chatService.reactToMessage(decoded.userId, messageId, reaction);
-        return reply.send(updated);
-      } catch {
-        return reply.status(401).send({ error: 'Non autorizzato o payload invalido' });
-      }
+    fastify.post('/conversation/:otherUserId/read', async (request) => {
+      const { otherUserId } = ConversationParamSchema.parse(request.params);
+      return chatService.markConversationRead(requireAuth(request).userId, otherUserId);
     });
 
-    // 4. Marca il brano come ascoltato
-    fastify.post('/listened', async (request, reply) => {
-      try {
-        await request.jwtVerify<{ userId: string }>();
-        const { messageId } = request.body as { messageId: string };
-        const res = await chatService.markTrackAsListened(messageId);
-        return reply.send(res);
-      } catch {
-        return reply.status(401).send({ error: 'Non autorizzato' });
-      }
+    fastify.post('/reaction', async (request) => {
+      const { messageId, reaction } = ReactToMessageInputSchema.parse(request.body);
+      return chatService.reactToMessage(requireAuth(request).userId, messageId, reaction);
+    });
+
+    fastify.post('/listened', async (request) => {
+      const { messageId } = MarkListenedInputSchema.parse(request.body);
+      return chatService.markTrackAsListened(requireAuth(request).userId, messageId);
     });
   };
 }

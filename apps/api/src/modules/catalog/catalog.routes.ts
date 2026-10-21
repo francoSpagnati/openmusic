@@ -1,38 +1,40 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { AudioPreviewResolveQuerySchema } from '@openmusic/shared';
+import {
+  AudioPreviewResolveQuerySchema,
+  BrowseReleasesQuerySchema,
+  CatalogSearchQuerySchema,
+  IdParamSchema,
+} from '@openmusic/shared';
+import { NotFoundError } from '../../lib/errors';
 import type { CatalogService } from './catalog.service';
 
 export function createCatalogRoutes(catalogService: CatalogService): FastifyPluginAsync {
   return async (fastify) => {
-    // 1. Ricerca globale per album e brani
-    fastify.get('/search', async (request, reply) => {
-      const { q } = request.query as { q?: string };
-      if (!q) {
-        return reply.send({ releases: [], tracks: [] });
-      }
-      const results = await catalogService.search(q);
-      return reply.send(results);
+    fastify.get('/search', async (request) => {
+      const { q } = CatalogSearchQuerySchema.parse(request.query);
+      if (!q) return { releases: [], tracks: [] };
+      return catalogService.search(q);
     });
 
-    // 2. Dettaglio singola Release con tracce e punteggi
-    fastify.get('/releases/:id', async (request, reply) => {
-      const { id } = request.params as { id: string };
+    // Explore: browse releases by genre, most reviewed or most recent first.
+    fastify.get('/releases', async (request) => {
+      const query = BrowseReleasesQuerySchema.parse(request.query);
+      return catalogService.browseReleases(query);
+    });
+
+    fastify.get('/genres', async () => catalogService.listGenres());
+
+    fastify.get('/releases/:id', async (request) => {
+      const { id } = IdParamSchema.parse(request.params);
       const release = await catalogService.getReleaseById(id);
-      if (!release) {
-        return reply.status(404).send({ error: 'Release non trovata' });
-      }
-      return reply.send(release);
+      if (!release) throw new NotFoundError('Release non trovata');
+      return release;
     });
 
-    // 3. ADR-003: Risolutore di anteprima audio 30s
-    fastify.get('/preview', async (request, reply) => {
+    // ADR-003: 30s audio preview resolver.
+    fastify.get('/preview', async (request) => {
       const query = AudioPreviewResolveQuerySchema.parse(request.query);
-      const result = await catalogService.resolveTrackPreview(
-        query.title,
-        query.artist,
-        query.isrc
-      );
-      return reply.send(result);
+      return catalogService.resolveTrackPreview(query.title, query.artist, query.isrc);
     });
   };
 }

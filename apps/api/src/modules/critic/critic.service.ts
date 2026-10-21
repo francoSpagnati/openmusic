@@ -1,31 +1,128 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@openmusic/db';
 import type {
   CriticAccreditationRequest,
+  CriticAccreditationStatus,
   CriticReviewItem,
   DualScoreDetails,
+  PendingCriticRequest,
+  PublishCriticReviewInput,
 } from '@openmusic/shared';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors';
+import type { NotificationsService } from '../notifications/notifications.service';
+import { aggregateScore } from '../reviews/score';
 
 export class CriticService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly notifications: NotificationsService
+  ) {}
 
   /**
-   * Richiesta e approvazione accreditamento critico / webzine
+   * Files (or updates) an accreditation request. The role does NOT change here: an ADMIN must
+   * approve it through `verify`.
    */
   async applyForAccreditation(
     userId: string,
     input: CriticAccreditationRequest
-  ): Promise<{ success: boolean; outletName: string }> {
+  ): Promise<CriticAccreditationStatus> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!user) throw new NotFoundError('Utente non trovato');
+    if (user.role === 'CRITIC') throw new ConflictError('Sei già un critico accreditato');
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        role: 'CRITIC',
         criticOutlet: input.outletName.trim(),
-        criticVerifiedAt: new Date(),
+        criticPortfolioUrl: input.portfolioUrl,
+        criticRequestedAt: new Date(),
         bio: input.bio?.trim() || undefined,
       },
     });
+    return this.getAccreditationStatus(userId);
+  }
 
-    return { success: true, outletName: input.outletName };
+  async getAccreditationStatus(userId: string): Promise<CriticAccreditationStatus> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, criticOutlet: true, criticRequestedAt: true, criticVerifiedAt: true },
+    });
+    if (!user) throw new NotFoundError('Utente non trovato');
+    const status =
+      user.role === 'CRITIC' ? 'APPROVED' : user.criticRequestedAt ? 'PENDING' : 'NONE';
+    return {
+      status,
+      outletName: user.criticOutlet,
+      requestedAt: user.criticRequestedAt?.toISOString() ?? null,
+      verifiedAt: user.criticVerifiedAt?.toISOString() ?? null,
+    };
+  }
+
+  /** ADMIN queue of pending requests, oldest first. */
+  async listPendingRequests(): Promise<PendingCriticRequest[]> {
+    const users = await this.prisma.user.findMany({
+      where: { criticRequestedAt: { not: null }, role: { not: 'CRITIC' } },
+      orderBy: { criticRequestedAt: 'asc' },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        criticOutlet: true,
+        criticPortfolioUrl: true,
+        criticRequestedAt: true,
+      },
+    });
+    return users.flatMap((u) =>
+      u.criticRequestedAt && u.criticOutlet
+        ? [
+            {
+              userId: u.id,
+              username: u.username,
+              displayName: u.displayName,
+              outletName: u.criticOutlet,
+              portfolioUrl: u.criticPortfolioUrl,
+              requestedAt: u.criticRequestedAt.toISOString(),
+            },
+          ]
+        : []
+    );
+  }
+
+  /** ADMIN decision on a pending request. Approval grants the CRITIC role and notifies the user. */
+  async verify(
+    adminId: string,
+    userId: string,
+    approve: boolean
+  ): Promise<CriticAccreditationStatus> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, criticRequestedAt: true },
+    });
+    if (!user) throw new NotFoundError('Utente non trovato');
+    if (!user.criticRequestedAt)
+      throw new BadRequestError('Nessuna richiesta di accredito in attesa');
+    if (user.role !== 'USER' && user.role !== 'CRITIC') {
+      throw new BadRequestError('Il ruolo di questo utente non può essere modificato');
+    }
+
+    if (approve) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'CRITIC', criticVerifiedAt: new Date(), criticRequestedAt: null },
+      });
+      await this.notifications.notify({
+        recipientId: userId,
+        actorId: adminId,
+        type: 'CRITIC_APPROVED',
+      });
+    } else {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { criticRequestedAt: null, criticPortfolioUrl: null },
+      });
+    }
+    return this.getAccreditationStatus(userId);
   }
 
   /**
@@ -33,20 +130,17 @@ export class CriticService {
    */
   async publishCriticReview(
     userId: string,
-    input: {
-      releaseId: string;
-      rating: number; // 10..100
-      content: string;
-      originalReviewUrl?: string;
-    }
+    input: PublishCriticReviewInput
   ): Promise<CriticReviewItem> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user || user.role !== 'CRITIC') {
-      throw new Error('Solo i critici musicali accreditati possono pubblicare un Critic Score');
+      throw new ForbiddenError('Solo i critici accreditati possono pubblicare un Critic Score');
     }
+    const release = await this.prisma.release.count({ where: { id: input.releaseId } });
+    if (release === 0) throw new NotFoundError('Album non trovato');
 
     const outletName = user.criticOutlet ?? 'Webzine Indipendente';
 
@@ -98,34 +192,13 @@ export class CriticService {
   private async recalculateCriticScore(releaseId: string): Promise<void> {
     const criticReviews = await this.prisma.review.findMany({
       where: { releaseId, isCritic: true },
-      select: { rating: true },
+      select: { rating: true, isVerifiedListen: true },
     });
-
-    if (criticReviews.length === 0) {
-      await this.prisma.release.update({
-        where: { id: releaseId },
-        data: {
-          criticAvg: null,
-          criticFreshPct: null,
-          criticCount: 0,
-        },
-      });
-      return;
-    }
-
-    const count = criticReviews.length;
-    const sum = criticReviews.reduce((acc, r) => acc + r.rating, 0);
-    const criticAvg = Math.round((sum / count / 20) * 10) / 10;
-    const freshCount = criticReviews.filter((r) => r.rating >= 70).length;
-    const criticFreshPct = Math.round((freshCount / count) * 100);
-
+    // Critic score is unweighted: accreditation, not scrobbles, is the trust signal.
+    const score = aggregateScore(criticReviews, () => 1);
     await this.prisma.release.update({
       where: { id: releaseId },
-      data: {
-        criticAvg,
-        criticFreshPct,
-        criticCount: count,
-      },
+      data: { criticAvg: score.avg, criticFreshPct: score.freshPct, criticCount: score.count },
     });
   }
 

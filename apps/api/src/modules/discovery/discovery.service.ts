@@ -18,7 +18,8 @@ const CURATED_OUT_OF_BUBBLE_GENRES: CuratedGenre[] = [
   {
     name: 'City Pop',
     tagline: "Il funk-pop giapponese anni '80 tra luci al neon e tramonti a Tokyo",
-    context: 'Un genere che fonde jazz fusion, funk e synth-pop, perfetto per viaggi notturni in auto.',
+    context:
+      'Un genere che fonde jazz fusion, funk e synth-pop, perfetto per viaggi notturni in auto.',
     sampleQueries: [
       { title: 'Plastic Love', artist: 'Mariya Takeuchi' },
       { title: 'Stay With Me', artist: 'Miki Matsubara' },
@@ -28,7 +29,8 @@ const CURATED_OUT_OF_BUBBLE_GENRES: CuratedGenre[] = [
   {
     name: 'Shoegaze',
     tagline: 'Muri di chitarre riverberate, feedback ipnotico e melodie sommerse',
-    context: 'Nato nel Regno Unito nei tardi anni 80, mette il volume e le texture sonore al centro.',
+    context:
+      'Nato nel Regno Unito nei tardi anni 80, mette il volume e le texture sonore al centro.',
     sampleQueries: [
       { title: 'When You Sleep', artist: 'My Bloody Valentine' },
       { title: 'Alison', artist: 'Slowdive' },
@@ -38,7 +40,8 @@ const CURATED_OUT_OF_BUBBLE_GENRES: CuratedGenre[] = [
   {
     name: 'Math Rock',
     tagline: 'Tempi dispari, tapping acrobatico e precisione geometrica',
-    context: 'Evoluzione del post-hardcore e del progressive con firme ritmiche inusuali (es. 7/8, 11/8).',
+    context:
+      'Evoluzione del post-hardcore e del progressive con firme ritmiche inusuali (es. 7/8, 11/8).',
     sampleQueries: [
       { title: 'Never Meant', artist: 'American Football' },
       { title: 'Atlas', artist: 'Battles' },
@@ -58,7 +61,8 @@ const CURATED_OUT_OF_BUBBLE_GENRES: CuratedGenre[] = [
   {
     name: 'Post-Rock',
     tagline: 'Crescendi orchestrali epici, pause dilatate e dinamiche cinematiche',
-    context: 'Usa strumenti rock convenzionali per creare atmosfere quasi sinfoniche prive di parti vocali.',
+    context:
+      'Usa strumenti rock convenzionali per creare atmosfere quasi sinfoniche prive di parti vocali.',
     sampleQueries: [
       { title: 'Your Hand in Mine', artist: 'Explosions in the Sky' },
       { title: 'Moya', artist: 'Godspeed You! Black Emperor' },
@@ -68,7 +72,8 @@ const CURATED_OUT_OF_BUBBLE_GENRES: CuratedGenre[] = [
   {
     name: 'Krautrock',
     tagline: 'Il ritmo "motorik" tedesco, sintetizzatori analogici e cosmicità',
-    context: 'Movimento pionieristico degli anni 70 in Germania che ha gettato le basi della musica elettronica moderna.',
+    context:
+      'Movimento pionieristico degli anni 70 in Germania che ha gettato le basi della musica elettronica moderna.',
     sampleQueries: [
       { title: 'Hallogallo', artist: 'Neu!' },
       { title: 'Autobahn', artist: 'Kraftwerk' },
@@ -191,19 +196,15 @@ export class DiscoveryService {
       (g) => !userGenres.has(g.name.toLowerCase())
     );
 
-    const selectedGenre =
-      candidates.length > 0
-        ? candidates[Math.floor(Math.random() * candidates.length)]!
-        : CURATED_OUT_OF_BUBBLE_GENRES[Math.floor(Math.random() * CURATED_OUT_OF_BUBBLE_GENRES.length)]!;
+    const pool = candidates.length > 0 ? candidates : CURATED_OUT_OF_BUBBLE_GENRES;
+    const selectedGenre = pool[Math.floor(Math.random() * pool.length)];
+    if (!selectedGenre) throw new Error('Genre roulette pool is empty');
 
     // Risolvi le 3 tracce con anteprima audio a cascata (ADR-003)
     const starterTracks: CatalogTrack[] = [];
 
     for (const sample of selectedGenre.sampleQueries) {
-      const previewRes = await this.previewResolver.resolvePreview(
-        sample.title,
-        sample.artist
-      );
+      const previewRes = await this.previewResolver.resolvePreview(sample.title, sample.artist);
 
       starterTracks.push({
         id: `sample-${encodeURIComponent(sample.artist)}-${encodeURIComponent(sample.title)}`,

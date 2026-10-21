@@ -1,3 +1,4 @@
+import { UpstreamError } from '../../lib/errors';
 import crypto from 'crypto';
 import { env } from '../../config/env';
 
@@ -52,7 +53,10 @@ export class LastFmService {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Last.fm session retrieval failed (${response.status}): ${err}`);
+      throw new UpstreamError(
+        'Last.fm',
+        `Last.fm session retrieval failed (${response.status}): ${err}`
+      );
     }
 
     const data = (await response.json()) as {
@@ -65,7 +69,7 @@ export class LastFmService {
     };
 
     if (!data.session) {
-      throw new Error(`Last.fm auth error: ${data.message ?? 'Unknown error'}`);
+      throw new UpstreamError('Last.fm', `Last.fm auth error: ${data.message ?? 'Unknown error'}`);
     }
 
     return {

@@ -1,90 +1,52 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
 import { ExportPlaylistInputSchema } from '@openmusic/shared';
+import { requireAuth } from '../../lib/auth';
 import type { SpotifySyncService } from './spotify-sync.service';
 
+const HeavyRotationQuerySchema = z.object({
+  timeRange: z.enum(['short_term', 'medium_term', 'long_term']).default('short_term'),
+});
+
+/**
+ * All routes need a session and a linked Spotify account (409 CONFLICT otherwise). Spotify API
+ * failures surface as 502 UPSTREAM_ERROR without provider details.
+ */
 export function createSpotifyRoutes(spotifySyncService: SpotifySyncService): FastifyPluginAsync {
   return async (fastify) => {
-    // 1. Recupera la traccia attualmente in riproduzione su Spotify per l'utente loggato
-    fastify.get('/currently-playing', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const result = await spotifySyncService.syncUserPlayback(decoded.userId);
-        return reply.send(result);
-      } catch (err: unknown) {
-        return reply.status(400).send({
-          error: err instanceof Error ? err.message : 'Impossibile recuperare la riproduzione Spotify corrente',
-        });
-      }
+    fastify.addHook('preHandler', fastify.authenticate);
+
+    fastify.get('/currently-playing', async (request) => {
+      return spotifySyncService.syncUserPlayback(requireAuth(request).userId);
     });
 
-    // 2. Forza la sincronizzazione della riproduzione con Redis e il conteggio scrobble
-    fastify.post('/sync-playback', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const result = await spotifySyncService.syncUserPlayback(decoded.userId);
-        return reply.send(result);
-      } catch (err: unknown) {
-        return reply.status(400).send({
-          error: err instanceof Error ? err.message : 'Errore durante la sincronizzazione con Spotify',
-        });
-      }
+    // Sync playback into Redis presence and log a scrobble (verified listen).
+    fastify.post('/sync-playback', async (request) => {
+      return spotifySyncService.syncUserPlayback(requireAuth(request).userId);
     });
 
-    // 3. Recupera i brani in rotazione pesante (Top 5 brani dell'ultimo mese)
-    fastify.get('/heavy-rotation', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const query = request.query as { timeRange?: 'short_term' | 'medium_term' | 'long_term' };
-        const tracks = await spotifySyncService.getHeavyRotation(
-          decoded.userId,
-          query.timeRange ?? 'short_term'
-        );
-        return reply.send({ tracks });
-      } catch (err: unknown) {
-        return reply.status(400).send({
-          error: err instanceof Error ? err.message : 'Impossibile recuperare la rotazione pesante da Spotify',
-        });
-      }
+    fastify.get('/heavy-rotation', async (request) => {
+      const { timeRange } = HeavyRotationQuerySchema.parse(request.query);
+      const tracks = await spotifySyncService.getHeavyRotation(
+        requireAuth(request).userId,
+        timeRange
+      );
+      return { tracks };
     });
 
-    // 4. Cronologia recente (Recently Played)
-    fastify.get('/recently-played', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const items = await spotifySyncService.getRecentlyPlayed(decoded.userId);
-        return reply.send({ items });
-      } catch (err: unknown) {
-        return reply.status(400).send({
-          error: err instanceof Error ? err.message : 'Impossibile recuperare gli ascolti recenti',
-        });
-      }
+    fastify.get('/recently-played', async (request) => {
+      const items = await spotifySyncService.getRecentlyPlayed(requireAuth(request).userId);
+      return { items };
     });
 
-    // 5. Artisti preferiti (Top Artists)
-    fastify.get('/top-artists', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const artists = await spotifySyncService.getTopArtists(decoded.userId);
-        return reply.send({ artists });
-      } catch (err: unknown) {
-        return reply.status(400).send({
-          error: err instanceof Error ? err.message : 'Impossibile recuperare i top artists',
-        });
-      }
+    fastify.get('/top-artists', async (request) => {
+      const artists = await spotifySyncService.getTopArtists(requireAuth(request).userId);
+      return { artists };
     });
 
-    // 6. Esporta una playlist analogica creata su OpenMusic direttamente sull'account Spotify
-    fastify.post('/export-playlist', async (request, reply) => {
-      try {
-        const decoded = await request.jwtVerify<{ userId: string }>();
-        const input = ExportPlaylistInputSchema.parse(request.body);
-        const result = await spotifySyncService.exportPlaylistToSpotify(decoded.userId, input);
-        return reply.send(result);
-      } catch (err: unknown) {
-        return reply.status(400).send({
-          error: err instanceof Error ? err.message : 'Errore durante l\'esportazione della playlist su Spotify',
-        });
-      }
+    fastify.post('/export-playlist', async (request) => {
+      const input = ExportPlaylistInputSchema.parse(request.body);
+      return spotifySyncService.exportPlaylistToSpotify(requireAuth(request).userId, input);
     });
   };
 }

@@ -1,39 +1,65 @@
-import type { PrismaClient, ReactionType } from '@prisma/client';
-import type {
-  CreateReviewInput,
-  ReviewItem,
-  ToggleReactionInput,
-} from '@openmusic/shared';
+import type { PrismaClient, ReactionType } from '@openmusic/db';
+import type { ReviewItem, ToggleReactionInput, UserRole } from '@openmusic/shared';
+import type { CreateReviewInputSchema } from '@openmusic/shared';
+import type { z } from 'zod';
+import { BadRequestError, NotFoundError } from '../../lib/errors';
+import type { NotificationsService } from '../notifications/notifications.service';
+import { aggregateScore } from './score';
+
+type CreateReviewInput = z.output<typeof CreateReviewInputSchema>;
+
+/** ADR-002: an album review is "verified" after this many distinct tracks were scrobbled. */
+export const VERIFIED_MIN_DISTINCT_TRACKS = 3;
 
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly notifications: NotificationsService
+  ) {}
+
+  /**
+   * ADR-002 "Ascolto Verificato": a track review needs one scrobble of that track; a release
+   * review needs scrobbles of at least 3 distinct tracks (or all of them for shorter releases).
+   */
+  private async isVerifiedListen(
+    userId: string,
+    target: { releaseId?: string; trackId?: string }
+  ): Promise<boolean> {
+    if (target.trackId) {
+      const plays = await this.prisma.scrobbleLog.count({
+        where: { userId, trackId: target.trackId },
+      });
+      return plays > 0;
+    }
+    if (!target.releaseId) return false;
+    const [distinct, trackCount] = await Promise.all([
+      this.prisma.scrobbleLog.findMany({
+        where: {
+          userId,
+          OR: [{ releaseId: target.releaseId }, { track: { releaseId: target.releaseId } }],
+        },
+        distinct: ['trackId'],
+        select: { trackId: true },
+      }),
+      this.prisma.track.count({ where: { releaseId: target.releaseId } }),
+    ]);
+    const required = Math.max(1, Math.min(VERIFIED_MIN_DISTINCT_TRACKS, trackCount));
+    return distinct.length >= required;
+  }
 
   /**
    * Crea o aggiorna una recensione (ADR-001 Rating Duale + ADR-004 Scrobble Verificato).
    * Ricalcola istantaneamente Audience Score (Media e % Fresh stile Rotten Tomatoes).
    */
-  async createOrUpdateReview(
-    userId: string,
-    input: CreateReviewInput
-  ): Promise<ReviewItem> {
+  async createOrUpdateReview(userId: string, input: CreateReviewInput): Promise<ReviewItem> {
     const { releaseId, trackId, rating, content, vibeTags } = input;
 
     if (!releaseId && !trackId) {
-      throw new Error('Specificare releaseId o trackId per la recensione');
+      throw new BadRequestError('Specificare releaseId o trackId per la recensione');
     }
 
-    // 1. ADR-004: Verifica se l'utente ha davvero ascoltato il brano/album nei suoi scrobble
-    const scrobble = await this.prisma.scrobbleLog.findFirst({
-      where: {
-        userId,
-        OR: [
-          releaseId ? { releaseId } : {},
-          trackId ? { trackId } : {},
-        ],
-      },
-    });
-
-    const isVerifiedListen = Boolean(scrobble);
+    // 1. ADR-002: verified listen from the user's scrobble history
+    const isVerifiedListen = await this.isVerifiedListen(userId, { releaseId, trackId });
 
     // 2. Controllo se l'utente è un critico verificato
     const user = await this.prisma.user.findUnique({
@@ -117,39 +143,22 @@ export class ReviewsService {
   /**
    * Ricalcola la media (0.5 - 5.0) e la percentuale "Fresh" (% voti >= 70 / 3.5 stelle)
    */
-  private async recalculateAudienceScore(releaseId: string): Promise<void> {
-    const allReviews = await this.prisma.review.findMany({
+  /**
+   * ADR-001/ADR-002: weighted mean (0.5..5.0) and weighted fresh share (ratings >= 70), where a
+   * verified listen weighs 1.5x. Public via `recalculateAudienceScore` for the seed and tests.
+   */
+  async recalculateAudienceScore(releaseId: string): Promise<void> {
+    const reviews = await this.prisma.review.findMany({
       where: { releaseId, isCritic: false },
-      select: { rating: true },
+      select: { rating: true, isVerifiedListen: true },
     });
-
-    if (allReviews.length === 0) {
-      await this.prisma.release.update({
-        where: { id: releaseId },
-        data: {
-          audienceAvg: null,
-          audienceFreshPct: null,
-          audienceCount: 0,
-        },
-      });
-      return;
-    }
-
-    const count = allReviews.length;
-    const sum = allReviews.reduce((acc, r) => acc + r.rating, 0);
-    // Converti da 10..100 a scala 0.5..5.0 con 1 cifra decimale
-    const audienceAvg = Math.round((sum / count / 20) * 10) / 10;
-
-    // Voti >= 70 corrispondono a >= 3.5 stelle su 5.0
-    const freshCount = allReviews.filter((r) => r.rating >= 70).length;
-    const audienceFreshPct = Math.round((freshCount / count) * 100);
-
+    const score = aggregateScore(reviews);
     await this.prisma.release.update({
       where: { id: releaseId },
       data: {
-        audienceAvg,
-        audienceFreshPct,
-        audienceCount: count,
+        audienceAvg: score.avg,
+        audienceFreshPct: score.freshPct,
+        audienceCount: score.count,
       },
     });
   }
@@ -162,6 +171,18 @@ export class ReviewsService {
     input: ToggleReactionInput
   ): Promise<{ added: boolean; type: ReactionType }> {
     const { reviewId, type } = input;
+
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { userId: true },
+    });
+    if (!review) throw new NotFoundError('Recensione non trovata');
+    const target = {
+      recipientId: review.userId,
+      actorId: userId,
+      type: 'REVIEW_REACTION',
+      reviewId,
+    } as const;
 
     const existing = await this.prisma.reviewReaction.findUnique({
       where: {
@@ -177,6 +198,8 @@ export class ReviewsService {
       await this.prisma.reviewReaction.delete({
         where: { id: existing.id },
       });
+      const remaining = await this.prisma.reviewReaction.count({ where: { reviewId, userId } });
+      if (remaining === 0) await this.notifications.retract(target);
       return { added: false, type: type as ReactionType };
     }
 
@@ -187,6 +210,10 @@ export class ReviewsService {
         type: type as ReactionType,
       },
     });
+    const alreadyNotified = await this.prisma.notification.count({
+      where: { ...target, readAt: null },
+    });
+    if (alreadyNotified === 0) await this.notifications.notify(target);
 
     return { added: true, type: type as ReactionType };
   }
@@ -194,10 +221,7 @@ export class ReviewsService {
   /**
    * Recupera le recensioni di una Release con aggregazione reazioni
    */
-  async getReleaseReviews(
-    releaseId: string,
-    currentUserId?: string
-  ): Promise<ReviewItem[]> {
+  async getReleaseReviews(releaseId: string, currentUserId?: string): Promise<ReviewItem[]> {
     const reviews = await this.prisma.review.findMany({
       where: { releaseId },
       include: {
@@ -266,7 +290,7 @@ export class ReviewsService {
         username: r.user.username,
         displayName: r.user.displayName,
         avatarUrl: r.user.avatarUrl,
-        role: r.user.role as 'USER' | 'CRITIC' | 'MODERATOR',
+        role: r.user.role as UserRole,
       },
       releaseId: r.releaseId,
       trackId: r.trackId,

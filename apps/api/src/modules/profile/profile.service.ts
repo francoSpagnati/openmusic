@@ -1,15 +1,25 @@
-import type { PrismaClient } from '@prisma/client';
-import type { UserProfileData, ReviewItem, HeavyRotationItem } from '@openmusic/shared';
+import type { Prisma, PrismaClient } from '@openmusic/db';
+import type {
+  HeavyRotationItem,
+  ProfileSocialStats,
+  ReviewItem,
+  UserProfileData,
+  UserRole,
+} from '@openmusic/shared';
+import { NotFoundError } from '../../lib/errors';
+import { toCatalogTrack, toPublicUser } from '../../lib/mappers';
 
 export class ProfileService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async getUserProfile(userId: string): Promise<UserProfileData | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) return null;
+  /** Public profile (no email). `viewerId` personalises `social.isFollowedByMe` / `isMe`. */
+  async getUserProfile(
+    where: Prisma.UserWhereUniqueInput,
+    viewerId: string | null
+  ): Promise<UserProfileData> {
+    const user = await this.prisma.user.findUnique({ where });
+    if (!user) throw new NotFoundError('Profilo utente non trovato');
+    const userId = user.id;
 
     // 1. Recensioni recenti dell'utente
     const reviews = await this.prisma.review.findMany({
@@ -49,7 +59,7 @@ export class ProfileService {
           username: r.user.username,
           displayName: r.user.displayName,
           avatarUrl: r.user.avatarUrl,
-          role: r.user.role as 'USER' | 'CRITIC' | 'MODERATOR',
+          role: r.user.role as UserRole,
         },
         releaseId: r.releaseId,
         trackId: r.trackId,
@@ -80,7 +90,10 @@ export class ProfileService {
     });
 
     // Raggruppa per traccia
-    const trackCounts = new Map<string, { count: number; lastPlayed: Date; track: typeof recentScrobbles[0]['track'] }>();
+    const trackCounts = new Map<
+      string,
+      { count: number; lastPlayed: Date; track: (typeof recentScrobbles)[0]['track'] }
+    >();
 
     for (const scrobble of recentScrobbles) {
       const existing = trackCounts.get(scrobble.trackId);
@@ -99,16 +112,7 @@ export class ProfileService {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
       .map(({ track, count, lastPlayed }) => ({
-        track: {
-          id: track.id,
-          isrc: track.isrc,
-          title: track.title,
-          artistName: track.artistName,
-          durationMs: track.durationMs,
-          previewUrl: track.previewUrl,
-          releaseId: track.releaseId,
-          coverUrl: track.release.coverUrl,
-        },
+        track: toCatalogTrack(track),
         playCount: count,
         lastPlayedAt: lastPlayed.toISOString(),
       }));
@@ -128,18 +132,25 @@ export class ProfileService {
       ? Math.round((avgRatingAgg._avg.rating / 20) * 10) / 10
       : null;
 
+    const [followersCount, followingCount, postsCount, followedByViewer] = await Promise.all([
+      this.prisma.follows.count({ where: { followingId: userId } }),
+      this.prisma.follows.count({ where: { followerId: userId } }),
+      this.prisma.post.count({ where: { authorId: userId } }),
+      viewerId
+        ? this.prisma.follows.count({ where: { followerId: viewerId, followingId: userId } })
+        : Promise.resolve(0),
+    ]);
+    const social: ProfileSocialStats = {
+      followersCount,
+      followingCount,
+      postsCount,
+      isFollowedByMe: followedByViewer > 0,
+      isMe: viewerId === userId,
+    };
+
     return {
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        bio: user.bio,
-        role: user.role,
-        isGhostMode: user.isGhostMode,
-        createdAt: user.createdAt.toISOString(),
-      },
+      user: toPublicUser(user),
+      social,
       recentReviews: mappedReviews,
       heavyRotation,
       stats: {

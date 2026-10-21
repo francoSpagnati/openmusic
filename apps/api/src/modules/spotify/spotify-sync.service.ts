@@ -1,4 +1,5 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@openmusic/db';
+import { ConflictError, NotFoundError } from '../../lib/errors';
 import type Redis from 'ioredis';
 import type { SpotifyService } from '../auth/spotify.service';
 import type { NowPlayingService } from '../now-playing/now-playing.service';
@@ -34,7 +35,7 @@ export class SpotifySyncService {
     });
 
     if (!account) {
-      throw new Error(`Nessun account Spotify collegato per l'utente ${userId}`);
+      throw new ConflictError('Nessun account Spotify collegato');
     }
 
     const now = Date.now();
@@ -48,7 +49,7 @@ export class SpotifySyncService {
     }
 
     if (!account.refreshToken) {
-      throw new Error('Refresh token assente: è necessario eseguire nuovamente il login su Spotify');
+      throw new ConflictError('Sessione Spotify scaduta: ricollega il tuo account Spotify');
     }
 
     // Rinnovo token tramite refresh_token
@@ -122,10 +123,7 @@ export class SpotifySyncService {
         // Cerca o crea la traccia nel DB locale
         let dbTrack = await this.prisma.track.findFirst({
           where: {
-            OR: [
-              ...(track.isrc ? [{ isrc: track.isrc }] : []),
-              { spotifyId: track.id },
-            ],
+            OR: [...(track.isrc ? [{ isrc: track.isrc }] : []), { spotifyId: track.id }],
           },
         });
 
@@ -250,8 +248,8 @@ export class SpotifySyncService {
       },
     });
 
-    if (!playlist) {
-      throw new Error(`Playlist ${input.playlistId} non trovata`);
+    if (!playlist || (!playlist.isPublic && playlist.userId !== userId)) {
+      throw new NotFoundError('Playlist non trovata');
     }
 
     const { accessToken, spotifyUserId } = await this.getValidAccessToken(userId);

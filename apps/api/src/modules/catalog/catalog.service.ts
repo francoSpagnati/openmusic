@@ -1,9 +1,12 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@openmusic/db';
 import type {
   CatalogRelease,
   CatalogTrack,
+  GenreList,
+  ReleasePage,
   SearchResult,
 } from '@openmusic/shared';
+import { nextCursorOf } from '../../lib/mappers';
 import type { AudioPreviewResolverService } from './audio-preview-resolver.service';
 
 export class CatalogService {
@@ -138,11 +141,45 @@ export class CatalogService {
     return this.mapRelease(release, release.tracks);
   }
 
-  async resolveTrackPreview(
-    title: string,
-    artist: string,
-    isrc?: string
-  ) {
+  /** Explore page: releases optionally filtered by genre (case-insensitive exact match). */
+  async browseReleases(query: {
+    genre?: string;
+    sort: 'popular' | 'recent';
+    cursor?: string;
+    limit: number;
+  }): Promise<ReleasePage> {
+    const orderBy: Prisma.ReleaseOrderByWithRelationInput[] =
+      query.sort === 'recent'
+        ? [{ releaseDate: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }]
+        : [{ audienceCount: 'desc' }, { id: 'asc' }];
+    let where: Prisma.ReleaseWhereInput = {};
+    if (query.genre) {
+      const genres = await this.listGenres();
+      const match = genres.find((g) => g.name.toLowerCase() === query.genre?.toLowerCase());
+      where = { genres: { has: match?.name ?? query.genre } };
+    }
+    const rows = await this.prisma.release.findMany({
+      where,
+      orderBy,
+      take: query.limit + 1,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+    });
+    const page = nextCursorOf(rows, query.limit);
+    return { items: page.items.map((r) => this.mapRelease(r)), nextCursor: page.nextCursor };
+  }
+
+  /** Distinct genres across the catalog with release counts, most common first. */
+  async listGenres(): Promise<GenreList> {
+    const rows = await this.prisma.$queryRaw<Array<{ name: string; count: bigint }>>`
+      SELECT g AS name, COUNT(*) AS count
+      FROM "Release", unnest("genres") AS g
+      GROUP BY g
+      ORDER BY count DESC, g ASC
+    `;
+    return rows.map((r) => ({ name: r.name, releaseCount: Number(r.count) }));
+  }
+
+  async resolveTrackPreview(title: string, artist: string, isrc?: string) {
     return this.previewResolver.resolvePreview(title, artist, isrc);
   }
 
