@@ -128,6 +128,16 @@ export const ChangePasswordInputSchema = z.object({
   newPassword: PasswordSchema,
 });
 
+/**
+ * `POST /api/auth/password` response. The change revokes every session, including the caller's:
+ * browsers get a fresh `om_session` cookie, native clients must replace their Bearer token with
+ * this one.
+ */
+export const ChangePasswordResponseSchema = z.object({
+  token: z.string(),
+  expiresAt: z.string(),
+});
+
 export type UserRole = z.infer<typeof UserRoleSchema>;
 export type AuthUser = z.infer<typeof AuthUserSchema>;
 export type PublicUser = z.infer<typeof PublicUserSchema>;
@@ -142,6 +152,7 @@ export type LastFmAuthCallbackQuery = z.infer<typeof LastFmAuthCallbackQuerySche
 export type OAuthUrlResponse = z.infer<typeof OAuthUrlResponseSchema>;
 export type UpdateProfileInput = z.input<typeof UpdateProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof ChangePasswordInputSchema>;
+export type ChangePasswordResponse = z.infer<typeof ChangePasswordResponseSchema>;
 
 /** Name of the httpOnly session cookie set by the API. */
 export const SESSION_COOKIE_NAME = 'om_session';

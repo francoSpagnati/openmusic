@@ -2,6 +2,7 @@ import { prisma } from '@openmusic/db';
 import {
   ApiErrorBodySchema,
   AuthSessionResponseSchema,
+  ChangePasswordResponseSchema,
   MeResponseSchema,
   SESSION_COOKIE_NAME,
 } from '@openmusic/shared';
@@ -235,7 +236,16 @@ describe('auth: local accounts', () => {
       headers,
       payload: { currentPassword: PASSWORD, newPassword: 'another long password' },
     });
-    expect(ok.statusCode).toBe(204);
+    expect(ok.statusCode).toBe(200);
+    // Native clients get a replacement Bearer token in the body; the old one is revoked.
+    const { token: fresh } = ChangePasswordResponseSchema.parse(ok.json());
+    const meWith = (bearer: string) =>
+      ctx.app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        headers: { authorization: `Bearer ${bearer}` },
+      });
+    expect((await meWith(fresh)).statusCode).toBe(200);
     expect((await login('pw@example.com', 'another long password')).statusCode).toBe(200);
     expect((await login('pw@example.com', PASSWORD)).statusCode).toBe(401);
   });

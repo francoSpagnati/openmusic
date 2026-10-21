@@ -267,7 +267,7 @@ describe('Socket.io gateway', () => {
       headers: { authorization: `Bearer ${token}` },
       payload: { currentPassword: 'a long password 1', newPassword: 'a new long password 2' },
     });
-    expect(res.statusCode).toBe(204);
+    expect(res.statusCode).toBe(200);
     expect(await revokedA).toEqual({ reason: 'PASSWORD_CHANGED' });
     expect(await revokedB).toEqual({ reason: 'PASSWORD_CHANGED' });
     // The old token can no longer open a socket.

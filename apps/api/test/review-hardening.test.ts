@@ -172,7 +172,7 @@ describe('review hardening', () => {
         headers: { authorization: `Bearer ${current}` },
         payload: { currentPassword: password, newPassword: 'another long passphrase' },
       });
-      expect(change.statusCode).toBe(204);
+      expect(change.statusCode).toBe(200);
       const fresh = change.cookies.find((c) => c.name === SESSION_COOKIE_NAME)?.value;
       expect(fresh).toBeTruthy();
 

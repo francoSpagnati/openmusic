@@ -10,6 +10,7 @@ import {
   SpotifyAuthCallbackQuerySchema,
   UpdateProfileSchema,
   type AuthSessionResponse,
+  type ChangePasswordResponse,
   type MeResponse,
   type OAuthUrlResponse,
 } from '@openmusic/shared';
@@ -97,12 +98,13 @@ export function createAuthRoutes(
       async (request, reply) => {
         const input = ChangePasswordInputSchema.parse(request.body);
         const { userId } = requireAuth(request);
-        // Revokes every other session; this device gets a fresh cookie and stays signed in.
+        // Revokes every session; this device gets a fresh cookie (web) and token (native) and
+        // stays signed in.
         await authService.changePassword(userId, input);
-        await fastify.issueSession(reply, userId);
+        const session: ChangePasswordResponse = await fastify.issueSession(reply, userId);
         // Every open socket carries the old session version: close them all.
         await options.sockets.revoke(userId, 'PASSWORD_CHANGED');
-        return reply.status(204).send();
+        return reply.send(session);
       }
     );
 

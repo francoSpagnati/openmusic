@@ -37,6 +37,7 @@ export const authApi = {
   updateMe: (input: UpdateProfileInput): Promise<MeResponse> =>
     apiRequest('/api/auth/me', { method: 'PATCH', body: input, schema: MeResponseSchema }),
 
+  /** The browser gets a fresh cookie; the `token` in the body is for native clients only. */
   changePassword: (input: ChangePasswordInput): Promise<void> =>
     apiRequest('/api/auth/password', { method: 'POST', body: input }),
 

@@ -111,74 +111,74 @@ Ruoli: `USER`, `CRITIC`, `MODERATOR`, `ADMIN`. Gli account `ADMIN` si creano sol
 Legenda auth: **—** pubblico · **opt** sessione facoltativa (personalizza la risposta) · **auth**
 sessione obbligatoria · **ROLE** ruolo richiesto.
 
-| Metodo     | Path                                                  | Auth                            | Note                                                 |
-| ---------- | ----------------------------------------------------- | ------------------------------- | ---------------------------------------------------- |
-| GET        | `/health`                                             | —                               |                                                      |
-| POST       | `/api/auth/register`                                  | — (rate limit)                  | 201 `AuthSessionResponse` + cookie                   |
-| POST       | `/api/auth/login`                                     | — (rate limit)                  | `AuthSessionResponse` + cookie                       |
-| POST       | `/api/auth/logout`                                    | —                               | 204, cancella il cookie                              |
-| GET        | `/api/auth/me`                                        | auth                            | `MeResponse`                                         |
-| PATCH      | `/api/auth/me`                                        | auth                            | `UpdateProfileSchema` (strict) → `MeResponse`        |
-| POST       | `/api/auth/password`                                  | auth (rate limit)               | 204 + cookie nuovo; revoca le altre sessioni         |
-| GET        | `/api/auth/spotify/login`                             | —                               | `{ url }` + cookie di stato                          |
-| GET        | `/api/auth/spotify/callback`                          | opt                             | 302 verso il web (vedi §1 "OAuth collegati")         |
-| GET        | `/api/auth/lastfm/login`                              | —                               | `{ url }` + cookie di stato                          |
-| GET        | `/api/auth/lastfm/callback`                           | opt                             | 302 verso il web; serve una sessione                 |
-| DELETE     | `/api/auth/providers/:provider`                       | auth                            | scollega SPOTIFY/LASTFM/APPLE_MUSIC                  |
-| GET        | `/api/users/search?q=`                                | opt                             | `UserSummaryPage`                                    |
-| GET        | `/api/users/suggestions?limit=`                       | opt                             | utenti da seguire                                    |
-| GET        | `/api/users/:userId/followers`                        | opt                             | `UserSummaryPage`                                    |
-| GET        | `/api/users/:userId/following`                        | opt                             | `UserSummaryPage`                                    |
-| PUT        | `/api/users/:userId/follow`                           | auth                            | idempotente → `FollowState`, notifica FOLLOW         |
-| DELETE     | `/api/users/:userId/follow`                           | auth                            | `FollowState`                                        |
-| GET        | `/api/users/:userId/posts`                            | opt                             | `PostPage`                                           |
-| GET        | `/api/feed?scope=following\|global`                   | opt                             | `PostPage` (anonimi: sempre global)                  |
-| POST       | `/api/posts`                                          | auth                            | 201 `Post`                                           |
-| GET        | `/api/posts/saved`                                    | auth                            | `PostPage`                                           |
-| GET        | `/api/posts/:id`                                      | opt                             | `Post`                                               |
-| DELETE     | `/api/posts/:id`                                      | auth (autore, MODERATOR, ADMIN) | 204                                                  |
-| PUT/DELETE | `/api/posts/:id/like`                                 | auth                            | `PostLikeState`, notifica POST_LIKE                  |
-| PUT/DELETE | `/api/posts/:id/save`                                 | auth                            | `PostSaveState`                                      |
-| GET        | `/api/notifications?unreadOnly=`                      | auth                            | `NotificationPage`                                   |
-| GET        | `/api/notifications/unread-count`                     | auth                            | `{ count }`                                          |
-| POST       | `/api/notifications/read`                             | auth                            | `{ ids? }` → `{ updated }`                           |
-| GET        | `/api/notifications/presence-summary`                 | auth                            | ADR-004                                              |
-| GET        | `/api/now-playing/friends`                            | auth                            | `FriendPresence[]`                                   |
-| GET        | `/api/chat/conversations`                             | auth                            | `ConversationSummary[]` (inbox)                      |
-| GET        | `/api/chat/conversation/:otherUserId`                 | auth                            | ultimi 50 messaggi, dal più vecchio                  |
-| POST       | `/api/chat/conversation/:otherUserId/read`            | auth                            | `{ updated }`                                        |
-| POST       | `/api/chat/messages`                                  | auth                            | 201 `ChatMessage`, push `chat:message`               |
-| POST       | `/api/chat/reaction`                                  | auth (solo destinatario)        | `ChatMessage`                                        |
-| POST       | `/api/chat/listened`                                  | auth (solo destinatario)        | `ChatMessage`, notifica TRACK_LISTENED               |
-| GET        | `/api/catalog/search?q=&type=&page=&limit=&external=` | — (rate limit)                  | `SearchResult` (vedi §8)                             |
-| GET        | `/api/catalog/resolve?provider=&type=&id=`            | — (rate limit)                  | `CatalogResolveResult` (vedi §8)                     |
-| GET        | `/api/catalog/releases?genre=&sort=&cursor=&limit=`   | —                               | `ReleasePage`                                        |
-| GET        | `/api/catalog/genres`                                 | —                               | `GenreList`                                          |
-| GET        | `/api/catalog/releases/:id`                           | —                               | `CatalogRelease` + tracce (import completo 1ª volta) |
-| GET        | `/api/catalog/preview?title=&artist=&isrc=`           | —                               | `AudioPreviewResult`                                 |
-| POST       | `/api/reviews`                                        | auth                            | crea/aggiorna, 201 `ReviewItem`                      |
-| GET        | `/api/reviews/release/:releaseId`                     | opt                             | `ReviewItem[]`                                       |
-| POST       | `/api/reviews/reaction`                               | auth                            | toggle, notifica REVIEW_REACTION                     |
-| GET        | `/api/profile/me`                                     | auth                            | `UserProfileData`                                    |
-| GET        | `/api/profile/by-username/:username`                  | opt                             | `UserProfileData` (senza email)                      |
-| GET        | `/api/profile/:userId`                                | opt                             | `UserProfileData` (senza email)                      |
-| GET        | `/api/discovery/reels`                                | opt                             |                                                      |
-| GET        | `/api/discovery/roulette`                             | opt                             |                                                      |
-| POST       | `/api/playlists`                                      | auth                            | 201 `PlaylistDetails`                                |
-| POST       | `/api/playlists/track`                                | auth (proprietario)             | `PlaylistDetails`                                    |
-| GET        | `/api/playlists/user/:userId`                         | opt                             | solo pubbliche, salvo proprietario                   |
-| GET        | `/api/playlists/:id`                                  | opt                             | 404 se privata e non tua                             |
-| POST       | `/api/critic/accredit`                                | auth                            | richiesta in attesa (`PENDING`), ruolo invariato     |
-| GET        | `/api/critic/accreditation`                           | auth                            | stato della propria richiesta                        |
-| GET        | `/api/critic/requests`                                | ADMIN                           | coda richieste                                       |
-| POST       | `/api/critic/verify`                                  | ADMIN                           | `{ userId, approve }`, notifica CRITIC_APPROVED      |
-| POST       | `/api/critic/reviews`                                 | auth + ruolo CRITIC             | 201 `CriticReviewItem`                               |
-| GET        | `/api/critic/dual-score/:releaseId`                   | —                               |                                                      |
-| GET        | `/api/critic/release/:releaseId`                      | —                               |                                                      |
-| POST       | `/api/videos`                                         | CRITIC, MODERATOR, ADMIN        | 201                                                  |
-| GET        | `/api/videos/feed?category=`                          | —                               |                                                      |
-| GET        | `/api/videos/release/:releaseId`                      | —                               |                                                      |
-| GET/POST   | `/api/spotify/*`                                      | auth + Spotify collegato        | 409 se non collegato, 502 se Spotify fallisce        |
+| Metodo     | Path                                                  | Auth                            | Note                                                                                                      |
+| ---------- | ----------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| GET        | `/health`                                             | —                               |                                                                                                           |
+| POST       | `/api/auth/register`                                  | — (rate limit)                  | 201 `AuthSessionResponse` + cookie                                                                        |
+| POST       | `/api/auth/login`                                     | — (rate limit)                  | `AuthSessionResponse` + cookie                                                                            |
+| POST       | `/api/auth/logout`                                    | —                               | 204, cancella il cookie                                                                                   |
+| GET        | `/api/auth/me`                                        | auth                            | `MeResponse`                                                                                              |
+| PATCH      | `/api/auth/me`                                        | auth                            | `UpdateProfileSchema` (strict) → `MeResponse`                                                             |
+| POST       | `/api/auth/password`                                  | auth (rate limit)               | 200 `{ token, expiresAt }` + cookie nuovo; revoca le altre sessioni (il client nativo usa il nuovo token) |
+| GET        | `/api/auth/spotify/login`                             | —                               | `{ url }` + cookie di stato                                                                               |
+| GET        | `/api/auth/spotify/callback`                          | opt                             | 302 verso il web (vedi §1 "OAuth collegati")                                                              |
+| GET        | `/api/auth/lastfm/login`                              | —                               | `{ url }` + cookie di stato                                                                               |
+| GET        | `/api/auth/lastfm/callback`                           | opt                             | 302 verso il web; serve una sessione                                                                      |
+| DELETE     | `/api/auth/providers/:provider`                       | auth                            | scollega SPOTIFY/LASTFM/APPLE_MUSIC                                                                       |
+| GET        | `/api/users/search?q=`                                | opt                             | `UserSummaryPage`                                                                                         |
+| GET        | `/api/users/suggestions?limit=`                       | opt                             | utenti da seguire                                                                                         |
+| GET        | `/api/users/:userId/followers`                        | opt                             | `UserSummaryPage`                                                                                         |
+| GET        | `/api/users/:userId/following`                        | opt                             | `UserSummaryPage`                                                                                         |
+| PUT        | `/api/users/:userId/follow`                           | auth                            | idempotente → `FollowState`, notifica FOLLOW                                                              |
+| DELETE     | `/api/users/:userId/follow`                           | auth                            | `FollowState`                                                                                             |
+| GET        | `/api/users/:userId/posts`                            | opt                             | `PostPage`                                                                                                |
+| GET        | `/api/feed?scope=following\|global`                   | opt                             | `PostPage` (anonimi: sempre global)                                                                       |
+| POST       | `/api/posts`                                          | auth                            | 201 `Post`                                                                                                |
+| GET        | `/api/posts/saved`                                    | auth                            | `PostPage`                                                                                                |
+| GET        | `/api/posts/:id`                                      | opt                             | `Post`                                                                                                    |
+| DELETE     | `/api/posts/:id`                                      | auth (autore, MODERATOR, ADMIN) | 204                                                                                                       |
+| PUT/DELETE | `/api/posts/:id/like`                                 | auth                            | `PostLikeState`, notifica POST_LIKE                                                                       |
+| PUT/DELETE | `/api/posts/:id/save`                                 | auth                            | `PostSaveState`                                                                                           |
+| GET        | `/api/notifications?unreadOnly=`                      | auth                            | `NotificationPage`                                                                                        |
+| GET        | `/api/notifications/unread-count`                     | auth                            | `{ count }`                                                                                               |
+| POST       | `/api/notifications/read`                             | auth                            | `{ ids? }` → `{ updated }`                                                                                |
+| GET        | `/api/notifications/presence-summary`                 | auth                            | ADR-004                                                                                                   |
+| GET        | `/api/now-playing/friends`                            | auth                            | `FriendPresence[]`                                                                                        |
+| GET        | `/api/chat/conversations`                             | auth                            | `ConversationSummary[]` (inbox)                                                                           |
+| GET        | `/api/chat/conversation/:otherUserId`                 | auth                            | ultimi 50 messaggi, dal più vecchio                                                                       |
+| POST       | `/api/chat/conversation/:otherUserId/read`            | auth                            | `{ updated }`                                                                                             |
+| POST       | `/api/chat/messages`                                  | auth                            | 201 `ChatMessage`, push `chat:message`                                                                    |
+| POST       | `/api/chat/reaction`                                  | auth (solo destinatario)        | `ChatMessage`                                                                                             |
+| POST       | `/api/chat/listened`                                  | auth (solo destinatario)        | `ChatMessage`, notifica TRACK_LISTENED                                                                    |
+| GET        | `/api/catalog/search?q=&type=&page=&limit=&external=` | — (rate limit)                  | `SearchResult` (vedi §8)                                                                                  |
+| GET        | `/api/catalog/resolve?provider=&type=&id=`            | — (rate limit)                  | `CatalogResolveResult` (vedi §8)                                                                          |
+| GET        | `/api/catalog/releases?genre=&sort=&cursor=&limit=`   | —                               | `ReleasePage`                                                                                             |
+| GET        | `/api/catalog/genres`                                 | —                               | `GenreList`                                                                                               |
+| GET        | `/api/catalog/releases/:id`                           | —                               | `CatalogRelease` + tracce (import completo 1ª volta)                                                      |
+| GET        | `/api/catalog/preview?title=&artist=&isrc=`           | —                               | `AudioPreviewResult`                                                                                      |
+| POST       | `/api/reviews`                                        | auth                            | crea/aggiorna, 201 `ReviewItem`                                                                           |
+| GET        | `/api/reviews/release/:releaseId`                     | opt                             | `ReviewItem[]`                                                                                            |
+| POST       | `/api/reviews/reaction`                               | auth                            | toggle, notifica REVIEW_REACTION                                                                          |
+| GET        | `/api/profile/me`                                     | auth                            | `UserProfileData`                                                                                         |
+| GET        | `/api/profile/by-username/:username`                  | opt                             | `UserProfileData` (senza email)                                                                           |
+| GET        | `/api/profile/:userId`                                | opt                             | `UserProfileData` (senza email)                                                                           |
+| GET        | `/api/discovery/reels`                                | opt                             |                                                                                                           |
+| GET        | `/api/discovery/roulette`                             | opt                             |                                                                                                           |
+| POST       | `/api/playlists`                                      | auth                            | 201 `PlaylistDetails`                                                                                     |
+| POST       | `/api/playlists/track`                                | auth (proprietario)             | `PlaylistDetails`                                                                                         |
+| GET        | `/api/playlists/user/:userId`                         | opt                             | solo pubbliche, salvo proprietario                                                                        |
+| GET        | `/api/playlists/:id`                                  | opt                             | 404 se privata e non tua                                                                                  |
+| POST       | `/api/critic/accredit`                                | auth                            | richiesta in attesa (`PENDING`), ruolo invariato                                                          |
+| GET        | `/api/critic/accreditation`                           | auth                            | stato della propria richiesta                                                                             |
+| GET        | `/api/critic/requests`                                | ADMIN                           | coda richieste                                                                                            |
+| POST       | `/api/critic/verify`                                  | ADMIN                           | `{ userId, approve }`, notifica CRITIC_APPROVED                                                           |
+| POST       | `/api/critic/reviews`                                 | auth + ruolo CRITIC             | 201 `CriticReviewItem`                                                                                    |
+| GET        | `/api/critic/dual-score/:releaseId`                   | —                               |                                                                                                           |
+| GET        | `/api/critic/release/:releaseId`                      | —                               |                                                                                                           |
+| POST       | `/api/videos`                                         | CRITIC, MODERATOR, ADMIN        | 201                                                                                                       |
+| GET        | `/api/videos/feed?category=`                          | —                               |                                                                                                           |
+| GET        | `/api/videos/release/:releaseId`                      | —                               |                                                                                                           |
+| GET/POST   | `/api/spotify/*`                                      | auth + Spotify collegato        | 409 se non collegato, 502 se Spotify fallisce                                                             |
 
 Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCursor }`
 (`nextCursor` è `null` all'ultima pagina).
@@ -201,7 +201,8 @@ Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCur
 - **Fine sessione:** il server invia `session:revoked` `{ reason }` e chiude il socket quando
   - `POST /api/auth/logout` → solo i socket aperti con **quel** token (`LOGOUT`);
   - `POST /api/auth/password` → tutti i socket dell'utente (`PASSWORD_CHANGED`); il dispositivo
-    che ha cambiato password ha già il cookie nuovo e può richiamare `socket.connect()`;
+    che ha cambiato password ha già il cookie nuovo (web) o il token nuovo nella risposta (mobile)
+    e può riconnettersi;
   - il token scade mentre il socket è aperto (`EXPIRED`);
   - un evento client trova la sessione non più valida (`INVALID`: `sessionVersion` cambiata o
     utente cancellato; ricontrollo sul DB al massimo ogni 15 s per socket). L'evento riceve prima
