@@ -1,6 +1,7 @@
 // @ts-check
 // ESLint flat config for the Node/TypeScript workspaces (apps/api, packages/*).
-// apps/web is linted by `next lint` (see apps/web/.eslintrc.json); apps/mobile is out of scope.
+// apps/web has its own flat config (apps/web/eslint.config.mjs, eslint-config-next); apps/mobile is
+// out of scope.
 const js = require('@eslint/js');
 const tseslint = require('typescript-eslint');
 const prettier = require('eslint-config-prettier');

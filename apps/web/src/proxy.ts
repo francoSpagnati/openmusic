@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * release ids any more: answer with a real HTTP redirect to the external resolver, which imports
  * the album and redirects to its internal UUID. (The release page keeps an in-render fallback.)
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const legacy = /^\/releases\/deezer-(alb|trk)-(\d{1,20})\/?$/.exec(request.nextUrl.pathname);
   if (!legacy) return NextResponse.next();
   const url = request.nextUrl.clone();
