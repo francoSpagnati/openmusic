@@ -138,23 +138,29 @@ function NowPlayingSleeve({ track, friendName }: { track: NowPlayingTrack; frien
         />
       </div>
 
-      <div>
-        <div
-          role="progressbar"
-          aria-label={`Punto di ascolto di ${friendName}`}
-          aria-valuemin={0}
-          aria-valuemax={Math.round(track.durationMs / 1000)}
-          aria-valuenow={Math.round(progress / 1000)}
-          aria-valuetext={`${formatTrackDuration(progress)} di ${formatTrackDuration(track.durationMs)}`}
-          className="h-1.5 w-full overflow-hidden rounded-full bg-sunken"
-        >
-          <span className="block h-full rounded-full bg-accent" style={{ width: `${percent}%` }} />
+      {/* Last.fm "now playing" has no duration (0): no progress bar to draw. */}
+      {track.durationMs > 0 ? (
+        <div>
+          <div
+            role="progressbar"
+            aria-label={`Punto di ascolto di ${friendName}`}
+            aria-valuemin={0}
+            aria-valuemax={Math.round(track.durationMs / 1000)}
+            aria-valuenow={Math.round(progress / 1000)}
+            aria-valuetext={`${formatTrackDuration(progress)} di ${formatTrackDuration(track.durationMs)}`}
+            className="h-1.5 w-full overflow-hidden rounded-full bg-sunken"
+          >
+            <span
+              className="block h-full rounded-full bg-accent"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <div className="mt-1.5 flex justify-between font-mono text-xs tabular-nums text-ink-muted">
+            <span>{formatTrackDuration(progress)}</span>
+            <span>{formatTrackDuration(track.durationMs)}</span>
+          </div>
         </div>
-        <div className="mt-1.5 flex justify-between font-mono text-xs tabular-nums text-ink-muted">
-          <span>{formatTrackDuration(progress)}</span>
-          <span>{formatTrackDuration(track.durationMs)}</span>
-        </div>
-      </div>
+      ) : null}
 
       <Badge tone="live" size="sm" mono>
         Anteprima 30s · il brano intero resta su {PROVIDER_LABEL[track.provider]}

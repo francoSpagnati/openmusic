@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import { LinkBreak, LinkSimple } from '@phosphor-icons/react';
-import type { ConnectedProvider } from '@openmusic/shared';
+import type { ConnectedProvider, ProviderSyncInfo } from '@openmusic/shared';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Badge, Button, Dialog, useToast } from '@/components/ui';
 import { errorMessage } from '../format';
+import { ProviderSyncStatus } from './ProviderSyncStatus';
 
 export interface ProviderCardProps {
   provider: Extract<ConnectedProvider, 'SPOTIFY' | 'LASTFM'>;
@@ -17,6 +18,9 @@ export interface ProviderCardProps {
   getLoginUrl: () => Promise<string>;
   /** Extra controls shown while linked (e.g. Spotify sync). */
   children?: React.ReactNode;
+  /** ADR-013: automatic sync state; omit to hide the block. */
+  sync?: ProviderSyncInfo | null;
+  autoSyncEnabled?: boolean;
 }
 
 /**
@@ -30,6 +34,8 @@ export function ProviderCard({
   description,
   getLoginUrl,
   children,
+  sync,
+  autoSyncEnabled = true,
 }: ProviderCardProps) {
   const { connectedAccounts, refresh } = useAuth();
   const { notify } = useToast();
@@ -126,6 +132,17 @@ export function ProviderCard({
           </Button>
         )}
       </div>
+      {account && sync !== undefined && (
+        <div className="mt-4 border-t border-line pt-4">
+          <ProviderSyncStatus
+            name={name}
+            sync={sync}
+            autoSyncEnabled={autoSyncEnabled}
+            onRelink={() => void connect()}
+            relinking={connecting}
+          />
+        </div>
+      )}
       {account && children && <div className="mt-4 border-t border-line pt-4">{children}</div>}
 
       <Dialog
