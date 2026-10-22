@@ -18,7 +18,8 @@ export const NowPlayingTrackSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .default('#26262B'),
-  durationMs: z.number().int().positive(),
+  /** 0 = unknown (Last.fm "now playing" has no duration): clients hide the progress bar. */
+  durationMs: z.number().int().nonnegative(),
   progressMs: z.number().int().nonnegative(),
   previewUrl: z.string().url().optional(), // Clip 30s (Spotify -> Deezer -> iTunes fallback)
   provider: MusicProviderSchema,

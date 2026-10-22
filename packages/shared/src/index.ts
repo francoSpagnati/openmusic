@@ -2,6 +2,7 @@ export * from './theme';
 export * from './common';
 export * from './errors';
 export * from './now-playing';
+export * from './now-playing-sync';
 export * from './auth';
 export * from './users';
 export * from './catalog';

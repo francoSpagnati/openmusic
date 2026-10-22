@@ -71,6 +71,9 @@ model User {
   criticRequestedAt  DateTime? // Richiesta di accredito in attesa di verifica admin
   /// Bumped on password change: session tokens carrying an older value are rejected.
   sessionVersion     Int       @default(0)
+  /// Last time the user opened the app (socket or /me, at most once per hour). The now-playing
+  /// poller stops reading Spotify/Last.fm for users not seen for NOW_PLAYING_INACTIVE_AFTER_DAYS.
+  lastSeenAt         DateTime? @default(now())
   createdAt          DateTime  @default(now())
 
   connectedAccounts ConnectedAccount[]
@@ -90,16 +93,30 @@ model User {
 }
 
 model ConnectedAccount {
-  id           String    @id @default(uuid())
+  id           String             @id @default(uuid())
   userId       String
   provider     String // "SPOTIFY", "LASTFM", "APPLE_MUSIC"
   providerId   String
   accessToken  String
   refreshToken String?
   expiresAt    DateTime?
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// ADR-013: automatic now-playing sync. ERROR stops polling until the account is linked again.
+  syncStatus   ProviderSyncStatus @default(ACTIVE)
+  /// Last successful read of the provider (written at most once a minute).
+  lastSyncedAt DateTime?
+  /// `ProviderSyncErrorCode` of the last failure, null after a successful read.
+  syncError    String?
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerId])
+  @@index([userId])
+}
+
+/// ADR-013: ACTIVE = polled; ERROR = token revoked/refused (relink needed); PAUSED = user idle.
+enum ProviderSyncStatus {
+  ACTIVE
+  ERROR
+  PAUSED
 }
 
 model Follows {
