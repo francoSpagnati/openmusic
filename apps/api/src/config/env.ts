@@ -29,7 +29,7 @@ const EnvSchema = z
       .positive()
       .default(7 * 24 * 60 * 60),
     /** Comma-separated list of allowed browser origins (HTTP CORS and Socket.io). */
-    CORS_ORIGIN: z.string().default('http://localhost:3000,exp://localhost:8081'),
+    CORS_ORIGIN: z.string().default('http://127.0.0.1:3000,exp://127.0.0.1:8081'),
     /** Defaults to true in production. Set false only for plain-http local setups. */
     COOKIE_SECURE: booleanFromString.optional(),
     /** Optional cookie domain (e.g. `.openmusic.social` when web and api are on subdomains). */
@@ -43,7 +43,7 @@ const EnvSchema = z
      * Public URL of the web app. OAuth callbacks (Spotify, Last.fm) redirect the browser back
      * here (`/settings?oauth=<provider>&status=success|error`) instead of showing raw JSON.
      */
-    WEB_APP_URL: z.string().url().default('http://localhost:3000'),
+    WEB_APP_URL: z.string().url().default('http://127.0.0.1:3000'),
 
     // External catalog (Deezer, iTunes, MusicBrainz, Cover Art Archive)
     /** false = search/open use only the local catalog (no outbound calls). */
@@ -56,15 +56,16 @@ const EnvSchema = z
       .regex(/^[A-Za-z]{2}$/)
       .default('IT'),
 
-    // Spotify OAuth
+    // Spotify OAuth. Local defaults use 127.0.0.1, never `localhost`: Spotify rejects
+    // `localhost` redirect URIs, and web + API must share one host for the session cookie.
     SPOTIFY_CLIENT_ID: z.string().optional().default(''),
     SPOTIFY_CLIENT_SECRET: z.string().optional().default(''),
-    SPOTIFY_REDIRECT_URI: z.string().default('http://localhost:4000/api/auth/spotify/callback'),
+    SPOTIFY_REDIRECT_URI: z.string().default('http://127.0.0.1:4000/api/auth/spotify/callback'),
 
     // Last.fm Auth
     LASTFM_API_KEY: z.string().optional().default(''),
     LASTFM_SHARED_SECRET: z.string().optional().default(''),
-    LASTFM_CALLBACK_URL: z.string().default('http://localhost:4000/api/auth/lastfm/callback'),
+    LASTFM_CALLBACK_URL: z.string().default('http://127.0.0.1:4000/api/auth/lastfm/callback'),
   })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === 'production' && !e.JWT_SECRET) {

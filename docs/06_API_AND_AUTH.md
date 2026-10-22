@@ -25,8 +25,11 @@ Il web usa **solo il cookie** `om_session` (`HttpOnly`, `SameSite=Lax`, `Secure`
 Il JavaScript della pagina non vede mai il token: `apiRequest` usa `credentials: 'include'` e il
 socket usa `withCredentials: true`.
 
-- In sviluppo web (`localhost:3000`) e API (`localhost:4000`) sono lo stesso _site_, quindi il
-  cookie viaggia.
+- In sviluppo web (`127.0.0.1:3000`) e API (`127.0.0.1:4000`) sono sullo stesso host, quindi il
+  cookie viaggia. Si usa `127.0.0.1` e **mai `localhost`**: Spotify accetta come redirect URI solo
+  IP di loopback, il callback arriva quindi su `127.0.0.1:4000`, e il cookie `om_oauth_state`
+  (impostato dalla pagina web) deve essere sullo stesso host. Mischiare `localhost` e `127.0.0.1`
+  fa sparire i cookie (host diversi, _site_ diversi).
 - In produzione web e API devono stare su sottodomini dello stesso dominio
   (`app.openmusic.social` / `api.openmusic.social`) con `COOKIE_DOMAIN=.openmusic.social`.
 - CSRF: `SameSite=Lax` blocca il cookie sulle richieste cross-site non-GET; CORS accetta solo
@@ -254,6 +257,67 @@ npm run db:migrate:deploy && npm run db:seed
 npm run dev                     # API :4000 + web :3000 (mobile: npm run dev:mobile)
 ```
 
+Apri il web su **http://127.0.0.1:3000**. I default (`.env.example`, `apps/api/src/config/env.ts`,
+`apps/web/src/lib/api/config.ts`, CI e Playwright) usano tutti `127.0.0.1`; `next.config.mjs`
+dichiara `allowedDevOrigins: ['127.0.0.1']` perché Next 16 in sviluppo accetta richieste a
+`/_next/*` e al websocket HMR solo da `localhost`.
+
+### Collegare Spotify
+
+1. Vai su [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), accedi con il
+   tuo account Spotify e premi **Create app**. Nome e descrizione sono liberi.
+2. In **Redirect URIs** aggiungi esattamente `http://127.0.0.1:4000/api/auth/spotify/callback`
+   (schema, porta e percorso identici; niente `/` finale). Spotify non accetta più `localhost`:
+   per lo sviluppo vale solo un IP di loopback in `http` (`127.0.0.1` o `[::1]`).
+3. In "Which API/SDKs are you planning to use?" spunta **Web API**, accetta i termini e salva.
+4. In **Settings → User Management** aggiungi nome ed email dell'account Spotify che userai per il
+   collegamento (anche il tuo). Un'app in _Development Mode_ accetta al massimo **5 utenti**,
+   tutti da elencare qui; secondo gli annunci sul forum sviluppatori Spotify, da febbraio 2026
+   l'account sviluppatore che possiede l'app deve inoltre avere un abbonamento **Premium**.
+5. In **Settings → Basic Information** copia **Client ID** e **Client secret** ("View client
+   secret") nel `.env` alla radice:
+
+   ```bash
+   SPOTIFY_CLIENT_ID="..."
+   SPOTIFY_CLIENT_SECRET="..."
+   SPOTIFY_REDIRECT_URI="http://127.0.0.1:4000/api/auth/spotify/callback"
+   # e, coerenti sullo stesso host:
+   WEB_APP_URL="http://127.0.0.1:3000"
+   NEXT_PUBLIC_API_URL="http://127.0.0.1:4000"
+   CORS_ORIGIN="http://127.0.0.1:3000,exp://127.0.0.1:8081"
+   ```
+
+6. Riavvia `npm run dev` (`NEXT_PUBLIC_API_URL` entra nel bundle all'avvio del web).
+7. Apri **http://127.0.0.1:3000** (non `localhost:3000`), registrati o accedi, e vai su
+   **Impostazioni → Servizi collegati → Collega Spotify**. Dopo il consenso Spotify ti rimanda al
+   callback dell'API, che ti riporta su `/settings?oauth=spotify&status=success`.
+
+Problemi frequenti:
+
+| Sintomo                                               | Causa                                                                                                                                                              |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Pagina Spotify "INVALID_CLIENT: Invalid redirect URI" | `SPOTIFY_REDIRECT_URI` diverso (anche di un carattere) da quello registrato al punto 2                                                                             |
+| `status=error&code=FORBIDDEN` al ritorno              | `state` non ritrovato: hai aperto il web su `localhost` (cookie su un altro host) o sono passati 10 min                                                            |
+| `status=error&code=UPSTREAM_ERROR` dopo il consenso   | Spotify ha rifiutato (403) la lettura del profilo: account non in **User Management** (punto 4), limite di 5 utenti o requisito Premium; dettagli nei log dell'API |
+| Pagina Spotify "INVALID_CLIENT: Invalid client"       | `SPOTIFY_CLIENT_ID` vuoto o ancora segnaposto: aggiorna `.env` e riavvia l'API                                                                                     |
+
+### Collegare Last.fm
+
+1. Crea un'applicazione API su
+   [last.fm/api/account/create](https://www.last.fm/api/account/create) (serve un account Last.fm).
+   **Callback URL**: `http://127.0.0.1:4000/api/auth/lastfm/callback`.
+2. Copia **API key** e **Shared secret** nel `.env`: `LASTFM_API_KEY`, `LASTFM_SHARED_SECRET`,
+   `LASTFM_CALLBACK_URL="http://127.0.0.1:4000/api/auth/lastfm/callback"`. L'API passa comunque
+   la callback (con lo `state`) nel parametro `cb` dell'URL di autorizzazione.
+3. Riavvia l'API e, **da loggato** su http://127.0.0.1:3000, **Impostazioni → Collega Last.fm**
+   (senza sessione il callback restituisce `code=UNAUTHORIZED`).
+
+Dietro un proxy con allowlist servono `accounts.spotify.com`, `api.spotify.com`, `www.last.fm` e
+`ws.audioscrobbler.com`; per le copertine di Cover Art Archive anche il dominio apex
+**`archive.org`** (oltre a `coverartarchive.org` e `*.archive.org`, che non lo copre): CAA
+reindirizza a `archive.org/download/...` e da lì a un nodo `*.archive.org`. Elenco completo dei
+domini nel README alla radice.
+
 Per l'app mobile: `apps/mobile/.env` con `EXPO_PUBLIC_API_URL` raggiungibile dal telefono (IP LAN,
 `http://10.0.2.2:4000` sull'emulatore Android); istruzioni complete nel README alla radice.
 
@@ -274,7 +338,9 @@ Release, brani e artisti reali arrivano da database aperti, senza chiavi API:
 Codice: `apps/api/src/modules/catalog/providers/*` (un provider per servizio, risposte validate
 con Zod sulla forma documentata) sopra `UpstreamClient` (`apps/api/src/lib/upstream.ts`): cache
 Redis (`upstream:<provider>:<sha1(url)>`, TTL 1 h ricerche – 7 giorni MusicBrainz, anche i 404),
-timeout 5 s, retry con backoff esponenziale su 429/5xx/rete (rispetta `Retry-After`), rate
+timeout 5 s, retry con backoff esponenziale su 429/5xx/rete (rispetta `Retry-After`; per iTunes
+anche su **403**, la sua risposta quando lo si interroga troppo in fretta: backoff 3 s poi 6 s,
+solo per iTunes), rate
 limiter a token bucket per provider con coda limitata, circuit breaker (3 errori consecutivi → provider saltato
 per 30 s).
 
