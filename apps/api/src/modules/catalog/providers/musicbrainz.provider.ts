@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { normalizeIsrc } from '@openmusic/shared';
 import type { UpstreamClient } from '../../../lib/upstream';
 import { genreLabel, isoDateOrNull, lucenePhrase, releaseTypeFrom } from './shared';
-import type { ProviderArtist, ProviderRelease, ProviderTrack } from './types';
+import type { ReleaseGroupType } from '@openmusic/shared';
+import type { ProviderArtist, ProviderRelease, ProviderReleaseGroup, ProviderTrack } from './types';
 
 /**
  * MusicBrainz web service v2 (https://musicbrainz.org/doc/MusicBrainz_API). Rules we must follow:
@@ -31,8 +32,15 @@ const ReleaseGroupRefSchema = z.object({
   id: z.string(),
   title: z.string().nullish(),
   'primary-type': z.string().nullish(),
+  'secondary-types': z.array(z.string()).nullish(),
+  'first-release-date': z.string().nullish(),
   genres: z.array(TagSchema).nullish(),
   tags: z.array(TagSchema).nullish(),
+});
+
+const MediumSummarySchema = z.object({
+  format: z.string().nullish(),
+  'track-count': z.number().nullish(),
 });
 
 const LabelInfoSchema = z.array(
@@ -48,6 +56,10 @@ const SearchReleaseSchema = z.object({
   title: z.string(),
   date: z.string().nullish(),
   barcode: z.string().nullish(),
+  status: z.string().nullish(),
+  country: z.string().nullish(),
+  disambiguation: z.string().nullish(),
+  'track-count': z.number().nullish(),
   'artist-credit': ArtistCreditSchema.nullish(),
   'release-group': ReleaseGroupRefSchema.nullish(),
   'label-info': LabelInfoSchema.nullish(),
@@ -58,6 +70,11 @@ const ReleaseSearchSchema = z.object({
   releases: z.array(SearchReleaseSchema),
 });
 
+const ReleaseBrowseSchema = z.object({
+  'release-count': z.number().nullish(),
+  releases: z.array(SearchReleaseSchema.extend({ media: z.array(MediumSummarySchema).nullish() })),
+});
+
 const ReleaseLookupSchema = SearchReleaseSchema.extend({
   genres: z.array(TagSchema).nullish(),
   tags: z.array(TagSchema).nullish(),
@@ -66,6 +83,7 @@ const ReleaseLookupSchema = SearchReleaseSchema.extend({
     .array(
       z.object({
         position: z.number().nullish(),
+        format: z.string().nullish(),
         tracks: z
           .array(
             z.object({
@@ -110,6 +128,58 @@ export interface MusicBrainzReleaseHit {
   barcode: string | null;
   date: string | null;
   releaseGroupId: string | null;
+  disambiguation: string | null;
+  trackCount: number | null;
+}
+
+/** Releases browsed per page of a release group (MusicBrainz caps browse pages at 100). */
+const BROWSE_LIMIT = 100;
+
+/** MusicBrainz primary + secondary types -> our release-group type (ADR-012). */
+export function releaseGroupTypeFrom(
+  primary: string | null | undefined,
+  secondary: readonly string[] | null | undefined
+): ReleaseGroupType {
+  const secondaries = (secondary ?? []).map((t) => t.toLowerCase());
+  if (secondaries.includes('live')) return 'LIVE';
+  if (secondaries.includes('compilation')) return 'COMPILATION';
+  switch ((primary ?? '').toLowerCase()) {
+    case 'album':
+      return 'ALBUM';
+    case 'ep':
+      return 'EP';
+    case 'single':
+      return 'SINGLE';
+    case '':
+      return 'ALBUM';
+    default:
+      return 'OTHER';
+  }
+}
+
+function toProviderReleaseGroup(
+  rg: z.infer<typeof ReleaseGroupRefSchema> | null | undefined,
+  fallbackTitle: string
+): ProviderReleaseGroup | null {
+  if (!rg || !isMbid(rg.id)) return null;
+  return {
+    musicbrainzId: rg.id,
+    title: rg.title && rg.title.length > 0 ? rg.title : fallbackTitle,
+    primaryType: releaseGroupTypeFrom(rg['primary-type'], rg['secondary-types']),
+    firstReleaseDate: isoDateOrNull(rg['first-release-date']),
+  };
+}
+
+function nonEmpty(value: string | null | undefined): string | null {
+  return value && value.trim().length > 0 ? value.trim() : null;
+}
+
+/** "CD", "2×CD + DVD-Video": the distinct formats of the media, in order. */
+function formatOf(
+  media: ReadonlyArray<{ format?: string | null }> | null | undefined
+): string | null {
+  const formats = [...new Set((media ?? []).map((m) => nonEmpty(m.format)).filter(Boolean))];
+  return formats.length > 0 ? formats.join(' + ') : null;
 }
 
 export interface MusicBrainzRelease extends ProviderRelease {
@@ -177,6 +247,8 @@ export class MusicBrainzProvider {
         barcode: r.barcode && r.barcode.length > 0 ? r.barcode : null,
         date: isoDateOrNull(r.date),
         releaseGroupId: r['release-group']?.id ?? null,
+        disambiguation: nonEmpty(r.disambiguation),
+        trackCount: r['track-count'] ?? null,
       }))
       .sort((a, b) => b.score - a.score);
   }
@@ -239,13 +311,20 @@ export class MusicBrainzProvider {
       trackCount: tracks.length,
       tracks,
       musicbrainzReleaseGroupId: r['release-group']?.id ?? null,
+      releaseGroup: toProviderReleaseGroup(r['release-group'], r.title),
+      disambiguation: nonEmpty(r.disambiguation),
+      country: nonEmpty(r.country),
+      format: formatOf(r.media),
+      status: nonEmpty(r.status),
       hasFrontCover: r['cover-art-archive']?.front === true,
     };
   }
 
-  /** Release-group genres (more often voted than the per-edition ones). */
-  async getReleaseGroupGenres(releaseGroupId: string): Promise<string[]> {
-    if (!isMbid(releaseGroupId)) return [];
+  /** Release group: canonical title, type, first release date and genres. */
+  async getReleaseGroup(
+    releaseGroupId: string
+  ): Promise<(ProviderReleaseGroup & { genres: string[] }) | null> {
+    if (!isMbid(releaseGroupId)) return null;
     const url = `${MUSICBRAINZ_API}/release-group/${releaseGroupId}?${new URLSearchParams({
       inc: 'genres+tags',
       fmt: 'json',
@@ -253,7 +332,62 @@ export class MusicBrainzProvider {
     const rg = await this.http.getJson(url, ReleaseGroupLookupSchema, {
       ttlSeconds: 7 * 24 * 3600,
     });
-    return rg ? topGenres(rg.genres, rg.tags) : [];
+    const group = toProviderReleaseGroup(rg, rg?.title ?? '');
+    if (!rg || !group || group.title.length === 0) return null;
+    return { ...group, genres: topGenres(rg.genres, rg.tags) };
+  }
+
+  /**
+   * Official releases (editions) of a release group, one browse request (`/release?release-group=`,
+   * max 100): skeletons without tracklist, imported lazily as separate editions (ADR-012).
+   */
+  async browseReleaseGroupReleases(releaseGroupId: string): Promise<ProviderRelease[]> {
+    if (!isMbid(releaseGroupId)) return [];
+    const url = `${MUSICBRAINZ_API}/release?${new URLSearchParams({
+      'release-group': releaseGroupId,
+      status: 'official',
+      inc: 'artist-credits+labels+media+release-groups',
+      limit: String(BROWSE_LIMIT),
+      fmt: 'json',
+    })}`;
+    const body = await this.http.getJson(url, ReleaseBrowseSchema, { ttlSeconds: 7 * 24 * 3600 });
+    return (body?.releases ?? []).map((r) => {
+      const credit = r['artist-credit'];
+      const label = (r['label-info'] ?? []).find((li) => li.label)?.label?.name ?? null;
+      const trackCount =
+        r['track-count'] ??
+        ((r.media ?? []).reduce((sum, m) => sum + (m['track-count'] ?? 0), 0) || null);
+      return {
+        provider: 'MUSICBRAINZ' as const,
+        externalId: r.id,
+        title: r.title,
+        artist: {
+          provider: 'MUSICBRAINZ' as const,
+          externalId: credit?.[0]?.artist.id ?? null,
+          name: creditName(credit),
+          pictureUrl: null,
+        },
+        releaseType: releaseTypeFrom(r['release-group']?.['primary-type']),
+        coverUrl: null,
+        releaseDate: isoDateOrNull(r.date),
+        genres: [],
+        label: label && label !== '[no label]' ? label : null,
+        upc: r.barcode && r.barcode.length > 0 ? r.barcode : null,
+        trackCount,
+        tracks: null,
+        musicbrainzReleaseGroupId: r['release-group']?.id ?? releaseGroupId,
+        releaseGroup: toProviderReleaseGroup(r['release-group'], r.title),
+        disambiguation: nonEmpty(r.disambiguation),
+        country: nonEmpty(r.country),
+        format: formatOf(r.media),
+        status: nonEmpty(r.status),
+      };
+    });
+  }
+
+  /** Release-group genres (more often voted than the per-edition ones). */
+  async getReleaseGroupGenres(releaseGroupId: string): Promise<string[]> {
+    return (await this.getReleaseGroup(releaseGroupId))?.genres ?? [];
   }
 
   /** Recordings (and their releases) carrying this ISRC. */

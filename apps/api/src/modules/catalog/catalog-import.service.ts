@@ -7,9 +7,15 @@ import {
 } from '@openmusic/db';
 import {
   catalogMatchKey,
+  compareEditions,
+  editionMatchKey,
   normalizeBarcode,
   normalizeCatalogArtist,
   normalizeIsrc,
+  parseEdition,
+  releaseGroupMatchKey,
+  releaseYear,
+  type EditionFacts,
 } from '@openmusic/shared';
 import { dominantColorOf } from '../../lib/dominant-color';
 import { KeyedMutex } from '../../lib/keyed-mutex';
@@ -18,6 +24,7 @@ import type {
   ProviderArtist,
   ProviderName,
   ProviderRelease,
+  ProviderReleaseGroup,
   ProviderTrack,
 } from './providers/types';
 
@@ -72,6 +79,70 @@ export function mergeGenres(existing: readonly string[], incoming: readonly stri
   return result;
 }
 
+function groupMbidOf(pr: ProviderRelease): string | null {
+  return pr.releaseGroup?.musicbrainzId ?? pr.musicbrainzReleaseGroupId ?? null;
+}
+
+export function providerFacts(pr: ProviderRelease): EditionFacts {
+  return {
+    title: pr.title,
+    artistName: pr.artist.name,
+    disambiguation: pr.disambiguation,
+    upc: pr.upc,
+    musicbrainzId: pr.provider === 'MUSICBRAINZ' ? pr.externalId : null,
+    musicbrainzReleaseGroupId: groupMbidOf(pr),
+    deezerId: pr.provider === 'DEEZER' ? pr.externalId : null,
+    itunesId: pr.provider === 'ITUNES' ? pr.externalId : null,
+    year: releaseYear(pr.releaseDate),
+    trackCount: pr.trackCount,
+  };
+}
+
+export function rowFacts(row: Release): EditionFacts {
+  return {
+    title: row.title,
+    artistName: row.artistName,
+    disambiguation: row.disambiguation,
+    upc: row.upc,
+    musicbrainzId: row.musicbrainzId,
+    musicbrainzReleaseGroupId: row.musicbrainzReleaseGroupId,
+    deezerId: row.deezerId,
+    itunesId: row.itunesId,
+    year: releaseYear(row.releaseDate),
+    trackCount: row.trackCount,
+  };
+}
+
+/**
+ * A full provider import contradicts the row its id is attached to: different barcode, edition
+ * title, track count, or a year more than one apart (providers disagree by a few days around
+ * New Year, never by years for the same edition).
+ */
+function conflictsWithFull(row: Release, pr: ProviderRelease): boolean {
+  if (pr.tracks === null) return false;
+  const rowUpc = normalizeBarcode(row.upc);
+  const upc = normalizeBarcode(pr.upc);
+  if (rowUpc && upc && rowUpc !== upc) return true;
+  // A seed row or a search hit (never synced) may hold a placeholder or provider-rounded track
+  // count; its date, when present, is still evidence (a seed "Weezer" from 1994).
+  if (row.metadataSyncedAt && row.trackCount && pr.trackCount && row.trackCount !== pr.trackCount) {
+    return true;
+  }
+  const rowYear = releaseYear(row.releaseDate);
+  const year = releaseYear(pr.releaseDate);
+  if (rowYear !== null && year !== null && Math.abs(rowYear - year) > 1) return true;
+  return (
+    Boolean(row.metadataSyncedAt) &&
+    editionMatchKey(row.title, row.artistName, row.disambiguation) !==
+      editionMatchKey(pr.title, pr.artist.name, pr.disambiguation)
+  );
+}
+
+/** Seed / hand-made rows: no provider id and no provider cover. */
+function isPlaceholder(row: Release): boolean {
+  return !row.deezerId && !row.itunesId && !row.musicbrainzId && !row.coverSource;
+}
+
 /** Unique-constraint violation: returns the conflicting columns (empty when unknown). */
 function uniqueConflict(err: unknown): string[] | null {
   if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') return null;
@@ -119,10 +190,11 @@ export interface ImportedRelease {
 }
 
 /**
- * Turns provider results into local rows with internal UUIDs. Every import is an upsert keyed by
- * (in order) the provider's id, the barcode / ISRC, then the normalized title + artist, so
- * importing the same album from Deezer, iTunes and MusicBrainz converges to ONE release row and
- * repeated imports are no-ops.
+ * Turns provider results into local rows with internal UUIDs. A Release row is ONE edition
+ * (ADR-012): imports are upserts keyed by the provider's id, the barcode, the MusicBrainz release
+ * id, then the edition title (markers included) + artist + year + track count, so the same
+ * edition from Deezer, iTunes and MusicBrainz converges to one row, while remasters, deluxe
+ * editions and same-titled albums of other years stay separate rows linked to a ReleaseGroup.
  */
 export class CatalogImportService {
   /**
@@ -192,9 +264,15 @@ export class CatalogImportService {
     }
   }
 
-  // -- Releases ----------------------------------------------------------------------------
+  // -- Releases (editions, ADR-012) ----------------------------------------------------------
 
-  /** Finds the local row for a provider release, without writing. */
+  /**
+   * Finds the local edition for a provider release, without writing. Same row ONLY for the same
+   * edition: same provider id, same barcode, same MusicBrainz release id, or — with no
+   * conflicting identifier — same artist, same title including edition markers, same year and
+   * same track count (`compareEditions`). When the year or track count is unknown on one side the
+   * match is accepted only if it is the single candidate with that edition title.
+   */
   async findExistingRelease(pr: ProviderRelease): Promise<Release | null> {
     const field = idField(pr.provider);
     if (field) {
@@ -206,49 +284,85 @@ export class CatalogImportService {
       const byUpc = await this.prisma.release.findUnique({ where: { upc } });
       if (byUpc) return byUpc;
     }
+    return this.findSameEdition(pr);
+  }
+
+  private async findSameEdition(pr: ProviderRelease): Promise<Release | null> {
     const matchKey = catalogMatchKey(pr.title, pr.artist.name);
-    const byKey = await this.prisma.release.findFirst({
-      where: { matchKey },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (byKey) return byKey;
-    // Rows created before match keys existed (seed, legacy imports).
-    const legacy = await this.prisma.release.findMany({
+    const bare = pr.title.split(/\s*[([]|\s+[-–—]\s+/)[0]?.trim() ?? pr.title;
+    const rows = await this.prisma.release.findMany({
       where: {
-        matchKey: null,
-        title: { equals: pr.title, mode: 'insensitive' },
+        OR: [
+          { matchKey },
+          // Rows created before match keys existed (seed, legacy imports).
+          { matchKey: null, title: { startsWith: bare, mode: 'insensitive' } },
+        ],
       },
-      take: 10,
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: 50,
     });
-    return legacy.find((r) => catalogMatchKey(r.title, r.artistName) === matchKey) ?? null;
+    const incoming = providerFacts(pr);
+    const editionKey = editionMatchKey(pr.title, pr.artist.name, pr.disambiguation);
+    const sameTitle = rows.filter(
+      (r) =>
+        catalogMatchKey(r.title, r.artistName) === matchKey &&
+        editionMatchKey(r.title, r.artistName, r.disambiguation) === editionKey
+    );
+    const verdicts = sameTitle.map((row) => ({
+      row,
+      verdict: compareEditions(incoming, rowFacts(row)),
+    }));
+    const exact = verdicts.find((v) => v.verdict === 'identical' || v.verdict === 'same-edition');
+    if (exact) return exact.row;
+    // Incomplete data (search hits have no date, seed rows no ids): only an unambiguous match,
+    // and never onto a row another provider already imported in full — nothing could correct
+    // that later (resolve and open trust a synced row).
+    const compatible = verdicts.filter(
+      (v) => v.verdict === 'compatible' && (isPlaceholder(v.row) || !v.row.metadataSyncedAt)
+    );
+    if (compatible.length === 1 && sameTitle.length === 1) return compatible[0]?.row ?? null;
+    return null;
   }
 
   /**
-   * Upserts a release and, when `pr.tracks` is present, its tracklist. `pr.tracks !== null`
-   * marks the import as "full" (metadataSyncedAt is set).
+   * Upserts a release (edition) and, when `pr.tracks` is present, its tracklist. `pr.tracks !==
+   * null` marks the import as "full" (metadataSyncedAt is set). The edition is linked to its
+   * release group afterwards.
    */
   async importRelease(pr: ProviderRelease): Promise<ImportedRelease> {
     const artistId = await this.upsertArtist(pr.artist);
     const matchKey = catalogMatchKey(pr.title, pr.artist.name);
-    const release = await this.locks.run(`release:${matchKey}`, () =>
+    const { release, detachedFrom } = await this.locks.run(`release:${matchKey}`, () =>
       this.upsertRelease(pr, artistId, matchKey)
     );
-    const trackIds = pr.tracks ? await this.importTracks(release, pr.tracks) : [];
-    return { release, trackIds };
+    if (detachedFrom) await this.moveDetachedTracks(detachedFrom, release.id, pr);
+    const grouped = await this.assignGroup(release, pr, artistId);
+    const trackIds = pr.tracks ? await this.importTracks(grouped, pr.tracks) : [];
+    return { release: grouped, trackIds };
   }
 
   private async upsertRelease(
     pr: ProviderRelease,
     artistId: string,
     matchKey: string
-  ): Promise<Release> {
-    const existing = await this.findExistingRelease(pr);
-    if (existing) return this.mergeRelease(existing, pr, artistId);
+  ): Promise<{ release: Release; detachedFrom: string | null }> {
+    let existing = await this.findExistingRelease(pr);
+    let detachedFrom: string | null = null;
     const field = idField(pr.provider);
+    if (existing && field && existing[field] === pr.externalId && conflictsWithFull(existing, pr)) {
+      // The provider id was attached to the wrong edition by an earlier, incomplete match (a
+      // search hit without date): the full detail proves otherwise. Detach it and import this
+      // edition on its own row.
+      await this.prisma.release.update({ where: { id: existing.id }, data: { [field]: null } });
+      detachedFrom = existing.id;
+      existing = await this.findExistingRelease(pr);
+    }
+    if (existing) return { release: await this.mergeRelease(existing, pr, artistId), detachedFrom };
     const full = pr.tracks !== null;
     const upc = normalizeBarcode(pr.upc);
     const coverSource: CatalogSource | null =
       pr.provider === 'MUSICBRAINZ' ? null : (pr.provider as CatalogSource);
+    const edition = parseEdition(pr.title, pr.disambiguation);
 
     const data: Prisma.ReleaseUncheckedCreateInput = {
       title: pr.title,
@@ -264,22 +378,45 @@ export class CatalogImportService {
       trackCount: pr.trackCount,
       upc,
       matchKey,
-      musicbrainzReleaseGroupId: pr.musicbrainzReleaseGroupId ?? null,
+      musicbrainzReleaseGroupId: groupMbidOf(pr),
+      editionLabel: edition.label,
+      disambiguation: pr.disambiguation ?? null,
+      country: pr.country ?? null,
+      format: pr.format ?? null,
+      releaseStatus: pr.status ?? null,
       metadataSyncedAt: full ? new Date() : null,
       ...(field ? { [field]: pr.externalId } : {}),
     };
     try {
-      return await this.prisma.release.create({ data });
+      return { release: await this.prisma.release.create({ data }), detachedFrom };
     } catch (err) {
       if (uniqueConflict(err) === null) throw err;
     }
     // Another process created the row meanwhile (same provider id or barcode): merge into it.
     // Only when no such row exists is the conflicting optional column dropped instead.
     const winner = await this.findExistingRelease(pr);
-    if (winner) return this.mergeRelease(winner, pr, artistId);
-    return writeDroppingConflicts(data, ['upc', 'deezerId', 'itunesId', 'musicbrainzId'], (d) =>
-      this.prisma.release.create({ data: d })
+    if (winner) return { release: await this.mergeRelease(winner, pr, artistId), detachedFrom };
+    const created = await writeDroppingConflicts(
+      data,
+      ['upc', 'deezerId', 'itunesId', 'musicbrainzId'],
+      (d) => this.prisma.release.create({ data: d })
     );
+    return { release: created, detachedFrom };
+  }
+
+  /** Tracks of a detached provider id follow it to the edition they belong to. */
+  private async moveDetachedTracks(
+    fromReleaseId: string,
+    toReleaseId: string,
+    pr: ProviderRelease
+  ): Promise<void> {
+    const field = idField(pr.provider);
+    if (!field || !pr.tracks || fromReleaseId === toReleaseId) return;
+    const ids = pr.tracks.map((t) => t.musicbrainzId ?? t.externalId);
+    await this.prisma.track.updateMany({
+      where: { releaseId: fromReleaseId, [field]: { in: ids } },
+      data: { releaseId: toReleaseId },
+    });
   }
 
   private async mergeRelease(
@@ -290,8 +427,7 @@ export class CatalogImportService {
     const field = idField(pr.provider);
     const full = pr.tracks !== null;
     // Seed / hand-made rows have no provider ids: real data replaces their placeholders.
-    const placeholder =
-      !existing.deezerId && !existing.itunesId && !existing.musicbrainzId && !existing.coverSource;
+    const placeholder = isPlaceholder(existing);
     // A search hit never synced in full can be corrected by the first full import.
     const authoritative = placeholder || (full && !existing.metadataSyncedAt);
     const coverSource: CatalogSource | null =
@@ -303,9 +439,20 @@ export class CatalogImportService {
     if (upc && !existing.upc) data.upc = upc;
     if (!existing.artistId) data.artistId = artistId;
     if (!existing.matchKey) data.matchKey = catalogMatchKey(existing.title, existing.artistName);
-    if (pr.musicbrainzReleaseGroupId && !existing.musicbrainzReleaseGroupId) {
-      data.musicbrainzReleaseGroupId = pr.musicbrainzReleaseGroupId;
+    const groupMbid = groupMbidOf(pr);
+    if (groupMbid && !existing.musicbrainzReleaseGroupId) {
+      data.musicbrainzReleaseGroupId = groupMbid;
     }
+    if (!existing.editionLabel) {
+      const label =
+        parseEdition(existing.title, existing.disambiguation ?? pr.disambiguation).label ??
+        parseEdition(pr.title, pr.disambiguation).label;
+      if (label) data.editionLabel = label;
+    }
+    if (pr.disambiguation && !existing.disambiguation) data.disambiguation = pr.disambiguation;
+    if (pr.country && !existing.country) data.country = pr.country;
+    if (pr.format && !existing.format) data.format = pr.format;
+    if (pr.status && !existing.releaseStatus) data.releaseStatus = pr.status;
 
     if (pr.coverUrl && coverSource) {
       const currentRank = existing.coverSource ? COVER_RANK[existing.coverSource] : -1;
@@ -334,6 +481,249 @@ export class CatalogImportService {
     return writeDroppingConflicts(data, ['upc', 'deezerId', 'itunesId', 'musicbrainzId'], (d) =>
       this.prisma.release.update({ where: { id }, data: d })
     );
+  }
+
+  // -- Release groups (ADR-012) --------------------------------------------------------------
+
+  /**
+   * Links an edition to its release group: by MusicBrainz release-group id when known (canonical),
+   * otherwise by work title + artist with year checks so that two different albums with the same
+   * title (Weezer's self-titled records) never share a group.
+   */
+  private async assignGroup(
+    release: Release,
+    pr: ProviderRelease,
+    artistId: string
+  ): Promise<Release> {
+    const mbGroup = pr.releaseGroup ?? null;
+    const mbid = mbGroup?.musicbrainzId ?? release.musicbrainzReleaseGroupId;
+    if (mbid) {
+      return this.attachToMusicBrainzGroup(
+        release.id,
+        {
+          musicbrainzId: mbid,
+          title: mbGroup?.title ?? parseEdition(release.title).workTitle,
+          primaryType: mbGroup?.primaryType ?? release.releaseType,
+          firstReleaseDate: mbGroup?.firstReleaseDate ?? null,
+        },
+        // Only MusicBrainz' own release-group data may rewrite the group's title/type/year.
+        mbGroup !== null
+      );
+    }
+    if (release.releaseGroupId && !(await this.leaveMisfiledGroup(release))) return release;
+    return this.attachByWorkTitle(release, artistId);
+  }
+
+  /**
+   * A dateless search hit is filed under the only work with its title; once its year is known it
+   * may turn out to be another album (Weezer 2001 filed under Weezer 1994). For a heuristic group
+   * (no MusicBrainz id) the edition is unlinked when it contradicts the group's other editions:
+   * a plain edition whose year matches none of the group's plain editions, or any edition older
+   * than the group's original. Returns true when it was unlinked (and must be filed again).
+   */
+  private async leaveMisfiledGroup(release: Release): Promise<boolean> {
+    const year = releaseYear(release.releaseDate);
+    if (!release.releaseGroupId || year === null) return false;
+    const groupId = release.releaseGroupId;
+    const group = await this.prisma.releaseGroup.findUnique({
+      where: { id: groupId },
+      include: {
+        releases: {
+          where: { id: { not: release.id } },
+          select: { title: true, disambiguation: true, releaseDate: true },
+        },
+      },
+    });
+    if (!group || group.musicbrainzId) return false;
+    const plainYears = group.releases
+      .filter((r) => parseEdition(r.title, r.disambiguation).tokens.length === 0)
+      .map((r) => releaseYear(r.releaseDate))
+      .filter((y): y is number => y !== null);
+    if (plainYears.length === 0) return false;
+    const plain = parseEdition(release.title, release.disambiguation).tokens.length === 0;
+    const misfiled = plain ? !plainYears.includes(year) : year < Math.min(...plainYears);
+    if (!misfiled) return false;
+    const unlinked = await this.prisma.release.updateMany({
+      where: { id: release.id, releaseGroupId: groupId },
+      data: { releaseGroupId: null },
+    });
+    if (unlinked.count === 0) return false;
+    // The group's first year may have come from this edition.
+    const years = group.releases
+      .map((r) => releaseYear(r.releaseDate))
+      .filter((y): y is number => y !== null);
+    await this.prisma.releaseGroup.update({
+      where: { id: groupId },
+      data: { firstReleaseYear: years.length > 0 ? Math.min(...years) : null },
+    });
+    return true;
+  }
+
+  /** Moves/links the edition to the group with this MusicBrainz id (created when missing). */
+  async attachToMusicBrainzGroup(
+    releaseId: string,
+    rg: ProviderReleaseGroup,
+    authoritative = true
+  ): Promise<Release> {
+    return this.locks.run(`group:mb:${rg.musicbrainzId}`, async () => {
+      const release = await this.prisma.release.findUniqueOrThrow({ where: { id: releaseId } });
+      const firstYear = releaseYear(rg.firstReleaseDate);
+      const metadata = {
+        title: rg.title,
+        primaryType: rg.primaryType,
+        ...(firstYear !== null ? { firstReleaseYear: firstYear } : {}),
+      };
+      let target = await this.prisma.releaseGroup.findUnique({
+        where: { musicbrainzId: rg.musicbrainzId },
+      });
+      const current = release.releaseGroupId
+        ? await this.prisma.releaseGroup.findUnique({ where: { id: release.releaseGroupId } })
+        : null;
+
+      if (!target && current && !current.musicbrainzId) {
+        // The heuristic group becomes the MusicBrainz one unless another edition in it is known
+        // to belong to a different release group.
+        const conflicting = await this.prisma.release.count({
+          where: {
+            releaseGroupId: current.id,
+            id: { not: release.id },
+            musicbrainzReleaseGroupId: { not: null },
+            NOT: { musicbrainzReleaseGroupId: rg.musicbrainzId },
+          },
+        });
+        if (conflicting === 0) {
+          target = await this.prisma.releaseGroup
+            .update({
+              where: { id: current.id },
+              data: { musicbrainzId: rg.musicbrainzId, ...(authoritative ? metadata : {}) },
+            })
+            .catch((err: unknown) => {
+              if (uniqueConflict(err) === null) throw err;
+              return null;
+            });
+        }
+      }
+      if (!target) {
+        target = await this.prisma.releaseGroup
+          .create({
+            data: {
+              musicbrainzId: rg.musicbrainzId,
+              artistName: release.artistName,
+              artistId: release.artistId,
+              matchKey: releaseGroupMatchKey(rg.title, release.artistName),
+              firstReleaseYear: firstYear ?? releaseYear(release.releaseDate),
+              ...metadata,
+            },
+          })
+          .catch(async (err: unknown) => {
+            if (uniqueConflict(err) === null) throw err;
+            return this.prisma.releaseGroup.findUniqueOrThrow({
+              where: { musicbrainzId: rg.musicbrainzId },
+            });
+          });
+      } else if (
+        authoritative &&
+        (target.title !== rg.title ||
+          target.primaryType !== rg.primaryType ||
+          (firstYear !== null && target.firstReleaseYear !== firstYear))
+      ) {
+        target = await this.prisma.releaseGroup.update({
+          where: { id: target.id },
+          data: metadata,
+        });
+      }
+
+      if (
+        release.releaseGroupId === target.id &&
+        release.musicbrainzReleaseGroupId === rg.musicbrainzId
+      ) {
+        return release;
+      }
+      const updated = await this.prisma.release.update({
+        where: { id: release.id },
+        data: { releaseGroupId: target.id, musicbrainzReleaseGroupId: rg.musicbrainzId },
+      });
+      if (current && current.id !== target.id) await this.deleteGroupIfEmpty(current.id);
+      return updated;
+    });
+  }
+
+  private async attachByWorkTitle(release: Release, artistId: string): Promise<Release> {
+    const key = releaseGroupMatchKey(release.title, release.artistName);
+    return this.locks.run(`group:key:${key}`, async () => {
+      const fresh = await this.prisma.release.findUniqueOrThrow({ where: { id: release.id } });
+      if (fresh.releaseGroupId) return fresh;
+      const edition = parseEdition(fresh.title, fresh.disambiguation);
+      const plain = edition.tokens.length === 0;
+      const year = releaseYear(fresh.releaseDate);
+
+      const groups = await this.prisma.releaseGroup.findMany({
+        where: { matchKey: key },
+        include: { releases: { select: { title: true, disambiguation: true, releaseDate: true } } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      });
+      const plainYears = (g: (typeof groups)[number]) =>
+        g.releases
+          .filter((r) => parseEdition(r.title, r.disambiguation).tokens.length === 0)
+          .map((r) => releaseYear(r.releaseDate))
+          .filter((y): y is number => y !== null);
+      const compatible = groups.filter((g) => {
+        if (year === null) return true;
+        if (!plain) return g.firstReleaseYear === null || g.firstReleaseYear <= year;
+        const years = plainYears(g);
+        // A plain edition with another year is another album (Weezer 1994 vs 2001).
+        if (years.length > 0) return years.includes(year);
+        return g.firstReleaseYear === null || year <= g.firstReleaseYear;
+      });
+      let group: (typeof groups)[number] | undefined;
+      if (compatible.length === 1) group = compatible[0];
+      else if (plain && year !== null) {
+        const exact = compatible.filter((g) => plainYears(g).includes(year));
+        if (exact.length === 1) group = exact[0];
+      }
+
+      let groupId: string;
+      let createdGroup = false;
+      if (group) {
+        groupId = group.id;
+        if (
+          !group.musicbrainzId &&
+          year !== null &&
+          (group.firstReleaseYear === null || year < group.firstReleaseYear)
+        ) {
+          await this.prisma.releaseGroup.update({
+            where: { id: group.id },
+            data: { firstReleaseYear: year },
+          });
+        }
+      } else {
+        const created = await this.prisma.releaseGroup.create({
+          data: {
+            title: edition.workTitle,
+            artistName: fresh.artistName,
+            artistId: fresh.artistId ?? artistId,
+            primaryType: fresh.releaseType,
+            firstReleaseYear: year,
+            matchKey: key,
+          },
+        });
+        groupId = created.id;
+        createdGroup = true;
+      }
+      // Conditional: another API process may have linked this edition meanwhile.
+      const linked = await this.prisma.release.updateMany({
+        where: { id: fresh.id, releaseGroupId: null },
+        data: { releaseGroupId: groupId },
+      });
+      if (linked.count === 0 && createdGroup) await this.deleteGroupIfEmpty(groupId);
+      return this.prisma.release.findUniqueOrThrow({ where: { id: fresh.id } });
+    });
+  }
+
+  private async deleteGroupIfEmpty(groupId: string): Promise<void> {
+    await this.prisma.releaseGroup.deleteMany({
+      where: { id: groupId, releases: { none: {} } },
+    });
   }
 
   // -- Tracks ------------------------------------------------------------------------------

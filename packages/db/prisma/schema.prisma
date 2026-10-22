@@ -36,6 +36,16 @@ enum ReleaseType {
   EP
 }
 
+/// ADR-012: MusicBrainz release-group primary type; Live/Compilation promoted from secondary types.
+enum ReleaseGroupType {
+  ALBUM
+  EP
+  SINGLE
+  LIVE
+  COMPILATION
+  OTHER
+}
+
 // ADR-004: Solo reazioni costruttive, nessun commento tossico libero
 enum ReactionType {
   AGREE // "Condivido al 100%"
@@ -116,10 +126,37 @@ model Artist {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  releases Release[]
-  tracks   Track[]
+  releases      Release[]
+  releaseGroups ReleaseGroup[]
+  tracks        Track[]
 
   @@index([matchKey])
+}
+
+/// ADR-012: the album as a work (MusicBrainz release group). Each Release row is one edition.
+model ReleaseGroup {
+  id               String           @id @default(uuid())
+  /// MusicBrainz release-group MBID: the canonical identity when known.
+  musicbrainzId    String?          @unique
+  /// Work title, without edition qualifiers ("Abbey Road", not "Abbey Road (Remastered)").
+  title            String
+  artistName       String
+  artistId         String?
+  primaryType      ReleaseGroupType @default(ALBUM)
+  /// Year of the first edition (MusicBrainz first-release-date when known).
+  firstReleaseYear Int?
+  /// releaseGroupMatchKey(title, artistName) from @openmusic/shared.
+  matchKey         String?
+  /// Last MusicBrainz browse of the sibling releases (editions) of this group.
+  editionsSyncedAt DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  artist   Artist?   @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  releases Release[]
+
+  @@index([matchKey])
+  @@index([artistId])
 }
 
 model Release {
@@ -132,7 +169,19 @@ model Release {
   /// Barcode as returned by the provider (UPC-A / EAN-13).
   upc                       String?        @unique
   musicbrainzReleaseGroupId String?
+  /// ADR-012: the work this edition belongs to.
+  releaseGroupId            String?
   title                     String
+  /// "2011 Remaster", "Super Deluxe Edition"... (from title qualifiers or MB disambiguation).
+  editionLabel              String?
+  /// MusicBrainz disambiguation comment of this release, verbatim.
+  disambiguation            String?
+  /// ISO 3166-1 country of this edition (MusicBrainz; "XW" = worldwide).
+  country                   String?
+  /// Medium format ("CD", "Digital Media", "12\" Vinyl").
+  format                    String?
+  /// MusicBrainz release status ("Official", "Promotion", "Bootleg", "Pseudo-Release").
+  releaseStatus             String?
   artistName                String
   artistId                  String?
   releaseType               ReleaseType    @default(ALBUM)
@@ -160,6 +209,7 @@ model Release {
   criticCount      Int    @default(0)
 
   artist        Artist?             @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  releaseGroup  ReleaseGroup?       @relation(fields: [releaseGroupId], references: [id], onDelete: SetNull)
   tracks        Track[]
   reviews       Review[]
   scrobbleLogs  ScrobbleLog[]
@@ -168,6 +218,7 @@ model Release {
 
   @@index([matchKey])
   @@index([artistId])
+  @@index([releaseGroupId])
 }
 
 model Track {

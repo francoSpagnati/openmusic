@@ -1,0 +1,96 @@
+{
+  "id": 7001002,
+  "title": "Weezer",
+  "upc": "606949305425",
+  "link": "https://www.deezer.com/album/7001002",
+  "cover_xl": "https://e-cdns-images.dzcdn.net/images/cover/9e1000000000000000000000000000e1/1000x1000-000000-80-0-0.jpg",
+  "genre_id": 152,
+  "genres": {
+    "data": [
+      {
+        "id": 152,
+        "name": "Rock",
+        "type": "genre"
+      }
+    ]
+  },
+  "label": "Geffen",
+  "nb_tracks": 3,
+  "duration": 504,
+  "release_date": "2001-05-15",
+  "record_type": "album",
+  "available": true,
+  "explicit_lyrics": false,
+  "artist": {
+    "id": 1167,
+    "name": "Weezer",
+    "link": "https://www.deezer.com/artist/1167",
+    "picture_xl": "https://e-cdns-images.dzcdn.net/images/artist/weezer000000000000000000000000/1000x1000-000000-80-0-0.jpg",
+    "type": "artist"
+  },
+  "type": "album",
+  "tracks": {
+    "data": [
+      {
+        "id": 700100201,
+        "readable": true,
+        "title": "Don't Let Go",
+        "title_short": "Don't Let Go",
+        "isrc": "USIR10110301",
+        "link": "https://www.deezer.com/track/700100201",
+        "duration": 179,
+        "track_position": 1,
+        "disk_number": 1,
+        "rank": 500000,
+        "explicit_lyrics": false,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/70010020.mp3?hdnea=exp=1792600000~acl=/api/1/1/a/b/c/0/70010020.mp3*~hmac=00",
+        "artist": {
+          "id": 1167,
+          "name": "Weezer",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 700100202,
+        "readable": true,
+        "title": "Photograph",
+        "title_short": "Photograph",
+        "isrc": "USIR10110302",
+        "link": "https://www.deezer.com/track/700100202",
+        "duration": 139,
+        "track_position": 2,
+        "disk_number": 1,
+        "rank": 500000,
+        "explicit_lyrics": false,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/70010021.mp3?hdnea=exp=1792600000~acl=/api/1/1/a/b/c/0/70010021.mp3*~hmac=00",
+        "artist": {
+          "id": 1167,
+          "name": "Weezer",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 700100203,
+        "readable": true,
+        "title": "Hash Pipe",
+        "title_short": "Hash Pipe",
+        "isrc": "USIR10110303",
+        "link": "https://www.deezer.com/track/700100203",
+        "duration": 186,
+        "track_position": 3,
+        "disk_number": 1,
+        "rank": 500000,
+        "explicit_lyrics": false,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/70010022.mp3?hdnea=exp=1792600000~acl=/api/1/1/a/b/c/0/70010022.mp3*~hmac=00",
+        "artist": {
+          "id": 1167,
+          "name": "Weezer",
+          "type": "artist"
+        },
+        "type": "track"
+      }
+    ]
+  }
+}

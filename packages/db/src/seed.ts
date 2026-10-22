@@ -121,11 +121,74 @@ interface SeedRelease {
   genres: string[];
   releaseDate: string;
   tracks: SeedTrack[];
+  /** ADR-012: key of the release group (the album as a work); editions share it. */
+  groupKey: string;
+  /** Edition facts; omitted for the plain/original edition. */
+  edition?: { label: string; format: string; country: string; recordLabel: string };
 }
+
+/**
+ * ADR-012 release groups. `matchKey` is `releaseGroupMatchKey(title, artistName)` from
+ * `@openmusic/shared` (lower-cased artist + work title without edition qualifiers and
+ * punctuation), written out because this package does not depend on `shared`.
+ */
+interface SeedGroup {
+  key: string;
+  title: string;
+  artistName: string;
+  firstReleaseYear: number;
+  matchKey: string;
+}
+
+const GROUPS: SeedGroup[] = [
+  {
+    key: 'in-rainbows',
+    title: 'In Rainbows',
+    artistName: 'Radiohead',
+    firstReleaseYear: 2007,
+    matchKey: 'radiohead|in rainbows',
+  },
+  {
+    key: 'random-access-memories',
+    title: 'Random Access Memories',
+    artistName: 'Daft Punk',
+    firstReleaseYear: 2013,
+    matchKey: 'daft punk|random access memories',
+  },
+  {
+    key: 'to-pimp-a-butterfly',
+    title: 'To Pimp a Butterfly',
+    artistName: 'Kendrick Lamar',
+    firstReleaseYear: 2015,
+    matchKey: 'kendrick lamar|to pimp a butterfly',
+  },
+  {
+    key: 'blonde',
+    title: 'Blonde',
+    artistName: 'Frank Ocean',
+    firstReleaseYear: 2016,
+    matchKey: 'frank ocean|blonde',
+  },
+  {
+    key: 'hai-paura-del-buio',
+    title: 'Hai paura del buio?',
+    artistName: 'Afterhours',
+    firstReleaseYear: 1997,
+    matchKey: 'afterhours|hai paura del buio',
+  },
+  {
+    key: 'titanic-rising',
+    title: 'Titanic Rising',
+    artistName: 'Weyes Blood',
+    firstReleaseYear: 2019,
+    matchKey: 'weyes blood|titanic rising',
+  },
+];
 
 const RELEASES: SeedRelease[] = [
   {
     key: 'in-rainbows',
+    groupKey: 'in-rainbows',
     title: 'In Rainbows',
     artistName: 'Radiohead',
     releaseType: ReleaseType.ALBUM,
@@ -144,6 +207,7 @@ const RELEASES: SeedRelease[] = [
   },
   {
     key: 'random-access-memories',
+    groupKey: 'random-access-memories',
     title: 'Random Access Memories',
     artistName: 'Daft Punk',
     releaseType: ReleaseType.ALBUM,
@@ -160,6 +224,7 @@ const RELEASES: SeedRelease[] = [
   },
   {
     key: 'to-pimp-a-butterfly',
+    groupKey: 'to-pimp-a-butterfly',
     title: 'To Pimp a Butterfly',
     artistName: 'Kendrick Lamar',
     releaseType: ReleaseType.ALBUM,
@@ -176,6 +241,7 @@ const RELEASES: SeedRelease[] = [
   },
   {
     key: 'blonde',
+    groupKey: 'blonde',
     title: 'Blonde',
     artistName: 'Frank Ocean',
     releaseType: ReleaseType.ALBUM,
@@ -193,6 +259,7 @@ const RELEASES: SeedRelease[] = [
   },
   {
     key: 'hai-paura-del-buio',
+    groupKey: 'hai-paura-del-buio',
     title: 'Hai paura del buio?',
     artistName: 'Afterhours',
     releaseType: ReleaseType.ALBUM,
@@ -209,6 +276,7 @@ const RELEASES: SeedRelease[] = [
   },
   {
     key: 'titanic-rising',
+    groupKey: 'titanic-rising',
     title: 'Titanic Rising',
     artistName: 'Weyes Blood',
     releaseType: ReleaseType.ALBUM,
@@ -221,6 +289,33 @@ const RELEASES: SeedRelease[] = [
       { title: 'Andromeda', durationMs: 282_000 },
       { title: 'Everyday', durationMs: 307_000 },
       { title: 'Movies', durationMs: 351_000 },
+    ],
+  },
+  {
+    // A second edition of the same work (ADR-012): its own row, tracks and reviews, linked to
+    // the Random Access Memories group. Real reissue: Columbia, 12 May 2023.
+    key: 'random-access-memories-10th',
+    groupKey: 'random-access-memories',
+    title: 'Random Access Memories (10th Anniversary Edition)',
+    artistName: 'Daft Punk',
+    releaseType: ReleaseType.ALBUM,
+    coverUrl: 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=600&h=600&fit=crop',
+    dominantColor: '#3A3328',
+    genres: ['Disco', 'Electronic', 'Funk'],
+    releaseDate: '2023-05-12',
+    edition: {
+      label: '10th Anniversary Edition',
+      format: 'Digital Media',
+      country: 'XW',
+      recordLabel: 'Columbia',
+    },
+    tracks: [
+      { title: 'Give Life Back to Music', durationMs: 274_000 },
+      { title: 'Get Lucky', durationMs: 369_000 },
+      { title: 'Touch', durationMs: 498_000 },
+      { title: 'Horizon Ocean Drive (Outtake)', durationMs: 412_000 },
+      { title: 'GLBTM (Studio Outtakes)', durationMs: 384_000 },
+      { title: 'Infinity Repeating (2013 Demo)', durationMs: 239_000 },
     ],
   },
 ];
@@ -258,6 +353,7 @@ const SCROBBLES: Array<[string, string, string, number]> = [
   ['marco_beats', 'to-pimp-a-butterfly', 'King Kunta', 0],
   ['marco_beats', 'to-pimp-a-butterfly', 'Alright', 2],
   ['marco_beats', 'random-access-memories', 'Get Lucky', 5],
+  ['sara.vinyl', 'random-access-memories-10th', 'Horizon Ocean Drive (Outtake)', 2],
   ['sara.vinyl', 'hai-paura-del-buio', 'Male di miele', 1],
   ['sara.vinyl', 'hai-paura-del-buio', 'Rapace', 6],
 ];
@@ -365,6 +461,21 @@ const REVIEWS: SeedReview[] = [
     content: 'Omaggio sontuoso e a tratti museale alla disco di fine anni 70.',
     vibeTags: ['retro'],
     outletUrl: 'https://rumorebianco.example/recensioni/daft-punk-ram',
+  },
+  {
+    // Same person reviewing two editions: the group score counts her once (ADR-012).
+    username: 'giulia.rossi',
+    releaseKey: 'random-access-memories-10th',
+    rating: 90,
+    content: 'Gli outtake mostrano il cantiere: Horizon Ocean Drive vale da sola la ristampa.',
+    vibeTags: ['ballabile', 'archivio'],
+  },
+  {
+    username: 'sara.vinyl',
+    releaseKey: 'random-access-memories-10th',
+    rating: 80,
+    content: 'Ristampa curata, i demo aggiungono contesto senza appesantire.',
+    vibeTags: ['retro'],
   },
 ];
 
@@ -513,6 +624,17 @@ async function seedCatalog(): Promise<void> {
   // The first version of this seed used non-UUID ids and duplicated tracks on every run.
   await prisma.release.deleteMany({ where: { id: { in: LEGACY_RELEASE_IDS } } });
 
+  for (const g of GROUPS) {
+    const id = seedId(`group:${g.key}`);
+    const data = {
+      title: g.title,
+      artistName: g.artistName,
+      firstReleaseYear: g.firstReleaseYear,
+      matchKey: g.matchKey,
+    };
+    await prisma.releaseGroup.upsert({ where: { id }, update: data, create: { id, ...data } });
+  }
+
   for (const [ri, r] of RELEASES.entries()) {
     const releaseId = seedId(`release:${r.key}`);
     const data = {
@@ -523,6 +645,11 @@ async function seedCatalog(): Promise<void> {
       dominantColor: r.dominantColor,
       genres: r.genres,
       releaseDate: new Date(r.releaseDate),
+      releaseGroupId: seedId(`group:${r.groupKey}`),
+      editionLabel: r.edition?.label ?? null,
+      format: r.edition?.format ?? null,
+      country: r.edition?.country ?? null,
+      ...(r.edition ? { label: r.edition.recordLabel } : {}),
     };
     await prisma.release.upsert({
       where: { id: releaseId },
@@ -545,6 +672,10 @@ async function seedCatalog(): Promise<void> {
       });
     }
   }
+
+  // Databases migrated before this seed knew about groups got one backfilled group per release
+  // (ADR-012 migration); the seed rows now point at their own groups, so drop the empty ones.
+  await prisma.releaseGroup.deleteMany({ where: { releases: { none: {} } } });
 }
 
 async function seedSocial(userIds: Map<string, string>): Promise<void> {
@@ -792,6 +923,7 @@ async function main(): Promise<void> {
   const counts = {
     users: await prisma.user.count(),
     releases: await prisma.release.count(),
+    releaseGroups: await prisma.releaseGroup.count(),
     tracks: await prisma.track.count(),
     reviews: await prisma.review.count(),
     playlists: await prisma.playlist.count(),

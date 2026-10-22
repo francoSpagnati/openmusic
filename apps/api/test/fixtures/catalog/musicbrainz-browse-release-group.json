@@ -1,0 +1,220 @@
+{
+  "release-count": 4,
+  "release-offset": 0,
+  "releases": [
+    {
+      "id": "0a5d4e66-3a5e-4a69-8ad5-1b0f4d1e1a01",
+      "title": "In Rainbows",
+      "status": "Official",
+      "quality": "normal",
+      "disambiguation": "",
+      "date": "2008-01-01",
+      "country": "GB",
+      "barcode": "634904032463",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "joinphrase": "",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+        "title": "In Rainbows",
+        "primary-type": "Album",
+        "first-release-date": "2007-10-10",
+        "secondary-types": []
+      },
+      "label-info": [
+        {
+          "catalog-number": null,
+          "label": {
+            "id": "c6ed3b5a-1b2e-4e1b-8d3a-6b1c2e3d4f5a",
+            "name": "XL Recordings"
+          }
+        }
+      ],
+      "media": [
+        {
+          "position": 1,
+          "format": "CD",
+          "track-count": 10
+        }
+      ],
+      "cover-art-archive": {
+        "artwork": true,
+        "count": 1,
+        "front": true,
+        "back": false,
+        "darkened": false
+      }
+    },
+    {
+      "id": "3c4d5e6f-7081-4923-a4b5-c6d7e8f90a12",
+      "title": "In Rainbows",
+      "status": "Official",
+      "quality": "normal",
+      "disambiguation": "",
+      "date": "2008-01-01",
+      "country": "US",
+      "barcode": "880882162123",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "joinphrase": "",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+        "title": "In Rainbows",
+        "primary-type": "Album",
+        "first-release-date": "2007-10-10",
+        "secondary-types": []
+      },
+      "label-info": [
+        {
+          "catalog-number": null,
+          "label": {
+            "id": "c6ed3b5a-1b2e-4e1b-8d3a-6b1c2e3d4f5a",
+            "name": "TBD Records"
+          }
+        }
+      ],
+      "media": [
+        {
+          "position": 1,
+          "format": "CD",
+          "track-count": 10
+        }
+      ],
+      "cover-art-archive": {
+        "artwork": true,
+        "count": 1,
+        "front": true,
+        "back": false,
+        "darkened": false
+      }
+    },
+    {
+      "id": "4d5e6f70-8192-4a34-b5c6-d7e8f90a1b23",
+      "title": "In Rainbows",
+      "status": "Official",
+      "quality": "normal",
+      "disambiguation": "discbox",
+      "date": "2007-12-03",
+      "country": "GB",
+      "barcode": "",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "joinphrase": "",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+        "title": "In Rainbows",
+        "primary-type": "Album",
+        "first-release-date": "2007-10-10",
+        "secondary-types": []
+      },
+      "label-info": [
+        {
+          "catalog-number": null,
+          "label": {
+            "id": "c6ed3b5a-1b2e-4e1b-8d3a-6b1c2e3d4f5a",
+            "name": "XL Recordings"
+          }
+        }
+      ],
+      "media": [
+        {
+          "position": 1,
+          "format": "CD",
+          "track-count": 10
+        },
+        {
+          "position": 2,
+          "format": "CD",
+          "track-count": 8
+        },
+        {
+          "position": 3,
+          "format": "12\" Vinyl",
+          "track-count": 10
+        }
+      ],
+      "cover-art-archive": {
+        "artwork": true,
+        "count": 1,
+        "front": true,
+        "back": false,
+        "darkened": false
+      }
+    },
+    {
+      "id": "5e6f7081-92a3-4b45-86d7-e8f90a1b2c34",
+      "title": "In Rainbows",
+      "status": "Official",
+      "quality": "normal",
+      "disambiguation": "",
+      "date": "2007-10-10",
+      "country": "XW",
+      "barcode": "",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "joinphrase": "",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "6e335887-60ba-38f0-95af-fae7774336bf",
+        "title": "In Rainbows",
+        "primary-type": "Album",
+        "first-release-date": "2007-10-10",
+        "secondary-types": []
+      },
+      "label-info": [
+        {
+          "catalog-number": null,
+          "label": {
+            "id": "c6ed3b5a-1b2e-4e1b-8d3a-6b1c2e3d4f5a",
+            "name": "XL Recordings"
+          }
+        }
+      ],
+      "media": [
+        {
+          "position": 1,
+          "format": "Digital Media",
+          "track-count": 10
+        }
+      ],
+      "cover-art-archive": {
+        "artwork": true,
+        "count": 1,
+        "front": true,
+        "back": false,
+        "darkened": false
+      }
+    }
+  ]
+}

@@ -1,10 +1,14 @@
-import type { Release, Track, User } from '@openmusic/db';
-import type {
-  AuthUser,
-  CatalogRelease,
-  CatalogTrack,
-  PublicUser,
-  UserSummary,
+import type { Release, ReleaseGroup, Track, User } from '@openmusic/db';
+import {
+  parseEdition,
+  releaseYear,
+  type AuthUser,
+  type CatalogRelease,
+  type CatalogTrack,
+  type EditionSummary,
+  type PublicUser,
+  type ReleaseGroupRef,
+  type UserSummary,
 } from '@openmusic/shared';
 
 export function toAuthUser(user: User): AuthUser {
@@ -83,8 +87,47 @@ export function toCatalogTrack(
 
 const DEFAULT_DOMINANT_COLOR = '#26262B';
 
-/** Release row (optionally with its tracks, already ordered) -> API shape. */
-export function toCatalogRelease(release: Release, tracks?: Track[]): CatalogRelease {
+/** ADR-012: stored label, else derived from the title qualifiers / disambiguation. */
+export function editionLabelOf(
+  release: Pick<Release, 'editionLabel' | 'title' | 'disambiguation'>
+): string | null {
+  return release.editionLabel ?? parseEdition(release.title, release.disambiguation).label;
+}
+
+export function toReleaseGroupRef(group: ReleaseGroup): ReleaseGroupRef {
+  return { id: group.id, title: group.title, firstYear: group.firstReleaseYear };
+}
+
+/** Compact edition for lists (group page, "other editions"). */
+export function toEditionSummary(release: Release): EditionSummary {
+  return {
+    id: release.id,
+    title: release.title,
+    editionLabel: editionLabelOf(release),
+    releaseType: release.releaseType,
+    releaseDate: release.releaseDate?.toISOString() ?? null,
+    year: releaseYear(release.releaseDate),
+    country: release.country,
+    format: release.format,
+    label: release.label,
+    trackCount: release.trackCount,
+    coverUrl: release.coverUrl,
+    dominantColor: release.dominantColor ?? DEFAULT_DOMINANT_COLOR,
+    audienceAvg: release.audienceAvg,
+    audienceCount: release.audienceCount,
+    criticAvg: release.criticAvg,
+    criticCount: release.criticCount,
+  };
+}
+
+/**
+ * Release row (optionally with its tracks, already ordered) -> API shape. `group` is included
+ * only when the row was loaded with its `releaseGroup` relation (`null` = not linked).
+ */
+export function toCatalogRelease(
+  release: Release & { releaseGroup?: ReleaseGroup | null },
+  tracks?: Track[]
+): CatalogRelease {
   return {
     id: release.id,
     title: release.title,
@@ -98,6 +141,12 @@ export function toCatalogRelease(release: Release, tracks?: Track[]): CatalogRel
     upc: release.upc,
     trackCount: release.trackCount,
     coverSource: release.coverSource,
+    editionLabel: editionLabelOf(release),
+    country: release.country,
+    format: release.format,
+    ...(release.releaseGroup !== undefined
+      ? { group: release.releaseGroup ? toReleaseGroupRef(release.releaseGroup) : null }
+      : {}),
     externalIds: {
       deezer: release.deezerId,
       itunes: release.itunesId,

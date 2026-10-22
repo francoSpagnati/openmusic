@@ -21,12 +21,16 @@ export class BackgroundQueue {
     private readonly maxPending = 200
   ) {}
 
-  /** Queues `task` unless a task with the same key is already waiting. */
-  enqueue(key: string, task: () => Promise<unknown>): void {
-    if (this.closed || this.pending.has(key) || this.pending.size >= this.maxPending) return;
+  /**
+   * Queues `task` unless a task with the same key is already waiting. Returns false when it was
+   * not queued (same key pending, queue full or closed).
+   */
+  enqueue(key: string, task: () => Promise<unknown>): boolean {
+    if (this.closed || this.pending.has(key) || this.pending.size >= this.maxPending) return false;
     this.pending.set(key, task);
     this.order.push(key);
     this.pump();
+    return true;
   }
 
   /** Resolves when nothing is queued or running (tests and scripts wait on it). */

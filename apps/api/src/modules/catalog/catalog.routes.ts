@@ -45,6 +45,15 @@ export function createCatalogRoutes(catalogService: CatalogService): FastifyPlug
       return release;
     });
 
+    // ADR-012: the album as a work with all its known editions and group-level scores.
+    // Not rate limited: it never waits on external databases (sibling editions sync in background).
+    fastify.get('/release-groups/:id', async (request) => {
+      const { id } = IdParamSchema.parse(request.params);
+      const group = await catalogService.getReleaseGroup(id);
+      if (!group) throw new NotFoundError('Album non trovato');
+      return group;
+    });
+
     // ADR-003: 30s audio preview resolver.
     fastify.get('/preview', upstreamRateLimit, async (request) => {
       const query = AudioPreviewResolveQuerySchema.parse(request.query);

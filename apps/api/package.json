@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "catalog:import": "tsx scripts/catalog-import.ts",
-    "catalog:smoke": "tsx scripts/catalog-smoke.ts"
+    "catalog:smoke": "tsx scripts/catalog-smoke.ts",
+    "catalog:audit": "tsx scripts/catalog-audit.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^9.3.1",
