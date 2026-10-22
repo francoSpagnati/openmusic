@@ -147,6 +147,7 @@ sessione obbligatoria · **ROLE** ruolo richiesto.
 | POST       | `/api/notifications/read`                             | auth                            | `{ ids? }` → `{ updated }`                                                                                |
 | GET        | `/api/notifications/presence-summary`                 | auth                            | ADR-004                                                                                                   |
 | GET        | `/api/now-playing/friends`                            | auth                            | `FriendPresence[]`                                                                                        |
+| GET        | `/api/now-playing/sync-status`                        | auth                            | `NowPlayingSyncStatus`: lettura automatica Spotify/Last.fm (ADR-013, vedi §7)                             |
 | GET        | `/api/chat/conversations`                             | auth                            | `ConversationSummary[]` (inbox)                                                                           |
 | GET        | `/api/chat/conversation/:otherUserId`                 | auth                            | ultimi 50 messaggi, dal più vecchio                                                                       |
 | POST       | `/api/chat/conversation/:otherUserId/read`            | auth                            | `{ updated }`                                                                                             |
@@ -248,6 +249,7 @@ try {
 - `<RequireAuth roles={['ADMIN']} fallback={...}>` e `useRequireAuth()` reindirizzano a
   `/auth?next=<path>`; dopo il login usare `router.replace(safeNextPath(searchParams.get('next')))`.
 - `useFriendsPresence()` → `{ friends, connected, error, updateTrack, setGhostMode }`.
+- `api.nowPlaying.syncStatus()` → `NowPlayingSyncStatus` (stessa funzione nel client mobile).
 
 ## 7. Sviluppo locale
 
@@ -311,6 +313,57 @@ Problemi frequenti:
    la callback (con lo `state`) nel parametro `cb` dell'URL di autorizzazione.
 3. Riavvia l'API e, **da loggato** su http://127.0.0.1:3000, **Impostazioni → Collega Last.fm**
    (senza sessione il callback restituisce `code=UNAUTHORIZED`).
+
+### Lettura automatica (ADR-013)
+
+Con un account collegato l'API legge da sola cosa sta suonando (Spotify
+`GET /v1/me/player/currently-playing`, Last.fm `user.getRecentTracks` con `limit=1&extended=1`,
+che richiede solo `LASTFM_API_KEY`). Architettura in `03` §4.1. Variabili:
+
+| Variabile                             | Default                    | Effetto                                                                     |
+| ------------------------------------- | -------------------------- | --------------------------------------------------------------------------- |
+| `NOW_PLAYING_POLLER_ENABLED`          | `true` (`false` se `test`) | Avvia il poller in `server.ts`. CI e Playwright lo impostano a `false`      |
+| `NOW_PLAYING_ACTIVE_INTERVAL_SECONDS` | `25` (10–300)              | Intervallo con l'utente o un follower online, o ascolto negli ultimi 10 min |
+| `NOW_PLAYING_IDLE_INTERVAL_SECONDS`   | `180` (30–3600)            | Intervallo per gli utenti inattivi                                          |
+| `NOW_PLAYING_INACTIVE_AFTER_DAYS`     | `14` (1–365)               | Dopo N giorni senza visite gli account vanno in `PAUSED` (nessuna lettura)  |
+| `NOW_PLAYING_POLL_CONCURRENCY`        | `4` (1–50)                 | Utenti letti in parallelo da un'istanza                                     |
+
+`GET /api/now-playing/sync-status` (auth) risponde
+
+```json
+{
+  "autoSyncEnabled": true,
+  "providers": {
+    "SPOTIFY": {
+      "provider": "SPOTIFY",
+      "linked": true,
+      "status": "ACTIVE",
+      "lastSyncedAt": "2026-10-22T21:14:03.000Z",
+      "lastErrorCode": null,
+      "lastError": null,
+      "nextPollInSeconds": 18
+    },
+    "LASTFM": { "provider": "LASTFM", "linked": false, "status": null, "...": "..." }
+  }
+}
+```
+
+- `status`: `ACTIVE` (letto), `ERROR` (token revocato, accesso negato, profilo Last.fm privato o
+  inesistente: nessuna lettura finché l'utente non **ricollega** l'account, che lo rimette in
+  `ACTIVE`), `PAUSED` (utente inattivo da N giorni; riprende da solo alla prossima visita,
+  cioè socket o `GET /api/auth/me`). `null` se non collegato.
+- `lastErrorCode` ∈ `TOKEN_REVOKED | ACCESS_DENIED | ACCOUNT_NOT_FOUND | PRIVATE_PROFILE |
+RATE_LIMITED | UPSTREAM_ERROR | NOT_CONFIGURED`; `lastError` è il messaggio italiano pronto da
+  mostrare (`PROVIDER_SYNC_ERROR_MESSAGES` in `@openmusic/shared`). Con stato `ACTIVE` un codice
+  indica un problema temporaneo.
+- `nextPollInSeconds`: `null` se il poller è spento, l'account non è `ACTIVE` o non c'è una
+  lettura in programma.
+- La sincronizzazione manuale (`POST /api/spotify/sync-playback`) resta disponibile.
+- In Ghost Mode il poller non pubblica la presenza ma registra lo scrobble (ADR-013 §8).
+- Spotify in _Development Mode_ resta limitato a 5 utenti (punto 4 di "Collegare Spotify").
+- Verifica: solo test su fixture; la prima prova reale è collegare un account, ascoltare un brano
+  e controllare i log dell'API (`Now-playing sweep`, eventuali `Spotify rate limit` / `token
+revoked`) e la pagina Impostazioni.
 
 Dietro un proxy con allowlist servono `accounts.spotify.com`, `api.spotify.com`, `www.last.fm` e
 `ws.audioscrobbler.com`; per le copertine di Cover Art Archive anche il dominio apex

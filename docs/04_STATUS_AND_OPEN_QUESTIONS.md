@@ -37,6 +37,7 @@ proxy risponde 403 a `CONNECT`). Quindi:
 | Durata dei token delle anteprime Deezer (`hdnea=exp=…`)    | nessuno                                                                | **no**                               |
 | App mobile                                                 | typecheck, Jest (66), `expo export` iOS/Android                        | **no** (mai su device/simulatore/Go) |
 | OAuth Spotify/Last.fm, Google Fonts nella build via turbo  | nessuno                                                                | **no**                               |
+| Poller Spotify/Last.fm (ADR-013)                           | test di integrazione con `fetch` e orologio finti, Redis e DB reali    | **no** (servono account reali)       |
 
 Le fixture sono plausibili ma non registrate da risposte reali: se un servizio restituisce un
 campo con forma diversa dalla documentazione, lo schema Zod del provider scarta la risposta e la
@@ -71,6 +72,10 @@ ricerca ricade sui risultati locali. Il primo passo con la rete è `npm run cata
   di sviluppo usato le API esterne sono bloccate; la verifica live è `npm run catalog:smoke`.
 - Spotify collegato: currently playing, sync playback con scrobble, heavy rotation in cache, top
   artisti, export playlist.
+- Lettura automatica di Spotify e Last.fm (ADR-013): poller in background con intervallo
+  adattivo, lease Redis per più istanze, pausa globale sui 429, stato per account
+  (`GET /api/now-playing/sync-status`) mostrato in Impostazioni su web e mobile. **Testato solo
+  con fixture.**
 
 ### Web (`apps/web`) — tutte le pagine sull'API reale, nessun dato mock
 
@@ -85,7 +90,7 @@ ricerca ricade sui risultati locali. Il primo passo con la rete è `npm run cata
 | `/chat`                         | Inbox, conversazione, invio brano, reazioni, "ascoltato", aggiornamenti live                          |
 | `/notifications`                | Elenco, segna come lette, arrivo live                                                                 |
 | `/profile`, `/profile/[handle]` | Profilo, statistiche, heavy rotation, follow                                                          |
-| `/settings`                     | Profilo, password, Ghost Mode, collegamento Spotify/Last.fm                                           |
+| `/settings`                     | Profilo, password, Ghost Mode, collegamento Spotify/Last.fm, stato della sincronizzazione automatica  |
 | `/critics`                      | Richiesta di accredito, coda ADMIN                                                                    |
 | `/videos`                       | Feed video, pubblicazione per ruoli abilitati                                                         |
 
