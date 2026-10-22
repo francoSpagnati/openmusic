@@ -14,7 +14,8 @@ import {
   ratingFromStars,
   starsFromRating,
 } from '../../../components/ui';
-import { parseVibeTags } from '../catalog';
+import { editionName, parseVibeTags } from '../catalog';
+import { EditionChip } from '../editions/EditionChip';
 import { haptics } from '../haptics';
 
 export const REVIEW_MAX_LENGTH = 3000;
@@ -22,6 +23,11 @@ export const REVIEW_MAX_LENGTH = 3000;
 export interface ReviewComposerProps {
   releaseId: string;
   releaseTitle: string;
+  /**
+   * ADR-012: set when the album has several editions (or this one is marked). Reviews belong to
+   * one edition, so the composer names it; omitted for single-edition albums.
+   */
+  edition?: { label: string | null } | null;
   /** The viewer's existing review: the composer edits it (the API upserts by user + release). */
   existing: ReviewItem | null;
   onSaved: (review: ReviewItem) => void;
@@ -36,6 +42,7 @@ export interface ReviewComposerProps {
 export function ReviewComposer({
   releaseId,
   releaseTitle,
+  edition = null,
   existing,
   onSaved,
   submit = (input) => api.reviews.upsert(input),
@@ -127,8 +134,28 @@ export function ReviewComposer({
       <Text variant="title" accessibilityRole="header">
         {existing ? 'Modifica la tua recensione' : `Com'è ${releaseTitle}?`}
       </Text>
+      {edition ? (
+        <View style={{ gap: space[1] }}>
+          <View style={styles.editionRow}>
+            <Text size="sm" tone="secondary">
+              Stai recensendo
+            </Text>
+            <EditionChip label={edition.label} size="sm" />
+          </View>
+          <Text variant="caption" size="xs" tone="muted">
+            Il voto resta su questa edizione. Nel voto complessivo dell’album conti una volta sola:
+            se recensisci più edizioni vale la recensione più recente.
+          </Text>
+        </View>
+      ) : null}
       <View style={{ gap: space[1] }}>
-        <RatingStars value={stars} onChange={setStars} size="lg" label="Il tuo voto" showValue />
+        <RatingStars
+          value={stars}
+          onChange={setStars}
+          size="lg"
+          label={edition ? `Il tuo voto per ${editionName(edition.label)}` : 'Il tuo voto'}
+          showValue
+        />
         {errors.rating ? (
           <Text variant="caption" tone="rotten" accessibilityLiveRegion="polite">
             {errors.rating}
@@ -190,5 +217,6 @@ const styles = StyleSheet.create({
   collapsed: { flexDirection: 'row', alignItems: 'center' },
   flex: { flex: 1, gap: 4 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  editionRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end' },
 });

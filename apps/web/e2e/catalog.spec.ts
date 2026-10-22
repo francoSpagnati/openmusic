@@ -83,3 +83,61 @@ test('the OAuth callback outcome is shown once and removed from the URL', async 
   ).toBeVisible();
   await expect(page).toHaveURL(/\/auth$/);
 });
+
+// ADR-012: the offline seed has Random Access Memories in two editions (2013 and the 2023
+// 10th Anniversary Edition), linked to one release group.
+const EDITIONS_QUERY = 'random access memories';
+const ANNIVERSARY = '10th Anniversary Edition';
+
+test('search folds editions of one album and the album page lists them', async ({ page }) => {
+  await page.goto(`/explore?q=${encodeURIComponent(EDITIONS_QUERY)}`);
+  const results = page.getByRole('list', { name: 'Dischi trovati' });
+  // One card: its title link plus the "2 edizioni" link to the album page.
+  await expect(
+    results.getByRole('link', { name: 'Random Access Memories', exact: true })
+  ).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Dischi · 1' })).toBeVisible();
+
+  await results.getByRole('link', { name: '2 edizioni di Random Access Memories' }).click();
+  await expect(page).toHaveURL(/\/albums\/[0-9a-f-]{36}$/);
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Random Access Memories' })
+  ).toBeVisible();
+  await expect(page.getByText('Voto complessivo · tutte le edizioni')).toBeVisible();
+
+  const editions = page.getByRole('list', { name: 'Edizioni di Random Access Memories' });
+  await expect(editions.getByRole('listitem')).toHaveCount(2);
+  // Oldest first; each edition keeps its own scores.
+  await expect(editions.getByRole('listitem').first()).toContainText('Edizione standard');
+  await expect(editions.getByRole('listitem').nth(1)).toContainText(ANNIVERSARY);
+  await expect(editions.getByRole('img', { name: /^Pubblico: media/ })).toHaveCount(2);
+
+  await editions.getByRole('link', { name: /10th Anniversary Edition/ }).click();
+  await expect(page).toHaveURL(/\/releases\/[0-9a-f-]{36}$/);
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: new RegExp(`^Random Access Memories.*${ANNIVERSARY}$`),
+    })
+  ).toBeVisible();
+  await expect(page.getByText(`Edizione: ${ANNIVERSARY}`).first()).toBeVisible();
+  await expect(page.getByText('Columbia')).toBeVisible();
+
+  const others = page.getByRole('list', { name: 'Altre edizioni' });
+  await expect(others.getByRole('link', { name: 'Random Access Memories' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Tutte le 2 edizioni/ })).toHaveAttribute(
+    'href',
+    /\/albums\/[0-9a-f-]{36}$/
+  );
+});
+
+test('unknown release and album ids answer with a real 404', async ({ page }) => {
+  const missing = '00000000-0000-4000-8000-000000000000';
+  const release = await page.goto(`/releases/${missing}`);
+  expect(release?.status()).toBe(404);
+  await expect(page.getByText('Questo disco non è sui nostri scaffali')).toBeVisible();
+
+  const album = await page.goto(`/albums/${missing}`);
+  expect(album?.status()).toBe(404);
+  await expect(page.getByText('Questo album non è sui nostri scaffali')).toBeVisible();
+});

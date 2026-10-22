@@ -12,7 +12,7 @@ interface SnapChangeEvent extends Event {
  * IntersectionObserver elsewhere (Firefox, Safari).
  */
 export function useActiveSnapIndex(
-  containerRef: RefObject<HTMLElement>,
+  containerRef: RefObject<HTMLElement | null>,
   count: number,
   /** Change it when the container is re-mounted with new content (resets to the first item). */
   resetKey: unknown

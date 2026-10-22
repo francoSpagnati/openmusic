@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import type { CatalogRelease, DualScoreDetails, ReactionType, ReviewItem } from '@openmusic/shared';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth';
@@ -18,6 +18,8 @@ import { ReviewCard } from '../../src/features/mobile-discovery/release/ReviewCa
 import { ReviewComposer } from '../../src/features/mobile-discovery/release/ReviewComposer';
 import { Tracklist } from '../../src/features/mobile-discovery/release/Tracklist';
 import { VideoCard } from '../../src/features/mobile-discovery/release/VideoCard';
+import { EditionStrip } from '../../src/features/mobile-discovery/editions/EditionCards';
+import { CaretRight } from '../../src/features/mobile-discovery/icons';
 
 function scoreFromRelease(release: CatalogRelease): DualScoreDetails {
   return {
@@ -173,6 +175,9 @@ function ReleaseContent() {
   const tracks = data.tracks ?? [];
   const previewTrack = tracks.find((t) => Boolean(t.previewUrl)) ?? tracks[0] ?? null;
   const dual = score.data ?? scoreFromRelease(data);
+  const otherEditions = data.otherEditions ?? [];
+  const hasOtherEditions = otherEditions.length > 0;
+  const groupId = data.group?.id ?? null;
 
   return (
     <SafeAreaView edges={[]} style={[styles.flex, { backgroundColor: colors.bg }]}>
@@ -196,10 +201,27 @@ function ReleaseContent() {
               ? { ...previewTrack, coverUrl: previewTrack.coverUrl ?? data.coverUrl ?? null }
               : null
           }
+          hasOtherEditions={hasOtherEditions}
         />
 
         <View style={{ paddingHorizontal: space[4], gap: space[5] }}>
-          <DualScoreCard score={dual} />
+          <DualScoreCard
+            score={dual}
+            title={hasOtherEditions ? 'Voti di questa edizione' : undefined}
+          />
+          {groupId && hasOtherEditions ? (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityHint="Apre l'album con tutte le edizioni e il voto complessivo"
+              onPress={() => router.push(`/album/${groupId}`)}
+              style={({ pressed }) => [styles.albumLink, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text variant="bodyStrong" tone="accent" size="sm">
+                {`Tutte le ${otherEditions.length + 1} edizioni e il voto complessivo`}
+              </Text>
+              <CaretRight size={16} color={colors.accent} weight="bold" />
+            </Pressable>
+          ) : null}
 
           <View style={{ gap: space[2] }}>
             <SectionTitle>Tracklist</SectionTitle>
@@ -214,12 +236,27 @@ function ReleaseContent() {
             )}
           </View>
 
+          {hasOtherEditions ? (
+            <View style={{ gap: space[2] }}>
+              <SectionTitle>Altre edizioni</SectionTitle>
+              <Text variant="caption" tone="muted">
+                Ristampe, remaster ed edizioni ampliate dello stesso album, ognuna con i suoi voti.
+              </Text>
+              <EditionStrip editions={otherEditions} />
+            </View>
+          ) : null}
+
           <View style={{ gap: space[3] }}>
             <SectionTitle>Recensioni del pubblico</SectionTitle>
             {user ? (
               <ReviewComposer
                 releaseId={data.id}
                 releaseTitle={data.title}
+                edition={
+                  hasOtherEditions || data.editionLabel
+                    ? { label: data.editionLabel ?? null }
+                    : null
+                }
                 existing={mine}
                 onSaved={onSaved}
               />
@@ -305,4 +342,5 @@ function ReleaseContent() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center' },
+  albumLink: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44 },
 });

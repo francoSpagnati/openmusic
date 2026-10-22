@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { MagnifyingGlass } from '@phosphor-icons/react';
-import type { SearchResult } from '@openmusic/shared';
 import { Button, EmptyState, ErrorState, Skeleton, Spinner } from '../../components/ui';
 import { CoverArt } from '../../components/discovery/CoverArt';
 import { PreviewPlayButton } from '../../components/discovery/PreviewPlayButton';
@@ -13,6 +12,7 @@ import {
   formatTrackDuration,
   plural,
 } from '../../components/discovery/format';
+import { groupEditions } from '../../components/discovery/editions';
 import type { SearchState } from './useCatalogSearch';
 import { ReleaseGrid, ReleaseGridSkeleton } from './ReleaseGrid';
 
@@ -53,6 +53,8 @@ export function SearchResults({
   }
 
   const total = result.releases.length + result.tracks.length;
+  // Editions of the same album are folded into one card (ADR-012); count albums, not editions.
+  const albumCount = groupEditions(result.releases).length;
   // Local catalog answered, Deezer/iTunes still searching.
   const searchingExternal = state.status === 'ready' && state.phase === 'local';
   const done = state.status === 'ready' && state.phase === 'complete';
@@ -103,9 +105,9 @@ export function SearchResults({
       {result.releases.length > 0 && (
         <section aria-labelledby="search-releases" className="space-y-3">
           <h2 id="search-releases" className="om-eyebrow">
-            Dischi · {result.releases.length}
+            Dischi · {albumCount}
           </h2>
-          <ReleaseGrid releases={result.releases} label="Dischi trovati" />
+          <ReleaseGrid releases={result.releases} label="Dischi trovati" foldEditions />
         </section>
       )}
 

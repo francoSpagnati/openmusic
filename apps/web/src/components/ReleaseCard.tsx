@@ -5,6 +5,8 @@ import { Card } from './ui';
 import { DualScoreBadge } from './DualScoreBadge';
 import { CoverArt } from './discovery/CoverArt';
 import { ReleasePreviewButton } from './discovery/ReleasePreviewButton';
+import { EditionChip } from './discovery/EditionChip';
+import { workTitle } from './discovery/editions';
 import { releaseEyebrow } from './discovery/format';
 
 interface ReleaseCardProps {
@@ -12,6 +14,11 @@ interface ReleaseCardProps {
   /** Eager-load the cover (first row above the fold). */
   priority?: boolean;
   headingLevel?: 2 | 3;
+  /**
+   * ADR-012: how many editions of the same album the surrounding list folded into this card
+   * (search results). Above 1 the card links to the album page that lists them all.
+   */
+  editionCount?: number;
 }
 
 /**
@@ -22,8 +29,11 @@ export const ReleaseCard: React.FC<ReleaseCardProps> = ({
   release,
   priority,
   headingLevel = 3,
+  editionCount = 1,
 }) => {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
+  const title = workTitle(release);
+  const groupId = release.group?.id;
   return (
     <Card
       as="article"
@@ -52,10 +62,25 @@ export const ReleaseCard: React.FC<ReleaseCardProps> = ({
             href={`/releases/${release.id}`}
             className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none group-hover:text-accent"
           >
-            {release.title}
+            {title}
+            {title !== release.title && <span className="sr-only">, {release.editionLabel}</span>}
           </Link>
         </Heading>
         <p className="truncate text-sm text-ink-secondary">{release.artistName}</p>
+        {(release.editionLabel || editionCount > 1) && (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
+            {release.editionLabel && <EditionChip label={release.editionLabel} size="sm" />}
+            {groupId && editionCount > 1 && (
+              <Link
+                href={`/albums/${groupId}`}
+                className="relative z-raised rounded-xs font-mono text-[11px] font-semibold uppercase tracking-wider text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+              >
+                {editionCount} edizioni
+                <span className="sr-only"> di {title}</span>
+              </Link>
+            )}
+          </div>
+        )}
         <DualScoreBadge score={release} size="sm" className="mt-auto pt-3" />
       </div>
     </Card>

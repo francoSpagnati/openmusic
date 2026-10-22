@@ -5,12 +5,27 @@ import type { CatalogRelease, CatalogTrack } from '@openmusic/shared';
 import { Badge, CoverArt, ScoreBadge, Text } from '../../../components/ui';
 import { formatDuration } from '../../../lib/format';
 import { useTheme } from '../../../theme';
-import { releaseMeta, sourceLabel } from '../catalog';
+import { releaseMeta, sourceLabel, workTitle } from '../catalog';
+import { EditionChip } from '../editions/EditionChip';
 import { PreviewButton } from '../components/PreviewButton';
 
-/** A release in the search results / browse list, with where its cover came from. */
-export function ReleaseResultRow({ release }: { release: CatalogRelease }) {
+/**
+ * A release in the search results / browse list, with where its cover came from. `editionCount`
+ * > 1 (search folds editions of the same album, ADR-012) opens the album page instead.
+ */
+export function ReleaseResultRow({
+  release,
+  editionCount = 1,
+}: {
+  release: CatalogRelease;
+  editionCount?: number;
+}) {
   const { space } = useTheme();
+  const title = workTitle(release);
+  const groupId = release.group?.id;
+  const folded = Boolean(groupId) && editionCount > 1;
+  const editions = folded ? `, ${editionCount} edizioni` : '';
+  const edition = release.editionLabel ? `, ${release.editionLabel}` : '';
   const source =
     release.coverSource && release.coverSource !== 'LOCAL'
       ? sourceLabel(release.coverSource)
@@ -18,19 +33,31 @@ export function ReleaseResultRow({ release }: { release: CatalogRelease }) {
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${release.title} di ${release.artistName}, ${releaseMeta(release)}`}
-      accessibilityHint="Apre la pagina del disco"
-      onPress={() => router.push(`/release/${release.id}`)}
+      accessibilityLabel={`${title}${edition} di ${release.artistName}, ${releaseMeta(release)}${editions}`}
+      accessibilityHint={folded ? "Apre l'album con tutte le edizioni" : 'Apre la pagina del disco'}
+      onPress={() =>
+        router.push(folded && groupId ? `/album/${groupId}` : `/release/${release.id}`)
+      }
       style={({ pressed }) => [styles.row, { gap: space[3], opacity: pressed ? 0.7 : 1 }]}
     >
       <CoverArt key={release.coverUrl ?? 'none'} uri={release.coverUrl} size={64} />
       <View style={styles.text}>
         <Text variant="title" size="base" numberOfLines={1}>
-          {release.title}
+          {title}
         </Text>
         <Text size="sm" tone="secondary" numberOfLines={1}>
           {release.artistName}
         </Text>
+        {release.editionLabel || folded ? (
+          <View style={styles.metaRow}>
+            {release.editionLabel ? <EditionChip label={release.editionLabel} size="sm" /> : null}
+            {folded ? (
+              <Text variant="eyebrow" tone="accent">
+                {`${editionCount} edizioni`}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         <View style={styles.metaRow}>
           <Text variant="eyebrow" numberOfLines={1} style={styles.shrink}>
             {[releaseMeta(release), release.genres[0]].filter(Boolean).join(' · ')}

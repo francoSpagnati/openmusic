@@ -6,7 +6,9 @@ import type {
   CatalogRelease,
   CatalogTrack,
   DiscoveryFeedResponse,
+  EditionSummary,
   MeResponse,
+  ReleaseGroupDetail,
   ReviewItem,
 } from '@openmusic/shared';
 import type { FetchLike } from '../../../lib/api';
@@ -14,6 +16,8 @@ import type { FetchLike } from '../../../lib/api';
 export const ME_ID = '11111111-1111-4111-8111-111111111111';
 export const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 export const RELEASE_ID = '3f0f6d8e-5b8a-4c1e-9a77-0d6c1b9b2a10';
+export const GROUP_ID = '5c1d2e3f-4a5b-4c6d-8e7f-8091a2b3c4d5';
+export const OKNOTOK_ID = '6d2e3f40-5b6c-4d7e-9f80-91a2b3c4d5e6';
 export const PLAYLIST_ID = '7a1e2c3d-4b5f-4a6b-8c7d-9e0f1a2b3c4d';
 
 export const me: MeResponse = {
@@ -86,6 +90,76 @@ export const okComputer: CatalogRelease = {
   criticFreshPct: 100,
   criticCount: 1,
   tracks: [1, 2, 3, 4, 5, 6].map((n) => okTrack(n)),
+};
+
+/** ADR-012: the 2017 reissue of OK Computer, as listed among the album's editions. */
+export const oknotok: EditionSummary = {
+  id: OKNOTOK_ID,
+  title: 'OK Computer OKNOTOK 1997 2017',
+  editionLabel: 'OKNOTOK 1997 2017',
+  releaseType: 'ALBUM',
+  releaseDate: '2017-06-23',
+  year: 2017,
+  country: 'XW',
+  format: '12" Vinyl',
+  label: 'XL Recordings',
+  trackCount: 23,
+  coverUrl: null,
+  dominantColor: '#3E4A52',
+  audienceAvg: 4.8,
+  audienceCount: 3,
+  criticAvg: null,
+  criticCount: 0,
+};
+
+/** OK Computer as the plain edition of a group with one other edition (OKNOTOK). */
+export const okComputerWithEditions: CatalogRelease = {
+  ...okComputer,
+  editionLabel: null,
+  group: { id: GROUP_ID, title: 'OK Computer', firstYear: 1997 },
+  otherEditions: [oknotok],
+};
+
+export const okComputerGroup: ReleaseGroupDetail = {
+  id: GROUP_ID,
+  title: 'OK Computer',
+  artistName: 'Radiohead',
+  primaryType: 'ALBUM',
+  firstYear: 1997,
+  coverUrl: okCover,
+  dominantColor: '#7A8C99',
+  genres: ['Alternative', 'Art Rock'],
+  externalIds: { musicbrainz: 'b1392450-e666-3926-a536-22c65f834433' },
+  scores: {
+    audienceAvg: 4.6,
+    audienceFreshPct: 92,
+    audienceCount: 4,
+    criticAvg: 4.5,
+    criticFreshPct: 100,
+    criticCount: 1,
+  },
+  editions: [
+    {
+      id: RELEASE_ID,
+      title: 'OK Computer',
+      editionLabel: null,
+      releaseType: 'ALBUM',
+      releaseDate: '1997-05-21',
+      year: 1997,
+      country: 'GB',
+      format: 'CD',
+      label: 'Parlophone',
+      trackCount: 12,
+      coverUrl: okCover,
+      dominantColor: '#7A8C99',
+      audienceAvg: 4.3,
+      audienceCount: 2,
+      criticAvg: 4.5,
+      criticCount: 1,
+    },
+    oknotok,
+  ],
+  editionsSyncing: false,
 };
 
 export function reelsFeed(): DiscoveryFeedResponse {

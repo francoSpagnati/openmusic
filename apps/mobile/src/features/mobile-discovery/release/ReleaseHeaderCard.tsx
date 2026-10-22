@@ -4,13 +4,23 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { CatalogRelease, CatalogTrack } from '@openmusic/shared';
 import { useTheme } from '../../../theme';
 import { Badge, CoverArt, Text } from '../../../components/ui';
-import { releaseMeta, sourceLabel, tintAlpha } from '../catalog';
+import {
+  countryName,
+  formatName,
+  releaseMeta,
+  sourceLabel,
+  tintAlpha,
+  workTitle,
+} from '../catalog';
+import { EditionChip } from '../editions/EditionChip';
 import { PreviewButton } from '../components/PreviewButton';
 
 export interface ReleaseHeaderCardProps {
   release: CatalogRelease;
   /** First track with something to preview (plays from the header). */
   previewTrack?: CatalogTrack | null;
+  /** ADR-012: whether the album has other editions (the chip then also marks the plain one). */
+  hasOtherEditions?: boolean;
 }
 
 /**
@@ -18,13 +28,20 @@ export interface ReleaseHeaderCardProps {
  * the API from the real cover) fading into the page, then type · year · label, title, artist,
  * genres and the database the cover came from.
  */
-export function ReleaseHeaderCard({ release, previewTrack }: ReleaseHeaderCardProps) {
+export function ReleaseHeaderCard({
+  release,
+  previewTrack,
+  hasOtherEditions = false,
+}: ReleaseHeaderCardProps) {
   const theme = useTheme();
   const { colors, space } = theme;
   const { width } = useWindowDimensions();
   const coverSize = Math.min(260, width - space[16] * 2);
   const alpha = tintAlpha(release.dominantColor, theme.name);
   const source = release.coverSource ? sourceLabel(release.coverSource) : null;
+  const title = workTitle(release);
+  const format = formatName(release.format);
+  const country = countryName(release.country);
 
   return (
     <View style={[styles.wrap, { paddingTop: space[6], paddingBottom: space[4], gap: space[4] }]}>
@@ -56,9 +73,18 @@ export function ReleaseHeaderCard({ release, previewTrack }: ReleaseHeaderCardPr
 
       <View style={[styles.meta, { paddingHorizontal: space[4] }]}>
         <Text variant="eyebrow">{releaseMeta(release)}</Text>
-        <Text variant="display" accessibilityRole="header">
-          {release.title}
+        <Text
+          variant="display"
+          accessibilityRole="header"
+          accessibilityLabel={
+            title !== release.title ? `${title}, ${release.editionLabel}` : undefined
+          }
+        >
+          {title}
         </Text>
+        {release.editionLabel || hasOtherEditions ? (
+          <EditionChip label={release.editionLabel} />
+        ) : null}
         <View style={styles.artistRow}>
           <Text variant="deck" tone="secondary" style={styles.flex} numberOfLines={2}>
             {release.artistName}
@@ -70,6 +96,8 @@ export function ReleaseHeaderCard({ release, previewTrack }: ReleaseHeaderCardPr
             <Badge key={g} label={g} mono size="sm" />
           ))}
           {source ? <Badge label={`Copertina: ${source}`} size="sm" variant="outline" /> : null}
+          {format ? <Badge label={format} size="sm" variant="outline" mono /> : null}
+          {country ? <Badge label={country} size="sm" variant="outline" mono /> : null}
           {release.trackCount ? (
             <Badge label={`${release.trackCount} brani`} size="sm" variant="outline" mono />
           ) : null}

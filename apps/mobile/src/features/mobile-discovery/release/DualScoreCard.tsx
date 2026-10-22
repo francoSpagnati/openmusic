@@ -5,7 +5,12 @@ import { useTheme } from '../../../theme';
 import { Card, RatingStars, ScoreBadge, Text, clampStars } from '../../../components/ui';
 
 export interface DualScoreCardProps {
-  score: DualScoreDetails;
+  /** A release's scores, or a release group's (ADR-012: same fields, no release id). */
+  score: Omit<DualScoreDetails, 'releaseId'>;
+  /** Says what the scores cover when it is ambiguous ("Voti di questa edizione"). */
+  title?: string;
+  /** Replaces the default footnote. */
+  note?: string;
 }
 
 function Column({
@@ -53,10 +58,15 @@ function Column({
  * ADR-001 dual score: audience (verified listens weigh 1.5x) next to accredited critics. "Fresh" =
  * share of ratings >= 3.5 stars.
  */
-export function DualScoreCard({ score }: DualScoreCardProps) {
+export function DualScoreCard({ score, title, note }: DualScoreCardProps) {
   const { space, colors } = useTheme();
   return (
     <Card variant="surface" padding="md" style={{ gap: space[3] }}>
+      {title ? (
+        <Text variant="eyebrow" tone="accent" accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
       <View style={styles.row}>
         <Column
           kind="audience"
@@ -73,7 +83,7 @@ export function DualScoreCard({ score }: DualScoreCardProps) {
         />
       </View>
       <Text variant="caption" size="xs" tone="muted">
-        % di voti da 3,5 stelle in su. Le recensioni con ascolto verificato pesano 1,5×.
+        {note ?? '% di voti da 3,5 stelle in su. Le recensioni con ascolto verificato pesano 1,5×.'}
       </Text>
     </Card>
   );

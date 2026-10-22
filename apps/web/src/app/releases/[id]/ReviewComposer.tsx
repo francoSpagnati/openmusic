@@ -14,6 +14,8 @@ import {
   useToast,
 } from '../../../components/ui';
 import { VibeTagsInput } from '../../../components/web-core/feed/VibeTagsInput';
+import { EditionChip } from '../../../components/discovery/EditionChip';
+import { editionName } from '../../../components/discovery/editions';
 
 const MAX_CONTENT = 3000;
 const MIN_CRITIC_CONTENT = 10;
@@ -64,6 +66,11 @@ function writeDraft(releaseId: string, draft: Draft | null): void {
 interface ReviewComposerProps {
   releaseId: string;
   releaseTitle: string;
+  /**
+   * ADR-012: set when the album has several editions (or this one is marked). Reviews belong to
+   * one edition, so the composer names it; null hides the notice for single-edition albums.
+   */
+  edition: { label: string | null } | null;
   /** The viewer's existing community review, to edit in place. */
   existing: ReviewItem | null;
   /** Accredited critics publish to the critic score instead. */
@@ -74,6 +81,7 @@ interface ReviewComposerProps {
 export function ReviewComposer({
   releaseId,
   releaseTitle,
+  edition,
   existing,
   asCritic,
   onSaved,
@@ -210,6 +218,7 @@ export function ReviewComposer({
       noValidate
       className="space-y-5"
       aria-labelledby="composer-heading"
+      aria-describedby={edition ? 'composer-edition' : undefined}
     >
       <div>
         <h3 id="composer-heading" className="om-headline flex items-center gap-2 text-xl text-ink">
@@ -228,6 +237,20 @@ export function ReviewComposer({
             : `Il tuo voto conta nel voto del pubblico di ${releaseTitle}.`}
         </p>
       </div>
+
+      {edition && (
+        <div
+          id="composer-edition"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border border-line bg-sunken px-3 py-2 text-sm text-ink-secondary"
+        >
+          <span>Stai recensendo</span>
+          <EditionChip label={edition.label} size="sm" />
+          <span className="basis-full text-xs text-ink-muted">
+            Il voto resta su questa edizione. Nel voto complessivo dell’album conti una volta sola:
+            se recensisci più edizioni vale la recensione più recente.
+          </span>
+        </div>
+      )}
 
       {restored && (
         <p
@@ -262,7 +285,7 @@ export function ReviewComposer({
             }}
             size="lg"
             showValue
-            label={`Il tuo voto per ${releaseTitle}`}
+            label={`Il tuo voto per ${releaseTitle}${edition ? ` (${editionName(edition.label)})` : ''}`}
             disabled={saving}
           />
         </div>

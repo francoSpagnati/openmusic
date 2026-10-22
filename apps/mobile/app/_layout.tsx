@@ -66,6 +66,7 @@ function RootNavigator() {
         <Stack.Protected guard={signedIn} redirectTo="/login">
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="release/[id]" options={{ title: 'Release' }} />
+          <Stack.Screen name="album/[id]" options={{ title: 'Album' }} />
           <Stack.Screen name="profile/[id]" options={{ title: 'Profilo' }} />
           <Stack.Screen name="connections/[id]" options={{ title: 'Follower' }} />
           <Stack.Screen name="chat/[userId]" options={{ title: 'Chat' }} />

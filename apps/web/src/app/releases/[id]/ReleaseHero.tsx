@@ -1,11 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowSquareOut } from '@phosphor-icons/react/dist/ssr';
+import { ArrowLeft, ArrowRight, ArrowSquareOut } from '@phosphor-icons/react/dist/ssr';
 import type { CatalogRelease } from '@openmusic/shared';
 import { Badge } from '../../../components/ui';
 import { CoverArt } from '../../../components/discovery/CoverArt';
 import { ReleasePreviewButton } from '../../../components/discovery/ReleasePreviewButton';
 import { ambientTint } from '../../../components/discovery/ambientTint';
+import { EditionChip } from '../../../components/discovery/EditionChip';
+import { countryName, formatName, workTitle } from '../../../components/discovery/editions';
 import {
   CATALOG_SOURCE_LABEL,
   RELEASE_TYPE_LABEL,
@@ -44,8 +46,15 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
   const trackCount = tracks.length > 0 ? tracks.length : (release.trackCount ?? null);
   const totalSeconds = tracks.reduce((sum, t) => sum + t.durationMs, 0) / 1000;
   const links = externalLinks(release);
+  const editionCount = (release.otherEditions?.length ?? 0) + 1;
+  const hasEditions = editionCount > 1;
+  const title = workTitle(release);
   const facts: Array<{ term: string; detail: React.ReactNode }> = [];
   if (release.label) facts.push({ term: 'Etichetta', detail: release.label });
+  const format = formatName(release.format);
+  if (format) facts.push({ term: 'Formato', detail: format });
+  const country = countryName(release.country);
+  if (country) facts.push({ term: 'Paese', detail: country });
   if (trackCount) {
     facts.push({
       term: 'Durata',
@@ -101,10 +110,26 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
               )}
             </p>
             <h1 className="om-headline text-display-md text-ink lg:text-display-lg">
-              {release.title}
+              {title}
+              {title !== release.title && <span className="sr-only">, {release.editionLabel}</span>}
             </h1>
             <p className="om-deck text-xl">{release.artistName}</p>
           </div>
+
+          {(release.editionLabel || hasEditions) && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <EditionChip label={release.editionLabel} />
+              {release.group && hasEditions && (
+                <Link
+                  href={`/albums/${release.group.id}`}
+                  className="inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-ink-secondary underline-offset-4 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                >
+                  Tutte le {editionCount} edizioni e il voto complessivo
+                  <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                </Link>
+              )}
+            </div>
+          )}
 
           {(release.genres.length > 0 || release.releaseDate) && (
             <div className="flex flex-wrap items-center gap-2">
@@ -140,6 +165,12 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
           )}
 
           <hr className="om-rule" />
+          {hasEditions && (
+            <p className="text-xs text-ink-muted">
+              Voti di questa edizione. Le altre edizioni hanno i loro voti; quello complessivo è
+              nella pagina dell’album.
+            </p>
+          )}
           <LiveDualScore />
 
           {(links.length > 0 || release.coverSource) && (

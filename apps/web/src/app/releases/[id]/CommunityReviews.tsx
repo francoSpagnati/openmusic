@@ -42,6 +42,10 @@ function applyToggle(review: ReviewItem, type: ReactionType, add: boolean): Revi
 interface CommunityReviewsProps {
   releaseId: string;
   releaseTitle: string;
+  /** ADR-012: which edition this page is (null = standard edition). */
+  editionLabel: string | null;
+  /** Whether the album has other editions: the composer then names the one being reviewed. */
+  hasOtherEditions: boolean;
   /** Server-rendered (anonymous) reviews; null when that request failed. */
   initialReviews: ReviewItem[] | null;
 }
@@ -49,6 +53,8 @@ interface CommunityReviewsProps {
 export function CommunityReviews({
   releaseId,
   releaseTitle,
+  editionLabel,
+  hasOtherEditions,
   initialReviews,
 }: CommunityReviewsProps) {
   const router = useRouter();
@@ -222,6 +228,7 @@ export function CommunityReviews({
           <ReviewComposer
             releaseId={releaseId}
             releaseTitle={releaseTitle}
+            edition={hasOtherEditions || editionLabel ? { label: editionLabel } : null}
             existing={asCritic ? null : own}
             asCritic={asCritic}
             onSaved={onSaved}
