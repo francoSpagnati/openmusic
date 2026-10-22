@@ -193,3 +193,63 @@ it('Profile: follows another user optimistically and applies the server count', 
     true
   );
 });
+
+it('Settings: shows the automatic sync state of each linked service (ADR-013)', async () => {
+  const lastSyncedAt = new Date(Date.now() - 2 * 60_000).toISOString();
+  const calls = startApi({
+    'GET /api/auth/me': () => ({
+      body: {
+        user: ME,
+        connectedAccounts: [
+          {
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            provider: 'SPOTIFY',
+            providerId: 'spotify-me',
+            expiresAt: null,
+          },
+          {
+            id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            provider: 'LASTFM',
+            providerId: 'lfm-me',
+            expiresAt: null,
+          },
+        ],
+      },
+    }),
+    'GET /api/now-playing/sync-status': () => ({
+      body: {
+        autoSyncEnabled: true,
+        providers: {
+          SPOTIFY: {
+            provider: 'SPOTIFY',
+            linked: true,
+            status: 'ACTIVE',
+            lastSyncedAt,
+            lastErrorCode: null,
+            lastError: null,
+            nextPollInSeconds: 20,
+          },
+          LASTFM: {
+            provider: 'LASTFM',
+            linked: true,
+            status: 'ERROR',
+            lastSyncedAt: null,
+            lastErrorCode: 'PRIVATE_PROFILE',
+            lastError:
+              'I tuoi ascolti recenti sono privati: rendili pubblici e ricollega l’account.',
+            nextPollInSeconds: null,
+          },
+        },
+      },
+    }),
+  });
+  await renderRouter('./app', { initialUrl: '/settings' });
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Spotify: Sincronizzazione automatica attiva')).toBeTruthy()
+  );
+  expect(screen.getByText('2 min fa')).toBeTruthy();
+  expect(screen.getByLabelText('Last.fm: Sincronizzazione interrotta')).toBeTruthy();
+  expect(screen.getByText(/I tuoi ascolti recenti sono privati/)).toBeTruthy();
+  expect(calls.filter((c) => c.path === '/api/now-playing/sync-status')).toHaveLength(1);
+});

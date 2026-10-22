@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Switch, View } from 'react-native';
-import { isApiError } from '../src/lib/api';
+import type { ConnectedAccountInfo, NowPlayingSyncStatus } from '@openmusic/shared';
+import { api, isApiError } from '../src/lib/api';
+import { formatRelative } from '../src/lib/format';
+import { useApiQuery } from '../src/lib/useApiQuery';
 import { useAuth } from '../src/lib/auth';
 import { useTheme } from '../src/theme';
 import {
@@ -25,6 +28,11 @@ export default function SettingsScreen() {
   const { user, updateProfile, changePassword, logout, connectedAccounts } = useAuth();
   const { colors } = useTheme();
   const ghost = useGhostMode();
+  const hasLinked = connectedAccounts.length > 0;
+  const accountsKey = connectedAccounts.map((a) => a.id).join(',');
+  const syncStatus = useApiQuery(() => api.nowPlaying.syncStatus(), [accountsKey], {
+    enabled: hasLinked,
+  });
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
@@ -208,15 +216,17 @@ export default function SettingsScreen() {
 
       <Card>
         <CardHeader eyebrow="Servizi collegati" title="Spotify e Last.fm" />
-        <View style={styles.row}>
-          {connectedAccounts.length === 0 ? (
-            <Text size="sm" tone="secondary">
-              Nessun servizio collegato. Il collegamento si fa per ora dal sito web.
-            </Text>
-          ) : (
-            connectedAccounts.map((a) => <Badge key={a.id} label={a.provider} mono tone="fresh" />)
-          )}
-        </View>
+        {connectedAccounts.length === 0 ? (
+          <Text size="sm" tone="secondary">
+            Nessun servizio collegato. Il collegamento si fa per ora dal sito web.
+          </Text>
+        ) : (
+          <View style={styles.gap}>
+            {connectedAccounts.map((a) => (
+              <ProviderSyncRow key={a.id} account={a} status={syncStatus.data} />
+            ))}
+          </View>
+        )}
       </Card>
 
       <Button
@@ -231,7 +241,68 @@ export default function SettingsScreen() {
   );
 }
 
+const PROVIDER_NAME: Record<ConnectedAccountInfo['provider'], string> = {
+  SPOTIFY: 'Spotify',
+  LASTFM: 'Last.fm',
+  APPLE_MUSIC: 'Apple Music',
+};
+
+/**
+ * ADR-013: automatic sync state of one linked service (same data as the web settings). Linking
+ * and relinking happen on the web for now, so an interrupted sync points there.
+ */
+function ProviderSyncRow({
+  account,
+  status,
+}: {
+  account: ConnectedAccountInfo;
+  status: NowPlayingSyncStatus | undefined;
+}) {
+  const name = PROVIDER_NAME[account.provider];
+  const info =
+    account.provider === 'APPLE_MUSIC' ? null : (status?.providers[account.provider] ?? null);
+  const badge = !info
+    ? { label: 'Collegato', tone: 'fresh' as const }
+    : info.status === 'ERROR'
+      ? { label: 'Sincronizzazione interrotta', tone: 'rotten' as const }
+      : !status?.autoSyncEnabled
+        ? { label: 'Solo manuale', tone: 'neutral' as const }
+        : info.status === 'PAUSED'
+          ? { label: 'In pausa', tone: 'neutral' as const }
+          : { label: 'Sincronizzazione automatica attiva', tone: 'fresh' as const };
+
+  return (
+    <View style={styles.providerRow} accessible accessibilityLabel={`${name}: ${badge.label}`}>
+      <View style={styles.row}>
+        <Text variant="bodyStrong">{name}</Text>
+        <Badge label={badge.label} tone={badge.tone} />
+      </View>
+      {info ? (
+        <Text size="sm" tone="secondary">
+          {info.lastSyncedAt ? 'Ultimo aggiornamento ' : 'Nessuna lettura ancora'}
+          {info.lastSyncedAt ? (
+            <Text variant="mono" size="sm" tone="primary">
+              {formatRelative(info.lastSyncedAt)}
+            </Text>
+          ) : null}
+        </Text>
+      ) : null}
+      {info?.status === 'ERROR' ? (
+        <Text size="sm" tone="rotten">
+          {info.lastError ?? `Non riusciamo più a leggere ${name}.`} Ricollegalo dal sito web
+          (Impostazioni → Servizi collegati).
+        </Text>
+      ) : info?.lastError ? (
+        <Text size="sm" tone="muted">
+          {info.lastError}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  providerRow: { gap: 4 },
   gap: { gap: 12 },
   flex: { flex: 1 },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

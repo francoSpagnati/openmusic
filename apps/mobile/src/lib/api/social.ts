@@ -5,6 +5,7 @@ import {
   ConversationListSchema,
   FollowStateSchema,
   FriendPresenceSchema,
+  NowPlayingSyncStatusSchema,
   NotificationPageSchema,
   NotificationPresenceSummarySchema,
   PostLikeStateSchema,
@@ -21,6 +22,7 @@ import {
   type FeedQuery,
   type FollowState,
   type FriendPresence,
+  type NowPlayingSyncStatus,
   type NotificationPage,
   type NotificationPresenceSummary,
   type NotificationsQuery,
@@ -154,4 +156,8 @@ export const nowPlayingApi = {
   /** Live presence of followed users (same data as the socket's initial state). */
   friends: (): Promise<FriendPresence[]> =>
     apiRequest('/api/now-playing/friends', { schema: z.array(FriendPresenceSchema) }),
+
+  /** ADR-013: automatic Spotify / Last.fm sync state of the signed-in user. */
+  syncStatus: (): Promise<NowPlayingSyncStatus> =>
+    apiRequest('/api/now-playing/sync-status', { schema: NowPlayingSyncStatusSchema }),
 };
