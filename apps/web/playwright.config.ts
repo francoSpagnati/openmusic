@@ -64,6 +64,9 @@ export default defineConfig({
         // Seeded data only: no Deezer/iTunes/MusicBrainz calls, so runs are deterministic and
         // work offline (CI sets the same). Export CATALOG_EXTERNAL_ENABLED=true to override.
         CATALOG_EXTERNAL_ENABLED: process.env.CATALOG_EXTERNAL_ENABLED ?? 'false',
+        // ADR-013: no background Spotify/Last.fm reads during e2e (the settings test inserts
+        // sync states directly). Export NOW_PLAYING_POLLER_ENABLED=true to override.
+        NOW_PLAYING_POLLER_ENABLED: process.env.NOW_PLAYING_POLLER_ENABLED ?? 'false',
       },
     },
     {
