@@ -110,7 +110,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     // JSON API: no HTML is served, so a locked-down CSP costs nothing.
     contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
   });
-  await app.register(cors, { origin: env.CORS_ORIGINS, credentials: true });
+  await app.register(cors, {
+    origin: env.CORS_ORIGINS,
+    credentials: true,
+    // @fastify/cors >= 10 defaults to the CORS-safelisted GET,HEAD,POST only: keep the
+    // write verbs the web client uses cross-origin (PATCH/PUT/DELETE preflights).
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+  });
   await app.register(cookie);
   await app.register(jwt, {
     secret: env.JWT_SECRET,
