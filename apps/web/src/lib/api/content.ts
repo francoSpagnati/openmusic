@@ -14,6 +14,7 @@ import {
   PlaylistDetailsSchema,
   PlaylistSummarySchema,
   ReactionTypeSchema,
+  ReleaseGroupDetailSchema,
   ReleasePageSchema,
   ReviewItemSchema,
   SearchResultSchema,
@@ -43,6 +44,7 @@ import {
   type PlaylistSummary,
   type PublishCriticReviewInput,
   type ReactionType,
+  type ReleaseGroupDetail,
   type ReleasePage,
   type ReviewItem,
   type SearchResult,
@@ -75,6 +77,10 @@ export const catalogApi = {
 
   release: (id: string): Promise<CatalogRelease> =>
     apiRequest(`/api/catalog/releases/${id}`, { schema: CatalogReleaseSchema }),
+
+  /** ADR-012: the album as a work, with every known edition and scores pooled across them. */
+  releaseGroup: (id: string): Promise<ReleaseGroupDetail> =>
+    apiRequest(`/api/catalog/release-groups/${id}`, { schema: ReleaseGroupDetailSchema }),
 
   preview: (query: AudioPreviewResolveQuery): Promise<AudioPreviewResult> =>
     apiRequest('/api/catalog/preview', { query: { ...query }, schema: AudioPreviewResultSchema }),

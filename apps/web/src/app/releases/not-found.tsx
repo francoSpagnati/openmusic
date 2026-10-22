@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
-import { buttonClasses, EmptyState } from '../../../components/ui';
-import { DiscoveryShell } from '../../../components/discovery/DiscoveryShell';
+import { buttonClasses, EmptyState } from '../../components/ui';
+import { DiscoveryShell } from '../../components/discovery/DiscoveryShell';
 
 export default function ReleaseNotFound() {
   return (

@@ -16,7 +16,7 @@ chat pensata per consigliarsi brani.
 | Percorso          | Contenuto                                                                 |
 | ----------------- | ------------------------------------------------------------------------- |
 | `apps/api`        | Backend Fastify 4 + Socket.io + Redis (REST `/api/*`, WebSocket presenza) |
-| `apps/web`        | Next.js 14 (App Router) + Tailwind, client API tipizzato                  |
+| `apps/web`        | Next.js 16.4 (App Router, React 19.3) + Tailwind, client API tipizzato    |
 | `apps/mobile`     | Expo SDK 58 + expo-router, client API con Bearer (mai provato su device)  |
 | `packages/db`     | Schema Prisma, migrazioni SQL, seed                                       |
 | `packages/shared` | Contratti Zod + tipi condivisi, `THEME` (token di design)                 |

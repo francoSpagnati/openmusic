@@ -1,9 +1,11 @@
 import React from 'react';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { CatalogRelease, DualScoreDetails } from '@openmusic/shared';
 import { api } from '../../../lib/api';
 import { DiscoveryShell } from '../../../components/discovery/DiscoveryShell';
+import { EditionShelf } from '../../../components/discovery/EditionShelf';
 import { CommunityReviews } from './CommunityReviews';
 import { CriticReviews } from './CriticReviews';
 import { ReleaseHero } from './ReleaseHero';
@@ -13,7 +15,7 @@ import { ReleaseVideos } from './ReleaseVideos';
 import { getRelease, redirectLegacyId, settled } from './data';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // Scores and reviews change constantly; render on every request.
@@ -43,8 +45,9 @@ function scoreSentence(release: CatalogRelease): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  redirectLegacyId(params.id);
-  const release = await getRelease(params.id);
+  const { id } = await params;
+  redirectLegacyId(id);
+  const release = await getRelease(id);
   // Throwing here (before streaming starts) makes unknown ids answer with a real 404 status.
   if (!release) notFound();
   const title = `${release.title} di ${release.artistName}`;
@@ -92,8 +95,9 @@ function jsonLd(release: CatalogRelease): string {
 }
 
 export default async function ReleaseDetailPage({ params }: Props) {
-  redirectLegacyId(params.id);
-  const release = await getRelease(params.id);
+  const { id } = await params;
+  redirectLegacyId(id);
+  const release = await getRelease(id);
   if (!release) notFound();
 
   const [critics, reviews, videos] = await Promise.allSettled([
@@ -114,11 +118,36 @@ export default async function ReleaseDetailPage({ params }: Props) {
           tracks={release.tracks ?? []}
         />
 
+        {release.otherEditions && release.otherEditions.length > 0 && (
+          <section aria-labelledby="other-editions" className="space-y-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 id="other-editions" className="om-headline text-2xl text-ink">
+                Altre edizioni
+              </h2>
+              {release.group && (
+                <Link
+                  href={`/albums/${release.group.id}`}
+                  className="rounded-sm text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                >
+                  Pagina dell’album
+                </Link>
+              )}
+            </div>
+            <p className="text-sm text-ink-secondary">
+              Ristampe, remaster ed edizioni ampliate dello stesso album. Ognuna ha la sua tracklist
+              e i suoi voti.
+            </p>
+            <EditionShelf editions={release.otherEditions} label="Altre edizioni" />
+          </section>
+        )}
+
         <div className="grid gap-10 xl:grid-cols-2">
           <CriticReviews reviews={settled(critics, null)} />
           <CommunityReviews
             releaseId={release.id}
             releaseTitle={release.title}
+            editionLabel={release.editionLabel ?? null}
+            hasOtherEditions={(release.otherEditions?.length ?? 0) > 0}
             initialReviews={settled(reviews, null)}
           />
         </div>

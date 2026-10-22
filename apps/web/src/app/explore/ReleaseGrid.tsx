@@ -1,16 +1,33 @@
 import React from 'react';
 import type { CatalogRelease } from '@openmusic/shared';
 import { ReleaseCard } from '../../components/ReleaseCard';
+import { groupEditions } from '../../components/discovery/editions';
 import { Skeleton } from '../../components/ui';
 
 export const GRID_CLASSES = 'grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 xl:grid-cols-4';
 
-export function ReleaseGrid({ releases, label }: { releases: CatalogRelease[]; label: string }) {
+/**
+ * Grid of release cards. With `foldEditions` (search results) editions of the same album become
+ * one card with an "N edizioni" link to the album page, so a remaster and its original do not
+ * look like duplicates.
+ */
+export function ReleaseGrid({
+  releases,
+  label,
+  foldEditions = false,
+}: {
+  releases: CatalogRelease[];
+  label: string;
+  foldEditions?: boolean;
+}) {
+  const entries = foldEditions
+    ? groupEditions(releases)
+    : releases.map((release) => ({ release, editions: [release] }));
   return (
     <ul className={GRID_CLASSES} aria-label={label}>
-      {releases.map((release, index) => (
+      {entries.map(({ release, editions }, index) => (
         <li key={release.id}>
-          <ReleaseCard release={release} priority={index < 4} />
+          <ReleaseCard release={release} priority={index < 4} editionCount={editions.length} />
         </li>
       ))}
     </ul>

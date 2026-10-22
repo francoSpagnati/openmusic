@@ -26,11 +26,12 @@
     "e2e": "npm --workspace=@openmusic/web run e2e",
     "db:seed:offline": "npm --workspace=@openmusic/db run seed",
     "catalog:import": "npm --workspace=@openmusic/api run catalog:import --",
-    "catalog:smoke": "npm --workspace=@openmusic/api run catalog:smoke"
+    "catalog:smoke": "npm --workspace=@openmusic/api run catalog:smoke",
+    "catalog:audit": "npm --workspace=@openmusic/api run catalog:audit --"
   },
   "devDependencies": {
-    "@eslint/js": "^8.57.1",
-    "eslint": "^8.57.1",
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
     "eslint-config-prettier": "^9.1.2",
     "globals": "^15.15.0",
     "prettier": "^3.9.10",

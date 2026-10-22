@@ -1,3 +1,4 @@
+import { parseEdition } from '@openmusic/shared';
 import type { CatalogRelease, CatalogSource, CatalogTrack } from '@openmusic/shared';
 
 /** Human name of a catalog source, for badges ("da Deezer"). */
@@ -129,6 +130,88 @@ export function parseVibeTags(input: string, max = 5): string[] {
     seen.add(tag.toLowerCase());
     out.push(tag);
     if (out.length === max) break;
+  }
+  return out;
+}
+
+// -- Editions (ADR-012) -------------------------------------------------------------------------
+// A release is one edition of a release group (the album as a work). `editionLabel === null`
+// means the plain edition or one with no edition marker.
+
+/** Chip text for an edition: its label, or "Edizione standard" for the plain one. */
+export function editionName(label: string | null | undefined): string {
+  return label ?? 'Edizione standard';
+}
+
+/** Title without edition qualifiers when the edition chip sits next to it. */
+export function workTitle(release: Pick<CatalogRelease, 'title' | 'editionLabel'>): string {
+  if (!release.editionLabel) return release.title;
+  return parseEdition(release.title).workTitle || release.title;
+}
+
+// MusicBrainz pseudo-countries: worldwide, Europe, unknown.
+const SPECIAL_COUNTRIES: Record<string, string | null> = { XW: 'Mondo', XE: 'Europa', XU: null };
+
+/** "IT" → "Italia" where the JS engine has Intl.DisplayNames, else the code; "XW" → "Mondo". */
+export function countryName(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const upper = code.toUpperCase();
+  if (upper in SPECIAL_COUNTRIES) return SPECIAL_COUNTRIES[upper] ?? null;
+  if (!/^[A-Z]{2}$/.test(upper)) return null;
+  try {
+    return new Intl.DisplayNames(['it-IT'], { type: 'region' }).of(upper) ?? upper;
+  } catch {
+    return upper;
+  }
+}
+
+/** MusicBrainz medium formats in Italian: "Digital Media" → "Digitale", '12" Vinyl' → 'Vinile 12"'. */
+export function formatName(format: string | null | undefined): string | null {
+  if (!format) return null;
+  const vinyl = /^(\d{1,2}")\s*Vinyl$/i.exec(format);
+  if (vinyl) return `Vinile ${vinyl[1]}`;
+  const known: Record<string, string> = {
+    'digital media': 'Digitale',
+    vinyl: 'Vinile',
+    cassette: 'Cassetta',
+  };
+  return known[format.toLowerCase()] ?? format;
+}
+
+/** Facts that tell editions apart, in catalogue-spine order: year, format, country, label. */
+export function editionFacts(edition: {
+  year?: number | null;
+  format?: string | null;
+  country?: string | null;
+  label?: string | null;
+}): string[] {
+  return [
+    edition.year ? String(edition.year) : null,
+    formatName(edition.format),
+    countryName(edition.country),
+    edition.label ?? null,
+  ].filter((part): part is string => Boolean(part));
+}
+
+/**
+ * Folds editions of the same work into one entry (search results), keeping the API ranking: the
+ * entry sits where its first edition was. Releases without a group stay on their own.
+ */
+export function groupEditions(
+  releases: readonly CatalogRelease[]
+): Array<{ release: CatalogRelease; editionCount: number }> {
+  const out: Array<{ release: CatalogRelease; editionCount: number }> = [];
+  const byGroup = new Map<string, { release: CatalogRelease; editionCount: number }>();
+  for (const release of releases) {
+    const groupId = release.group?.id;
+    const existing = groupId ? byGroup.get(groupId) : undefined;
+    if (existing) {
+      existing.editionCount += 1;
+      continue;
+    }
+    const entry = { release, editionCount: 1 };
+    out.push(entry);
+    if (groupId) byGroup.set(groupId, entry);
   }
   return out;
 }

@@ -112,7 +112,7 @@ function RouletteResult({
   dimmed,
 }: {
   result: GenreRouletteResult;
-  headingRef: React.RefObject<HTMLHeadingElement>;
+  headingRef: React.RefObject<HTMLHeadingElement | null>;
   dimmed: boolean;
 }) {
   return (

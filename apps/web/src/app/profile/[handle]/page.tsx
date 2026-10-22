@@ -4,12 +4,12 @@ import { ProfileView } from '@/components/web-core/profile/ProfileView';
 import { displayNameOf, isUuid } from '@/components/web-core/format';
 
 interface Props {
-  params: { handle: string };
+  params: Promise<{ handle: string }>;
 }
 
 /** Public profile (`/profile/<username>` or `/profile/<id>`), with server-side metadata for SEO. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const handle = decodeURIComponent(params.handle);
+  const handle = decodeURIComponent((await params).handle);
   try {
     const profile = isUuid(handle)
       ? await api.profile.byId(handle)
@@ -36,6 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default function PublicProfilePage({ params }: Props) {
-  return <ProfileView handle={decodeURIComponent(params.handle)} />;
+export default async function PublicProfilePage({ params }: Props) {
+  const { handle } = await params;
+  return <ProfileView handle={decodeURIComponent(handle)} />;
 }

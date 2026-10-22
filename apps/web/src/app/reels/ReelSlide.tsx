@@ -12,14 +12,7 @@ import {
 } from '@phosphor-icons/react';
 import type { DiscoveryReelItem } from '@openmusic/shared';
 import { useAudioPlayer } from '../../context/AudioPlayerContext';
-import {
-  Badge,
-  IconButton,
-  RatingStars,
-  buttonClasses,
-  cn,
-  starsFromRating,
-} from '../../components/ui';
+import { Badge, IconButton, RatingStars, cn, starsFromRating } from '../../components/ui';
 import { DualScoreBadge } from '../../components/DualScoreBadge';
 import { CoverArt } from '../../components/discovery/CoverArt';
 import { ambientTint } from '../../components/discovery/ambientTint';

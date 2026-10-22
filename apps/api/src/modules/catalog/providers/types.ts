@@ -1,4 +1,4 @@
-import type { ReleaseType } from '@openmusic/shared';
+import type { ReleaseGroupType, ReleaseType } from '@openmusic/shared';
 
 /** External databases the catalog reads from. */
 export type ProviderName = 'DEEZER' | 'ITUNES' | 'MUSICBRAINZ' | 'COVER_ART_ARCHIVE';
@@ -55,6 +55,22 @@ export interface ProviderRelease {
   /** Present only when the provider call returned the full tracklist. */
   tracks: ProviderTrack[] | null;
   musicbrainzReleaseGroupId?: string | null;
+  /** ADR-012 edition facts (MusicBrainz only; Deezer/iTunes encode editions in the title). */
+  disambiguation?: string | null;
+  country?: string | null;
+  format?: string | null;
+  status?: string | null;
+  /** The MusicBrainz release group, when the provider returned it. */
+  releaseGroup?: ProviderReleaseGroup | null;
+}
+
+/** A MusicBrainz release group (the album as a work). */
+export interface ProviderReleaseGroup {
+  musicbrainzId: string;
+  title: string;
+  primaryType: ReleaseGroupType;
+  /** `YYYY[-MM[-DD]]` */
+  firstReleaseDate: string | null;
 }
 
 export interface ProviderSearchPage<T> {

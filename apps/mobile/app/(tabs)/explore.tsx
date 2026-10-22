@@ -15,7 +15,7 @@ import {
   Text,
 } from '../../src/components/ui';
 import { PreviewPlayerProvider } from '../../src/features/mobile-discovery/PreviewPlayer';
-import { sourceLabel } from '../../src/features/mobile-discovery/catalog';
+import { groupEditions, sourceLabel } from '../../src/features/mobile-discovery/catalog';
 import { SegmentedControl } from '../../src/features/mobile-discovery/components/SegmentedControl';
 import { GenreChips } from '../../src/features/mobile-discovery/explore/GenreChips';
 import { GenreRoulette } from '../../src/features/mobile-discovery/explore/GenreRoulette';
@@ -40,7 +40,9 @@ function useDebounced(value: string, delay: number): string {
   return debounced;
 }
 
-type Row = { kind: 'release'; release: CatalogRelease } | { kind: 'track'; track: CatalogTrack };
+type Row =
+  | { kind: 'release'; release: CatalogRelease; editionCount: number }
+  | { kind: 'track'; track: CatalogTrack };
 
 const SEGMENTS = [
   { value: 'releases', label: 'Dischi' },
@@ -74,9 +76,12 @@ function ExploreContent() {
   const genres = useApiQuery(() => api.catalog.genres(), []);
 
   const rows = useMemo<Row[]>(() => {
-    if (!searching) return browse.items.map((release) => ({ kind: 'release', release }));
+    if (!searching) {
+      return browse.items.map((release) => ({ kind: 'release', release, editionCount: 1 }));
+    }
     return kind === 'releases'
-      ? search.releases.map((release) => ({ kind: 'release', release }))
+      ? // Editions of the same album become one row (ADR-012).
+        groupEditions(search.releases).map((entry) => ({ kind: 'release', ...entry }))
       : search.tracks.map((track) => ({ kind: 'track', track }));
   }, [searching, kind, browse.items, search.releases, search.tracks]);
 
@@ -164,7 +169,7 @@ function ExploreContent() {
         ListHeaderComponent={header}
         renderItem={({ item }) =>
           item.kind === 'release' ? (
-            <ReleaseResultRow release={item.release} />
+            <ReleaseResultRow release={item.release} editionCount={item.editionCount} />
           ) : (
             <TrackResultRow track={item.track} />
           )

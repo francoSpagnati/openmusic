@@ -3,6 +3,19 @@ import { z } from 'zod';
 export const ReleaseTypeSchema = z.enum(['ALBUM', 'SINGLE', 'EP']);
 
 /**
+ * Kind of work a release group is (ADR-012). MusicBrainz primary type, with its `Live` and
+ * `Compilation` secondary types promoted because they change what the album is.
+ */
+export const ReleaseGroupTypeSchema = z.enum([
+  'ALBUM',
+  'EP',
+  'SINGLE',
+  'LIVE',
+  'COMPILATION',
+  'OTHER',
+]);
+
+/**
  * Where a piece of catalog data came from. `LOCAL` = already in the OpenMusic database (seed,
  * earlier imports); the others are the external open databases the API imports from.
  */
@@ -46,6 +59,36 @@ export const CatalogTrackSchema = z.object({
   externalIds: TrackExternalIdsSchema.optional(),
 });
 
+/** Compact reference to a release group, embedded in every full release payload. */
+export const ReleaseGroupRefSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  firstYear: z.number().int().nullable(),
+});
+
+/** One edition in a list (release group page, "other editions" of a release). */
+export const EditionSummarySchema = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  editionLabel: z.string().nullable(),
+  releaseType: ReleaseTypeSchema,
+  releaseDate: z.string().nullable(),
+  year: z.number().int().nullable(),
+  country: z.string().nullable(),
+  format: z.string().nullable(),
+  label: z.string().nullable(),
+  trackCount: z.number().int().nonnegative().nullable(),
+  coverUrl: z.string().url().nullable(),
+  dominantColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .default('#26262B'),
+  audienceAvg: z.number().nullable(),
+  audienceCount: z.number().int(),
+  criticAvg: z.number().nullable(),
+  criticCount: z.number().int(),
+});
+
 export const CatalogReleaseSchema = z.object({
   id: z.string(),
   title: z.string().min(1),
@@ -66,6 +109,16 @@ export const CatalogReleaseSchema = z.object({
   coverSource: CatalogSourceSchema.nullable().optional(),
   externalIds: ReleaseExternalIdsSchema.optional(),
 
+  // ADR-012: a release is one edition of a release group (the album as a work).
+  /** "2011 Remaster", "Super Deluxe Edition"...; null = plain/original edition or unknown. */
+  editionLabel: z.string().nullable().optional(),
+  /** ISO 3166-1 alpha-2 country of this edition (MusicBrainz), "XW" = worldwide. */
+  country: z.string().nullable().optional(),
+  /** Medium format of this edition (MusicBrainz: "CD", "Digital Media", "12\" Vinyl"...). */
+  format: z.string().nullable().optional(),
+  /** The work this edition belongs to; null for rows not linked yet. Omitted by some lists. */
+  group: ReleaseGroupRefSchema.nullable().optional(),
+
   // ADR-001: Punteggi Rotten Tomatoes / RYM
   audienceAvg: z.number().nullable().optional(), // 0.5 - 5.0
   audienceFreshPct: z.number().int().min(0).max(100).nullable().optional(), // % >= 70
@@ -75,6 +128,46 @@ export const CatalogReleaseSchema = z.object({
   criticCount: z.number().int().default(0),
 
   tracks: z.array(CatalogTrackSchema).optional(),
+  /**
+   * Only on `GET /api/catalog/releases/:id`: the other editions of the same group, oldest first
+   * (empty when the release is the only known edition).
+   */
+  otherEditions: z.array(EditionSummarySchema).optional(),
+});
+
+/** Scores of a release group: all its editions' reviews, one vote per user (ADR-012). */
+export const GroupScoresSchema = z.object({
+  audienceAvg: z.number().nullable(),
+  audienceFreshPct: z.number().int().min(0).max(100).nullable(),
+  audienceCount: z.number().int(),
+  criticAvg: z.number().nullable(),
+  criticFreshPct: z.number().int().min(0).max(100).nullable(),
+  criticCount: z.number().int(),
+});
+
+/** `GET /api/catalog/release-groups/:id`: the album as a work with all its known editions. */
+export const ReleaseGroupDetailSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  artistName: z.string().min(1),
+  primaryType: ReleaseGroupTypeSchema,
+  firstYear: z.number().int().nullable(),
+  /** Cover of the preferred edition (oldest plain edition with a cover). */
+  coverUrl: z.string().url().nullable(),
+  dominantColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .default('#26262B'),
+  genres: z.array(z.string()).default([]),
+  externalIds: z.object({ musicbrainz: z.string().nullable() }),
+  scores: GroupScoresSchema,
+  /** Editions in the local catalog, oldest first; each keeps its own reviews and scores. */
+  editions: z.array(EditionSummarySchema),
+  /**
+   * True while sibling editions are being fetched from MusicBrainz in the background: reload
+   * later to see them.
+   */
+  editionsSyncing: z.boolean(),
 });
 
 /**
@@ -176,6 +269,11 @@ export type BrowseReleasesQuery = z.input<typeof BrowseReleasesQuerySchema>;
 export type ReleasePage = z.infer<typeof ReleasePageSchema>;
 export type GenreList = z.infer<typeof GenreListSchema>;
 export type ReleaseType = z.infer<typeof ReleaseTypeSchema>;
+export type ReleaseGroupType = z.infer<typeof ReleaseGroupTypeSchema>;
+export type ReleaseGroupRef = z.infer<typeof ReleaseGroupRefSchema>;
+export type EditionSummary = z.infer<typeof EditionSummarySchema>;
+export type GroupScores = z.infer<typeof GroupScoresSchema>;
+export type ReleaseGroupDetail = z.infer<typeof ReleaseGroupDetailSchema>;
 export type CatalogTrack = z.infer<typeof CatalogTrackSchema>;
 export type CatalogRelease = z.infer<typeof CatalogReleaseSchema>;
 export type SearchResult = z.infer<typeof SearchResultSchema>;

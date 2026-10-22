@@ -1,0 +1,24 @@
+{
+  "data": [
+    {
+      "id": 7001002,
+      "title": "Weezer",
+      "link": "https://www.deezer.com/album/7001002",
+      "cover_xl": "https://e-cdns-images.dzcdn.net/images/cover/9e1000000000000000000000000000e1/1000x1000-000000-80-0-0.jpg",
+      "genre_id": 152,
+      "nb_tracks": 3,
+      "record_type": "album",
+      "tracklist": "https://api.deezer.com/album/7001002/tracks",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 1167,
+        "name": "Weezer",
+        "link": "https://www.deezer.com/artist/1167",
+        "picture_xl": "https://e-cdns-images.dzcdn.net/images/artist/weezer000000000000000000000000/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    }
+  ],
+  "total": 1
+}

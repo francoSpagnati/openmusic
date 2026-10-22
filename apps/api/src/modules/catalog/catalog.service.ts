@@ -1,18 +1,30 @@
 import type { Prisma, PrismaClient, Release } from '@openmusic/db';
 import {
   catalogMatchKey,
+  editionMatchKey,
+  parseEdition,
+  releaseYear,
   type CatalogRelease,
   type CatalogResolveParams,
   type CatalogResolveResult,
   type CatalogSearchParams,
   type CatalogSource,
   type GenreList,
+  type GroupScores,
+  type ReleaseGroupDetail,
   type ReleasePage,
   type SearchResult,
 } from '@openmusic/shared';
 import type { BackgroundQueue, TaskLogger } from '../../lib/background';
 import { BadRequestError, NotFoundError, UpstreamError } from '../../lib/errors';
-import { nextCursorOf, toCatalogRelease, toCatalogTrack } from '../../lib/mappers';
+import {
+  nextCursorOf,
+  toCatalogRelease,
+  toCatalogTrack,
+  toEditionSummary,
+} from '../../lib/mappers';
+import { aggregateScore } from '../reviews/score';
+import { mergeGenres } from './catalog-import.service';
 import { UpstreamRequestError } from '../../lib/upstream';
 import type { AudioPreviewResolverService } from './audio-preview-resolver.service';
 import type { CatalogEnrichmentService } from './catalog-enrichment.service';
@@ -55,6 +67,19 @@ const TRACK_ORDER: Prisma.TrackOrderByWithRelationInput[] = [
   { id: 'asc' },
 ];
 
+/** Editions, oldest first (undated last). */
+const EDITION_ORDER: Prisma.ReleaseOrderByWithRelationInput[] = [
+  { releaseDate: { sort: 'asc', nulls: 'last' } },
+  { createdAt: 'asc' },
+  { id: 'asc' },
+];
+
+/** Sibling editions are re-browsed on MusicBrainz after this long (ADR-012). */
+export const EDITIONS_SYNC_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** A failed sibling-editions sync is retried at most this often per group. */
+export const EDITIONS_RETRY_MS = 10 * 60 * 1000;
+
 const PROVIDER_LABEL = { deezer: 'Deezer', itunes: 'iTunes', musicbrainz: 'MusicBrainz' } as const;
 
 export interface CatalogServiceOptions {
@@ -81,6 +106,10 @@ function dedupeBy<T>(items: readonly T[], key: (item: T) => string): T[] {
 }
 
 export class CatalogService {
+  /** Last sibling-editions sync attempt per group (in-process; see startEditionsSync). */
+  private readonly editionsAttempts = new Map<string, number>();
+  private readonly editionsInFlight = new Set<string>();
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly previewResolver: AudioPreviewResolverService,
@@ -124,6 +153,7 @@ export class CatalogService {
       wantReleases
         ? this.prisma.release.findMany({
             where: textFilter,
+            include: { releaseGroup: true },
             orderBy: [{ audienceCount: 'desc' }, { title: 'asc' }, { id: 'asc' }],
             skip: offset,
             take: params.limit + 1,
@@ -184,8 +214,14 @@ export class CatalogService {
       }
     }
 
+    // Imported rows were linked to their release group after the search hit was mapped.
+    const withGroups = await this.prisma.release.findMany({
+      where: { id: { in: releases.map((r) => r.id) } },
+      include: { releaseGroup: true },
+    });
+    const byId = new Map(withGroups.map((r) => [r.id, r]));
     return {
-      releases: releases.map((r) => toCatalogRelease(r)),
+      releases: releases.map((r) => toCatalogRelease(byId.get(r.id) ?? r)),
       tracks: tracks.map((t) => toCatalogTrack(t)),
       page: params.page,
       hasMore,
@@ -259,7 +295,13 @@ export class CatalogService {
   ): ExternalHits {
     return {
       source,
-      releases: dedupeBy(albums.items, (r) => r.upc ?? catalogMatchKey(r.title, r.artist.name)),
+      // Same page, same edition: explicit/clean twins collapse (ADR-012); editions do not.
+      releases: dedupeBy(
+        albums.items,
+        (r) =>
+          r.upc ??
+          `${editionMatchKey(r.title, r.artist.name, r.disambiguation)}|${r.trackCount ?? ''}|${releaseYear(r.releaseDate) ?? ''}`
+      ),
       tracks: dedupeBy(
         songs.items,
         (t) => t.isrc ?? `${catalogMatchKey(t.title, t.artist.name)}|${t.release?.title ?? ''}`
@@ -279,18 +321,139 @@ export class CatalogService {
     let release = await this.prisma.release.findUnique({ where: { id } });
     if (!release) return null;
     if (!release.metadataSyncedAt && this.options.externalEnabled) {
+      const hydrated = await this.hydrate(release).catch((err: unknown) => {
+        this.logUpstream('Release hydration failed', err);
+        return null;
+      });
+      // A different row means the provider id belonged to another edition and was detached
+      // (ADR-012): this row stays what it was.
       release =
-        (await this.hydrate(release).catch((err: unknown) => {
-          this.logUpstream('Release hydration failed', err);
-          return null;
-        })) ?? release;
+        hydrated && hydrated.id === id
+          ? hydrated
+          : await this.prisma.release.findUniqueOrThrow({ where: { id } });
     }
     this.scheduleFollowUp(release);
-    const tracks = await this.prisma.track.findMany({
-      where: { releaseId: id },
-      orderBy: TRACK_ORDER,
+    const [tracks, group] = await Promise.all([
+      this.prisma.track.findMany({ where: { releaseId: id }, orderBy: TRACK_ORDER }),
+      release.releaseGroupId
+        ? this.prisma.releaseGroup.findUnique({ where: { id: release.releaseGroupId } })
+        : Promise.resolve(null),
+    ]);
+    const otherEditions = group
+      ? await this.prisma.release.findMany({
+          where: { releaseGroupId: group.id, id: { not: id } },
+          orderBy: EDITION_ORDER,
+          take: 50,
+        })
+      : [];
+    return {
+      ...toCatalogRelease({ ...release, releaseGroup: group }, tracks),
+      otherEditions: otherEditions.map(toEditionSummary),
+    };
+  }
+
+  // -- Release groups (ADR-012) --------------------------------------------------------------
+
+  /**
+   * The album as a work: its editions (oldest first) and scores aggregated over all of them.
+   * When the group is known to MusicBrainz, its sibling editions are fetched in the background
+   * (at most once every 30 days); `editionsSyncing` tells the client to reload later.
+   */
+  async getReleaseGroup(id: string): Promise<ReleaseGroupDetail | null> {
+    const group = await this.prisma.releaseGroup.findUnique({
+      where: { id },
+      include: { releases: { orderBy: EDITION_ORDER } },
     });
-    return toCatalogRelease(release, tracks);
+    if (!group) return null;
+
+    let editionsSyncing = false;
+    if (
+      this.options.externalEnabled &&
+      group.musicbrainzId &&
+      (!group.editionsSyncedAt || Date.now() - group.editionsSyncedAt.getTime() > EDITIONS_SYNC_MS)
+    ) {
+      editionsSyncing = this.startEditionsSync(group.id);
+    }
+
+    const editions = group.releases;
+    const isPlain = (r: Release) => parseEdition(r.title, r.disambiguation).tokens.length === 0;
+    const coverEdition =
+      editions.find((r) => r.coverUrl && isPlain(r)) ?? editions.find((r) => r.coverUrl);
+    const genres = editions.reduce<string[]>((acc, r) => mergeGenres(acc, r.genres), []);
+
+    return {
+      id: group.id,
+      title: group.title,
+      artistName: group.artistName,
+      primaryType: group.primaryType,
+      firstYear: group.firstReleaseYear,
+      coverUrl: coverEdition?.coverUrl ?? null,
+      dominantColor: coverEdition?.dominantColor ?? DEFAULT_DOMINANT_COLOR,
+      genres,
+      externalIds: { musicbrainz: group.musicbrainzId },
+      scores: await this.groupScores(group.id),
+      editions: editions.map(toEditionSummary),
+      editionsSyncing,
+    };
+  }
+
+  /**
+   * Queues the MusicBrainz browse of a group's editions. A failed sync leaves `editionsSyncedAt`
+   * unset, so without this cooldown every (anonymous, unthrottled) view of the album page would
+   * queue another MusicBrainz request: one attempt per group every EDITIONS_RETRY_MS. Returns
+   * true while a sync is queued or running.
+   */
+  private startEditionsSync(groupId: string): boolean {
+    if (this.editionsInFlight.has(groupId)) return true;
+    const now = Date.now();
+    const last = this.editionsAttempts.get(groupId);
+    if (last !== undefined && now - last < EDITIONS_RETRY_MS) return false;
+    if (this.editionsAttempts.size >= 5_000) {
+      for (const [id, at] of this.editionsAttempts) {
+        if (now - at >= EDITIONS_RETRY_MS) this.editionsAttempts.delete(id);
+      }
+    }
+    const queued = this.background.enqueue(`editions:${groupId}`, () =>
+      this.enrichment
+        .syncGroupEditions(groupId)
+        .finally(() => this.editionsInFlight.delete(groupId))
+    );
+    if (!queued) return false;
+    this.editionsAttempts.set(groupId, now);
+    this.editionsInFlight.add(groupId);
+    return true;
+  }
+
+  /**
+   * ADR-012: group scores use the reviews of every edition, with the ADR-001/002 weights, and
+   * count each user once (their most recent review in the group), so reviewing the original and
+   * the remaster does not double a vote.
+   */
+  private async groupScores(groupId: string): Promise<GroupScores> {
+    const reviews = await this.prisma.review.findMany({
+      where: { release: { releaseGroupId: groupId } },
+      select: { userId: true, rating: true, isVerifiedListen: true, isCritic: true },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+    });
+    const seen = new Set<string>();
+    const latest = reviews.filter((r) => {
+      if (seen.has(r.userId)) return false;
+      seen.add(r.userId);
+      return true;
+    });
+    const audience = aggregateScore(latest.filter((r) => !r.isCritic));
+    const critic = aggregateScore(
+      latest.filter((r) => r.isCritic),
+      () => 1
+    );
+    return {
+      audienceAvg: audience.avg,
+      audienceFreshPct: audience.freshPct,
+      audienceCount: audience.count,
+      criticAvg: critic.avg,
+      criticFreshPct: critic.freshPct,
+      criticCount: critic.count,
+    };
   }
 
   /** Imports the full provider detail of a release that has a provider id. */
@@ -427,7 +590,10 @@ export class CatalogService {
   }
 
   private async resolved(releaseId: string, trackId: string | null): Promise<CatalogResolveResult> {
-    const release = await this.prisma.release.findUniqueOrThrow({ where: { id: releaseId } });
+    const release = await this.prisma.release.findUniqueOrThrow({
+      where: { id: releaseId },
+      include: { releaseGroup: true },
+    });
     const tracks = await this.prisma.track.findMany({ where: { releaseId }, orderBy: TRACK_ORDER });
     return { release: toCatalogRelease(release, tracks), trackId };
   }
@@ -453,6 +619,7 @@ export class CatalogService {
     }
     const rows = await this.prisma.release.findMany({
       where,
+      include: { releaseGroup: true },
       orderBy,
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),

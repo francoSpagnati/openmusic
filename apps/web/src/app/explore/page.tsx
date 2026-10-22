@@ -17,8 +17,12 @@ export const metadata: Metadata = {
 // Scores change with every review: always render with fresh data.
 export const dynamic = 'force-dynamic';
 
-export default async function ExplorePage({ searchParams }: { searchParams: RawSearchParams }) {
-  const params = parseExploreParams(searchParams);
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
+  const params = parseExploreParams(await searchParams);
   const [genres, page] = await Promise.allSettled([
     api.catalog.genres(),
     api.catalog.browse({

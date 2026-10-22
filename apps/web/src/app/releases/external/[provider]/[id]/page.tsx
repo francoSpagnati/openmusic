@@ -3,8 +3,8 @@ import { CatalogProviderSchema, CatalogResolveQuerySchema } from '@openmusic/sha
 import { api, isApiError } from '../../../../../lib/api';
 
 interface Props {
-  params: { provider: string; id: string };
-  searchParams: Record<string, string | string[] | undefined>;
+  params: Promise<{ provider: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 // Imports on first use: never cache.
@@ -16,7 +16,8 @@ export const dynamic = 'force-dynamic';
  * it on first use; we redirect to the internal `/releases/<uuid>` page (`#track-<uuid>` for a
  * track). Also the target of legacy `deezer-alb-N` / `deezer-trk-N` ids.
  */
-export default async function ExternalReleasePage({ params, searchParams }: Props) {
+export default async function ExternalReleasePage(props: Props) {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
   const provider = CatalogProviderSchema.safeParse(params.provider);
   const type = searchParams.type === 'track' ? 'track' : 'release';
   const query = CatalogResolveQuerySchema.safeParse({

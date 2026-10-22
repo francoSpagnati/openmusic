@@ -13,7 +13,7 @@
 | API            | Fastify 4, Socket.io 4, ioredis, `@fastify/jwt`, `cookie`, `cors`, `helmet`, `rate-limit` | `apps/api`, avvio con `tsx`                            |
 | Database       | PostgreSQL 16 + Prisma 5 (migrazioni versionate)                                          | `packages/db`                                          |
 | Cache/presenza | Redis 7                                                                                   | Stato "Now Playing" con TTL, cache heavy rotation      |
-| Web            | Next.js 14.2 App Router, React 18, Tailwind, Phosphor                                     | `apps/web`                                             |
+| Web            | Next.js 16 App Router (Turbopack), React 19.3, Tailwind, Phosphor                         | `apps/web`                                             |
 | Mobile         | Expo SDK 58, React Native 0.88, React 19.3, expo-router, expo-secure-store, expo-audio    | `apps/mobile` (ADR-011; mai provato su device, `04`)   |
 | Catalogo       | Deezer, iTunes Search, MusicBrainz, Cover Art Archive via `fetch` globale (nessun SDK)    | §8 e ADR-010; testato solo con fixture                 |
 | Contratti      | Zod 3 in `packages/shared` (schemi, tipi, eventi WS, `THEME`)                             | Importati da api, web e mobile                         |
@@ -153,10 +153,12 @@ Schema: `packages/db/prisma/schema.prisma`. Migrazioni: `packages/db/prisma/migr
 
 - **Utenti e social:** `User` (ruolo, `passwordHash`, `sessionVersion`, `isGhostMode`),
   `ConnectedAccount` (Spotify/Last.fm/Apple Music), `Follows`, `Notification`.
-- **Catalogo:** `Release` (punteggi pubblico/critica, `dominantColor`, id esterni `deezerId`/
-  `itunesId`/`musicbrainzId`/`upc`, `coverSource`, `matchKey`, `metadataSyncedAt`, `enrichedAt`),
-  `Track` (ISRC, `previewUrl`, numeri traccia, id esterni), `Artist` (id esterni). Import e
-  deduplica: `06` §8.
+- **Catalogo (ADR-012):** `ReleaseGroup` (l'album come opera: MBID del release group, titolo
+  senza marcatori, `primaryType`, `firstReleaseYear`, `editionsSyncedAt`) e `Release` = una
+  **edizione** (punteggi pubblico/critica, `dominantColor`, id esterni `deezerId`/`itunesId`/
+  `musicbrainzId`/`upc`, `editionLabel`, `disambiguation`, `country`, `format`, `releaseStatus`,
+  `releaseGroupId`, `coverSource`, `matchKey`, `metadataSyncedAt`, `enrichedAt`), `Track` (ISRC,
+  `previewUrl`, numeri traccia, id esterni), `Artist` (id esterni). Import e deduplica: `06` §8.
 - **Recensioni:** `Review` (una per utente e release, una per utente e brano), `ReviewReaction`
   (enum `ReactionType`), `ScrobbleLog`.
 - **Contenuti:** `Post`, `PostLike`, `PostSave`, `Playlist`, `PlaylistTrack` (lato A/B),
@@ -226,18 +228,25 @@ Limiti noti: rate limiter e circuit breaker sono **per processo** (con più ista
 - `Release`, `Track` e `Artist` hanno sempre un **UUID interno**: è l'unico id che i client vedono
   e che le rotte accettano (recensioni, chat, playlist). Gli id esterni sono colonne opzionali e
   uniche: `deezerId`, `itunesId`, `musicbrainzId` (+ release group / recording), `upc`, `isrc`.
-- Ordine di match per non creare duplicati: id dello stesso provider → UPC (release) / ISRC
-  (brano) → `matchKey` = titolo + artista normalizzati (`catalogMatchKey` in `@openmusic/shared`).
-  Così lo stesso album da Deezer, iTunes, MusicBrainz o dal seed converge su una riga, e le righe
-  del seed vengono arricchite sul posto senza perdere recensioni e post collegati.
+- Ordine di match per non creare duplicati (ADR-012, una riga `Release` = una edizione): id dello
+  stesso provider → UPC → MBID di release → titolo **con** marcatori di edizione + artista + anno +
+  numero di tracce, senza id in conflitto (`compareEditions` / `editionMatchKey` in
+  `packages/shared/src/catalog-edition.ts`). Per i brani: id → ISRC → `matchKey` dentro la
+  release (`catalogMatchKey`). Così la stessa edizione da Deezer, iTunes, MusicBrainz o dal seed
+  converge su una riga, le righe del seed vengono arricchite sul posto senza perdere recensioni e
+  post collegati, e remaster, deluxe e album omonimi di anni diversi restano righe distinte
+  collegate al loro `ReleaseGroup` (per MBID del release group, altrimenti titolo senza marcatori e
+  artista, con controllo dell'anno).
 - `coverSource` (`DEEZER | ITUNES | COVER_ART_ARCHIVE`), `metadataSyncedAt` ed `enrichedAt`
   registrano provenienza e freschezza.
 - **Concorrenza:** "cerca la riga, altrimenti creala" è serializzato per chiave di match con
   `KeyedMutex` (`lib/keyed-mutex.ts`) dentro un processo; tra processi diversi decidono i vincoli
   unique, e su un conflitto l'importer rilegge la riga vincente e la aggiorna invece di inserirne
   un'altra. Testato con import paralleli su fixture.
-- Limite noto: album omonimi dello stesso artista (es. i vari "Weezer") condividono il `matchKey`
-  e vengono uniti (`04` §3).
+- Album omonimi dello stesso artista (es. i vari "Weezer") restano distinti: anno, numero di
+  tracce, UPC e MBID li separano; un id agganciato per errore da un risultato di ricerca senza
+  data viene staccato al primo import completo. `npm run catalog:audit` trova le righe fuse dal
+  vecchio dedupe (`06` §8).
 
 ### 8.4 Immagini e colore dominante
 
