@@ -383,6 +383,66 @@ describe('Catalog import from external databases', () => {
       expect(await counts()).toEqual(before);
     });
 
+    it('uses the advanced Deezer query alone when it finds the album', async () => {
+      const [result] = await importCuratedAlbums(deps(), [inRainbows], {
+        ...options,
+        dryRun: true,
+      });
+      expect(result).toMatchObject({ status: 'imported', externalId: '302127' });
+      const queries = fixtures
+        .callsTo(/search\/album/)
+        .map((c) => new URL(c.url).searchParams.get('q'));
+      expect(queries).toEqual(['artist:"Radiohead" album:"In Rainbows"']);
+    });
+
+    it('falls back to a plain Deezer query when the advanced one finds no match', async () => {
+      // Live behaviour: `artist:"Michael Jackson" album:"Thriller"` only returns covers by other
+      // artists, while "Michael Jackson Thriller" returns the original album (Deezer 96126).
+      override(
+        {
+          match: /api\.deezer\.com\/search\/album\?q=artist/,
+          responses: [{ file: 'deezer-search-album-thriller-advanced.json' }],
+        },
+        {
+          match: /api\.deezer\.com\/search\/album\?q=Michael\+Jackson\+Thriller&/,
+          responses: [{ file: 'deezer-search-album-thriller.json' }],
+        },
+        {
+          match: /api\.deezer\.com\/album\/96126$/,
+          responses: [{ file: 'deezer-album-96126.json' }],
+        }
+      );
+      const thriller = CuratedAlbumSchema.parse({
+        artist: 'Michael Jackson',
+        title: 'Thriller',
+        year: 1982,
+        genres: ['Pop'],
+      });
+      const [result] = await importCuratedAlbums(deps(), [thriller], { ...options, enrich: false });
+      expect(result).toMatchObject({
+        status: 'imported',
+        source: 'DEEZER',
+        externalId: '96126',
+        tracks: 3,
+      });
+      const queries = fixtures
+        .callsTo(/search\/album/)
+        .map((c) => new URL(c.url).searchParams.get('q'));
+      expect(queries).toEqual([
+        'artist:"Michael Jackson" album:"Thriller"',
+        'Michael Jackson Thriller',
+      ]);
+      // The exact-title album wins over the remix single and the deluxe reissues.
+      expect(fixtures.callsTo(/api\.deezer\.com\/album\/\d+$/).map((c) => c.url)).toEqual([
+        'https://api.deezer.com/album/96126',
+      ]);
+      expect(fixtures.callsTo(/itunes\.apple\.com/)).toHaveLength(0);
+      const release = await prisma.release.findUniqueOrThrow({
+        where: { id: result?.releaseId ?? '' },
+      });
+      expect(release).toMatchObject({ title: 'Thriller', artistName: 'Michael Jackson' });
+    });
+
     it('supports dry runs, local-only mode and reports albums it cannot find', async () => {
       const unknown = CuratedAlbumSchema.parse({ artist: 'Nobody', title: 'Nothing At All' });
       const results = await importCuratedAlbums(deps(), [inRainbows, unknown], {

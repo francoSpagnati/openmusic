@@ -181,6 +181,11 @@ export interface UpstreamClientOptions {
   maxQueue?: number;
   /** Retries after the first attempt, on 429 / 5xx / network errors. */
   maxRetries?: number;
+  /**
+   * Extra statuses this provider uses for throttling, retried like 429 (iTunes answers 403 when
+   * called too fast). Never set it globally: a real 403 elsewhere is a permanent refusal.
+   */
+  throttleStatuses?: readonly number[];
   /** First backoff delay; doubles at every retry (plus jitter), capped by `maxBackoffMs`. */
   baseBackoffMs?: number;
   maxBackoffMs?: number;
@@ -212,7 +217,8 @@ const NOT_FOUND_SENTINEL = '__openmusic_not_found__';
 /**
  * HTTP client for one external catalog provider. Every request goes through: response cache →
  * circuit breaker → rate limiter → `fetch` with timeout → retry with exponential backoff on
- * 429/5xx/network errors (honouring `Retry-After`) → Zod validation of the documented shape.
+ * 429/5xx/network errors and the provider's `throttleStatuses` (honouring `Retry-After`) → Zod
+ * validation of the documented shape.
  */
 export class UpstreamClient {
   readonly provider: string;
@@ -221,6 +227,7 @@ export class UpstreamClient {
   private readonly cache: ResponseCache | null;
   private readonly limiter: RateLimiter;
   private readonly maxRetries: number;
+  private readonly throttleStatuses: ReadonlySet<number>;
   private readonly baseBackoffMs: number;
   private readonly maxBackoffMs: number;
   private readonly timeoutMs: number;
@@ -244,6 +251,7 @@ export class UpstreamClient {
       options.burst ?? 1
     );
     this.maxRetries = options.maxRetries ?? 2;
+    this.throttleStatuses = new Set(options.throttleStatuses ?? []);
     this.baseBackoffMs = options.baseBackoffMs ?? 300;
     this.maxBackoffMs = options.maxBackoffMs ?? 5_000;
     this.timeoutMs = options.timeoutMs ?? UPSTREAM_TIMEOUT_MS;
@@ -341,7 +349,11 @@ export class UpstreamClient {
         this.recordSuccess();
         return null;
       }
-      if (response.status === 429 || response.status >= 500) {
+      if (
+        response.status === 429 ||
+        response.status >= 500 ||
+        this.throttleStatuses.has(response.status)
+      ) {
         lastError = new UpstreamRequestError(
           this.provider,
           'HTTP',

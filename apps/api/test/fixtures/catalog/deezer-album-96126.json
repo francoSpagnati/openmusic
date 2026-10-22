@@ -1,0 +1,85 @@
+{
+  "id": 96126,
+  "title": "Thriller",
+  "upc": "074643811224",
+  "link": "https://www.deezer.com/album/96126",
+  "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f01e09ceb8ad1e96707c1b4aadb5911b/1000x1000-000000-80-0-0.jpg",
+  "genre_id": 132,
+  "label": "Epic",
+  "nb_tracks": 3,
+  "release_date": "1983-08-01",
+  "record_type": "album",
+  "available": true,
+  "explicit_lyrics": false,
+  "type": "album",
+  "genres": {
+    "data": [
+      {
+        "id": 132,
+        "name": "Pop",
+        "type": "genre"
+      }
+    ]
+  },
+  "artist": {
+    "id": 259,
+    "name": "Michael Jackson",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/97fae13b2b30e4aec2e8c9e0c7839d92/1000x1000-000000-80-0-0.jpg",
+    "type": "artist"
+  },
+  "tracks": {
+    "data": [
+      {
+        "id": 831216,
+        "readable": true,
+        "title": "Wanna Be Startin' Somethin'",
+        "title_short": "Wanna Be Startin' Somethin'",
+        "link": "https://www.deezer.com/track/831216",
+        "duration": 363,
+        "rank": 835487,
+        "explicit_lyrics": false,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/0/0/0/0/831216.mp3?hdnea=exp=1792600000~acl=*~hmac=00",
+        "artist": {
+          "id": 259,
+          "name": "Michael Jackson",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 831289,
+        "readable": true,
+        "title": "Baby Be Mine",
+        "title_short": "Baby Be Mine",
+        "link": "https://www.deezer.com/track/831289",
+        "duration": 260,
+        "rank": 734443,
+        "explicit_lyrics": false,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/0/0/0/0/831289.mp3?hdnea=exp=1792600000~acl=*~hmac=00",
+        "artist": {
+          "id": 259,
+          "name": "Michael Jackson",
+          "type": "artist"
+        },
+        "type": "track"
+      },
+      {
+        "id": 831298,
+        "readable": true,
+        "title": "The Girl Is Mine (with Paul McCartney)",
+        "title_short": "The Girl Is Mine (with Paul McCartney)",
+        "link": "https://www.deezer.com/track/831298",
+        "duration": 222,
+        "rank": 798350,
+        "explicit_lyrics": false,
+        "preview": "https://cdnt-preview.dzcdn.net/api/1/1/0/0/0/0/831298.mp3?hdnea=exp=1792600000~acl=*~hmac=00",
+        "artist": {
+          "id": 259,
+          "name": "Michael Jackson",
+          "type": "artist"
+        },
+        "type": "track"
+      }
+    ]
+  }
+}

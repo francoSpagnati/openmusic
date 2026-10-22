@@ -1,0 +1,57 @@
+{
+  "data": [
+    {
+      "id": 1012993711,
+      "title": "Thriller (Acoustic Cover)",
+      "link": "https://www.deezer.com/album/1012993711",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/d3d5299593f953fcfcfbf151abf8495d/1000x1000-000000-80-0-0.jpg",
+      "nb_tracks": 1,
+      "record_type": "single",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 195260157,
+        "name": "Arvin Minaskan",
+        "link": "https://www.deezer.com/artist/195260157",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d3d5299593f953fcfcfbf151abf8495d/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    },
+    {
+      "id": 1041431292,
+      "title": "Homenaje al Rey del Pop: Thriller / Beat It / Billie Jean",
+      "link": "https://www.deezer.com/album/1041431292",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/19fc3b611c24a24ba9e14891bd0e1c2c/1000x1000-000000-80-0-0.jpg",
+      "nb_tracks": 1,
+      "record_type": "single",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 1328064,
+        "name": "Miguel Angel Tzul y su Marimba Orquesta",
+        "link": "https://www.deezer.com/artist/1328064",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/b410c1431ed8816237d1166bf35be95e/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    },
+    {
+      "id": 1104009222,
+      "title": "Thriller (The Rythm of Fear)",
+      "link": "https://www.deezer.com/album/1104009222",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/157ec757db57e1dc4b7883aae73faead/1000x1000-000000-80-0-0.jpg",
+      "nb_tracks": 1,
+      "record_type": "single",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 324057741,
+        "name": "Ricardo S. Key",
+        "link": "https://www.deezer.com/artist/324057741",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/ec1b4a6277f62270b6b798be342500d6/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    }
+  ],
+  "total": 58,
+  "next": "https://api.deezer.com/search/album?q=artist%3A%22Michael%20Jackson%22%20album%3A%22Thriller%22&limit=3&index=3"
+}
