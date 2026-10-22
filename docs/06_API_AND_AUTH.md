@@ -154,7 +154,8 @@ sessione obbligatoria · **ROLE** ruolo richiesto.
 | GET        | `/api/catalog/resolve?provider=&type=&id=`            | — (rate limit)                  | `CatalogResolveResult` (vedi §8)                                                                          |
 | GET        | `/api/catalog/releases?genre=&sort=&cursor=&limit=`   | —                               | `ReleasePage`                                                                                             |
 | GET        | `/api/catalog/genres`                                 | —                               | `GenreList`                                                                                               |
-| GET        | `/api/catalog/releases/:id`                           | —                               | `CatalogRelease` + tracce (import completo 1ª volta)                                                      |
+| GET        | `/api/catalog/releases/:id`                           | —                               | `CatalogRelease` + tracce, `group`, `otherEditions` (import completo 1ª volta)                            |
+| GET        | `/api/catalog/release-groups/:id`                     | —                               | `ReleaseGroupDetail`: album come opera + edizioni + voti aggregati (ADR-012, vedi §8)                     |
 | GET        | `/api/catalog/preview?title=&artist=&isrc=`           | — (rate limit)                  | `AudioPreviewResult` (Deezer → iTunes, vedi §8)                                                           |
 | POST       | `/api/reviews`                                        | auth                            | crea/aggiorna, 201 `ReviewItem`                                                                           |
 | GET        | `/api/reviews/release/:releaseId`                     | opt                             | `ReviewItem[]`                                                                                            |
@@ -279,12 +280,62 @@ per 30 s).
 
 **Import e id.** `CatalogImportService` trasforma i risultati in righe locali con **UUID interni**
 e id esterni nelle colonne `deezerId`, `itunesId`, `musicbrainzId`, `upc`, `isrc` (+ tabella
-`Artist`). Cerca la riga esistente per id del provider → UPC/ISRC → titolo + artista normalizzati
-(`catalogMatchKey` in `@openmusic/shared`), quindi lo stesso album da Deezer, iTunes, MusicBrainz o
-dal seed converge su **una** release e ripetere l'import non crea duplicati. Le righe del seed
-(senza id esterni) vengono aggiornate sul posto: copertina, data, etichetta, tracklist e ISRC reali,
+`Artist`). Una riga `Release` è **una edizione** (ADR-012) e lo stesso album da Deezer, iTunes,
+MusicBrainz o dal seed converge su una riga **solo se è la stessa edizione**:
+
+1. stesso id del provider, oppure stesso UPC/EAN (normalizzato), oppure stesso MBID di release;
+2. altrimenti, senza UPC/MBID/id dello stesso provider in conflitto: stesso artista principale,
+   stesso titolo **con** i marcatori di edizione (`editionMatchKey` in `@openmusic/shared`),
+   stesso anno e stesso numero di tracce;
+3. se l'anno o il numero di tracce manca da una parte (risultati di ricerca Deezer senza data,
+   righe del seed) si unisce solo a un candidato **unico** e mai a una riga che un altro provider
+   ha già importato per intero.
+
+Marcatori di edizione (da qualificatori `(…)`, `[…]`, ` - …` del titolo o dalla disambiguation di
+MusicBrainz): remaster(ed), deluxe, super, expanded, anniversary, edition, version, mono/stereo,
+reissue, bonus, più anni e ordinali che li accompagnano ("2009 Remaster" = "Remastered 2009",
+"Deluxe" ≠ "Super Deluxe"). **Explicit/clean non sono edizioni**: le due versioni della stessa
+edizione possono stare nella stessa riga. **Non sono edizioni ma altre registrazioni**, quindi
+restano nel titolo dell'opera e formano un gruppo a parte (come in MusicBrainz): live, unplugged,
+acoustic, instrumental, remix, sped up/slowed, demo, re-recorded e "Taylor's Version"; anche
+"(with …)" resta nel titolo ("con l'orchestra" è un'altra registrazione), mentre "(feat. …)" è un
+credito e viene tolto. Se l'import completo di un id
+contraddice la riga a cui era stato agganciato (UPC diverso, anni distanti più di 1, numero di
+tracce diverso) l'id viene staccato e l'edizione importata nella sua riga. Le righe del seed (senza
+id esterni) vengono aggiornate sul posto: copertina, data, etichetta, tracklist e ISRC reali,
 recensioni e post restano collegati. I client ricevono **sempre** UUID: gli id `deezer-…` non
 esistono più (la migrazione `20261021180000_catalog_external_ids` ha convertito quelli vecchi).
+
+**Edizioni e release group (ADR-012).** Ogni edizione appartiene a un `ReleaseGroup` (l'album come
+opera): per MBID di release group quando MusicBrainz lo conosce, altrimenti per titolo senza
+marcatori + artista con controllo dell'anno (due album omonimi di anni diversi, come i "Weezer"
+del 1994 e del 2001, restano due gruppi). Un risultato di ricerca senza data finisce nell'unico
+gruppo con quel titolo; quando l'import completo ne rivela l'anno e questo contraddice le
+edizioni non marcate del gruppo (gruppo euristico, senza MBID), l'edizione viene spostata in un
+altro gruppo. L'arricchimento MusicBrainz (barcode → ISRC → ricerca,
+sempre verificando che sia la **stessa edizione**) salva paese, formato, stato, disambiguation e
+sposta l'edizione nel gruppo MusicBrainz giusto.
+
+- `CatalogRelease` ha in più `editionLabel` ("Remastered 2009", "Super Deluxe Edition"; `null` =
+  edizione originale/non marcata), `country`, `format` e `group: { id, title, firstYear } | null`
+  (presente in ricerca, esplora, resolve e dettaglio; assente nei payload di altri moduli).
+- `GET /api/catalog/releases/:id` aggiunge `otherEditions: EditionSummary[]` (le altre edizioni
+  dello stesso gruppo, dalla più vecchia; `[]` se è l'unica).
+- `GET /api/catalog/release-groups/:id` → `ReleaseGroupDetail`
+  `{ id, title, artistName, primaryType: ALBUM|EP|SINGLE|LIVE|COMPILATION|OTHER, firstYear,
+coverUrl, dominantColor, genres, externalIds: { musicbrainz }, scores, editions, editionsSyncing }`.
+  `EditionSummary` = `{ id, title, editionLabel, releaseType, releaseDate, year, country, format,
+label, trackCount, coverUrl, dominantColor, audienceAvg, audienceCount, criticAvg, criticCount }`.
+  `scores` (`audienceAvg/FreshPct/Count`, `criticAvg/FreshPct/Count`) aggrega le recensioni di
+  tutte le edizioni con i pesi di ADR-001/002, **un voto per utente** (la sua recensione più
+  recente nel gruppo). Le recensioni restano per edizione. Se il gruppo ha un MBID, alla prima
+  apertura (e poi ogni 30 giorni) le altre edizioni ufficiali vengono lette da MusicBrainz in
+  background (una richiesta browse, max 25 edizioni distinte importate, una per titolo con
+  marcatori + anno + numero di tracce: le ristampe per paese/formato non diventano righe nuove):
+  `editionsSyncing: true` = ricaricare più tardi. Se la lettura fallisce (MusicBrainz non
+  raggiungibile) il gruppo resta "da sincronizzare", ma un nuovo tentativo parte al massimo ogni
+  10 minuti per gruppo e per processo: le visite anonime alla pagina non generano una richiesta a
+  MusicBrainz ciascuna. 404 se il gruppo non esiste.
 
 **Ricerca** `GET /api/catalog/search` — query `q`, `type=all|releases|tracks`, `page>=1`,
 `limit 1..25` (default 10), `external=true|false`. Risposta `SearchResult`:
@@ -307,8 +358,8 @@ Importa al primo uso; accetta anche i vecchi id `deezer-alb-<n>` / `deezer-trk-<
 valido, 404 non trovato dal provider, 502 `UPSTREAM_ERROR` provider irraggiungibile.
 
 `CatalogRelease` ha in più `label`, `upc` (senza zeri iniziali), `trackCount`, `coverSource`
-(`DEEZER | ITUNES | COVER_ART_ARCHIVE | null`) ed `externalIds`; `CatalogTrack` ha `trackNumber`,
-`discNumber`, `externalIds`.
+(`DEEZER | ITUNES | COVER_ART_ARCHIVE | null`), `externalIds` e i campi di edizione descritti
+sopra; `CatalogTrack` ha `trackNumber`, `discNumber`, `externalIds`.
 
 **Anteprime** `GET /api/catalog/preview?title=&artist=&isrc=` → `AudioPreviewResult`
 `{ previewUrl, source: DEEZER | ITUNES | NONE, durationSeconds: 30 }`. Ordine: Deezer per ISRC,
@@ -343,7 +394,22 @@ npm run catalog:import -- --file curated-albums.json    # ~46 album reali (apps/
 npm run catalog:import -- --file curated-albums.json --dry-run --limit 5
 npm run db:seed          # seed offline + upgrade dei dischi del seed con dati reali se Deezer risponde
 npm run db:seed:offline  # solo seed offline
+npm run catalog:audit    # righe probabilmente unite per errore (exit 1 se ne trova)
+npm run catalog:audit -- --json | --split
+npm run catalog:audit -- --repair-group-keys   # una volta dopo la migrazione delle edizioni
 ```
+
+`catalog:audit` segnala le release con posizioni di traccia duplicate, titoli di brano duplicati o
+più tracce del conteggio del provider (il segno di due album omonimi fusi dal vecchio dedupe per
+solo titolo). `--split` non indovina quali tracce appartengono a quale album: **azzera** la riga a
+una sola edizione (tiene un id di provider, toglie gli altri, UPC, tracklist e gruppo) così che
+venga reimportata pulita alla prossima apertura; rifiuta (`refused-user-content`) le righe con
+recensioni, post, scrobble, playlist o messaggi collegati, che vanno decise a mano.
+`--repair-group-keys` ricalcola `ReleaseGroup.matchKey`: la migrazione delle edizioni l'ha copiato
+dalla vecchia chiave della release (NULL sulle righe legacy, diversa per titoli come "Album -
+Deluxe Version"), e con la chiave sbagliata la prossima edizione dello stesso album aprirebbe un
+gruppo doppione. Tocca solo quella colonna ed è idempotente; senza il flag lo script segnala
+quanti gruppi hanno la chiave da ricalcolare.
 
 Opzioni di `catalog:import`: `--dry-run`, `--no-enrich` (salta MusicBrainz, 1 req/s),
 `--only-local` (solo album già nel DB), `--if-online` (esce con 0 se Deezer è irraggiungibile),

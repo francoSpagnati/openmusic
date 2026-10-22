@@ -20,6 +20,7 @@
 | 009 | Tipi di reazione alle recensioni                    | Accettata                      | Sì                   |
 | 010 | Catalogo da database musicali esterni               | Accettata                      | Sì, solo su fixture  |
 | 011 | App mobile: Expo SDK 58 ed expo-router              | Accettata                      | Mai su device        |
+| 012 | Edizioni e release group (modello MusicBrainz)      | Accettata                      | Sì, solo su fixture  |
 
 ---
 
@@ -216,8 +217,9 @@
      gli schemi di `@openmusic/shared` come il web.
   4. `expo-image` per le cover, `expo-audio` per le anteprime, font del design system
      (`@expo-google-fonts/*`) inclusi nel bundle.
-  5. Nel monorepo il web resta su React 18: React 19 vive in `apps/mobile/node_modules` e un
-     resolver (`tooling/mobile-first.js`) lo impone a Metro e Jest.
+  5. Nel monorepo il web restava su React 18: React 19 viveva in `apps/mobile/node_modules` e un
+     resolver (`tooling/mobile-first.js`) lo imponeva a Metro e Jest. Dall'aggiornamento del web a
+     Next.js 16 entrambe le app usano React 19.3.0, installata una sola volta in root.
 - **Alternative scartate:**
   - **Restare su SDK 51:** niente Expo Go dagli store, dipendenze ferme.
   - **React Navigation configurata a mano:** stessa libreria sotto expo-router, ma più codice di
@@ -230,6 +232,94 @@
   - I moduli nativi di ADR-004 richiederanno un development build al posto di Expo Go.
   - **Stato di verifica:** typecheck, Jest ed `expo export` iOS/Android passano; l'app non è mai
     stata eseguita su dispositivo, simulatore o Expo Go.
+
+### ADR-012: Edizioni e release group (modello MusicBrainz)
+
+- **Data:** 2026-10.
+- **Contesto:** il dedupe di ADR-010 univa le release per titolo + artista normalizzati togliendo
+  i qualificatori di edizione: un remaster finiva nella riga dell'originale e due album omonimi
+  dello stesso artista (i "Weezer" del 1994, 2001, 2008…) potevano fondersi in una riga con due
+  tracklist. Il proprietario del prodotto ha deciso: si uniscono **solo le stesse edizioni**;
+  ristampe e remaster sono album distinti; l'identità si basa su un database musicale reale,
+  affidabile e aggiornato.
+- **Decisione:**
+  1. **Modello MusicBrainz come fonte di verità dell'identità.** `ReleaseGroup` = l'album come
+     opera (MBID del release group, titolo senza marcatori, artista principale, anno della prima
+     edizione, tipo `ALBUM | EP | SINGLE | LIVE | COMPILATION | OTHER`, dove Live e Compilation
+     sono promossi dai tipi secondari di MusicBrainz). `Release` = **una edizione** (MBID di
+     release, UPC/EAN, data, paese, formato, stato, disambiguation, `editionLabel`, numero di
+     tracce). Deezer e iTunes restano fonti di media (cover, anteprime, ISRC) agganciate
+     all'edizione a cui corrispondono davvero (Deezer ha id e UPC distinti per edizione).
+  2. **Stessa riga solo per la stessa edizione:** stesso id di provider; oppure stesso UPC
+     normalizzato; oppure stesso MBID di release; oppure, senza UPC/MBID/id dello stesso provider
+     in conflitto, stesso titolo **con** i marcatori di edizione + stesso artista principale +
+     stesso anno + stesso numero di tracce (`compareEditions` in `@openmusic/shared`). Con dati
+     incompleti (risultato di ricerca senza data, riga del seed) si unisce solo a un candidato
+     unico e mai a una riga già importata per intero da un altro provider. Marcatori: remaster,
+     deluxe, super, expanded, anniversary, edition, version, mono, stereo, reissue, bonus
+     (con anni e ordinali). **Emendamento (review avversariale, 2026-10-22):** live, unplugged,
+     acoustic, instrumental, remix, sped up/slowed, demo, re-recorded, "Taylor's Version" e
+     "(with …)" non sono marcatori di edizione ma **altre registrazioni**: restano nel titolo
+     dell'opera e quindi in un release group a parte, come in MusicBrainz (prima "Fearless
+     (Taylor's Version)" e "X (Live)" finivano nel gruppo dell'originale e nel suo voto
+     complessivo). **Explicit e clean della stessa edizione possono unirsi:** stessa
+     musica e stesso prodotto discografico per chi recensisce; restano separate se hanno UPC o id
+     dello stesso provider diversi.
+  3. **Edizioni diverse, stesso gruppo:** per MBID del release group quando noto; altrimenti
+     titolo senza marcatori + artista, con controllo dell'anno (un'edizione senza marcatori con
+     un anno diverso è un altro album) e, se ambiguo, un gruppo nuovo che MusicBrainz potrà
+     correggere. **Emendamento (2026-10-22):** un'edizione senza data agganciata all'unico gruppo
+     con quel titolo viene spostata quando l'import completo ne rivela un anno incompatibile con
+     le edizioni non marcate del gruppo (prima restava per sempre nel gruppo sbagliato: il
+     "Weezer" del 2001 tra le edizioni di quello del 1994).
+  4. **Autocorrezione:** se l'import completo di un id di provider contraddice la riga a cui era
+     agganciato (UPC diverso, anni distanti più di 1, tracce diverse, marcatori diversi), l'id
+     viene staccato e l'edizione importata nella sua riga, portando con sé le sue tracce.
+  5. **MusicBrainz canonico:** l'arricchimento risolve la release per barcode → ISRC → ricerca,
+     accettando ISRC e ricerca solo se è la stessa edizione; salva paese, formato, stato e
+     disambiguation; sposta l'edizione nel release group di MusicBrainz. Le edizioni sorelle si
+     leggono in modo pigro (browse del release group all'apertura della pagina del gruppo, al
+     massimo ogni 30 giorni, max 25 edizioni distinte; dopo un errore si riprova al massimo ogni
+     10 minuti per gruppo). Rate limit, `User-Agent` e cache di ADR-010 invariati.
+  6. **Voti:** le recensioni restano **per edizione**. Il gruppo espone voti aggregati calcolati
+     sulle recensioni di tutte le edizioni con i pesi di ADR-001/002 e **un voto per utente** (la
+     recensione più recente nel gruppo). Scostamento motivato dalla proposta iniziale "media delle
+     medie pesata per numero di recensioni": è equivalente quando ogni utente recensisce una sola
+     edizione, ma non conta due volte chi recensisce originale e remaster e conserva il peso
+     dell'ascolto verificato.
+  7. **Migrazione** `20261022090000_release_groups_editions`: un gruppo per ogni release esistente,
+     unendo le release che condividono già un MBID di release group; titolo del gruppo ripulito
+     dai marcatori in SQL. `npm run catalog:audit` segnala le righe probabilmente fuse per errore
+     dal vecchio dedupe; `--split` le azzera a una sola edizione solo se nessun contenuto utente
+     vi punta. **Emendamento (2026-10-22):** la migrazione copia in `ReleaseGroup.matchKey` la
+     vecchia chiave della release, che non coincide sempre con `releaseGroupMatchKey()` (ed è
+     NULL sulle righe legacy): `npm run catalog:audit -- --repair-group-keys` va eseguito una
+     volta dopo la migrazione. La migrazione non è stata modificata perché è già applicata al DB
+     di sviluppo; il suo `work_title` SQL toglie ancora "live" dal titolo mostrato del gruppo
+     (solo testo, la chiave riparata è quella giusta).
+- **Dettagli:** `06` §8 (regole, payload, endpoint), `03` §8.
+- **Alternative scartate:**
+  - **Una sola riga per opera (release group) con le edizioni come metadati:** le recensioni di
+    un remaster o di una deluxe con tracce in più finirebbero sull'originale, contro la decisione
+    del proprietario.
+  - **Discogs come fonte di identità:** modello master/release equivalente, ma token obbligatorio,
+    60 req/min e licenza dei dati meno aperta di MusicBrainz (CC0).
+  - **Unire anche per titolo base + artista quando anno e tracce coincidono:** è il bug dei
+    remaster con lo stesso numero di tracce.
+- **Conseguenze:**
+  - La ricerca esterna continua a nascondere, nella stessa pagina di risultati, due risultati
+    dello stesso provider con stesso titolo, numero di tracce e nessuna data (scelta di ADR-010
+    per i doppioni dei negozi, coperta da test). Effetto collaterale noto e non corretto: due
+    album omonimi con lo stesso numero di tracce (alcuni "Peter Gabriel") mostrano solo il primo
+    nella ricerca esterna.
+  - Possibili **duplicati** della stessa edizione quando i provider non concordano (data
+    digitale di un anno diversa, titolo con o senza "Remastered"): si preferisce un duplicato
+    visibile tra le edizioni del gruppo a una fusione sbagliata. MusicBrainz (UPC/MBID) li
+    riconcilia quando li conosce.
+  - La ricerca restituisce edizioni: i client mostrano `editionLabel` e l'anno e linkano la
+    pagina del gruppo.
+  - **Stato di verifica:** come ADR-010, solo fixture costruite sulla forma documentata delle
+    API (browse MusicBrainz incluso); nessuna chiamata live.
 
 ---
 

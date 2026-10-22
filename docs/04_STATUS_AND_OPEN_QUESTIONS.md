@@ -1,6 +1,7 @@
 # 04 · Stato del progetto e questioni aperte
 
-> **Ultimo aggiornamento:** 2026-10-21, branch `ccr-8d035389-g64pel`.
+> **Ultimo aggiornamento:** 2026-10-22, branch `ccr-8d035389-g64pel` (modifiche non ancora
+> committate: Next.js 16, edizioni ADR-012, UI delle edizioni, correzioni della review).
 > Questo documento dice cosa **funziona davvero**, cosa è parziale e cosa manca. Le versioni
 > precedenti segnavano come "completate" milestone che erano solo componenti su dati mock: qui
 > una voce è "reale" solo se è collegata all'API, persiste su database ed è coperta da test o
@@ -13,9 +14,9 @@
 | `npm ci` (copia pulita dei manifest + lockfile)       | passa, lockfile allineato                                     |
 | `npm run lint`                                        | passa (api, db, shared, web + e2e)                            |
 | `npm run typecheck`                                   | passa su 5/5 pacchetti, mobile incluso                        |
-| `npm test` (dopo `db:test:prepare`)                   | shared 41/41, api 130/130 (catalogo su fixture), mobile 58/58 |
-| Build web (`next build`)                              | passa                                                         |
-| `npm run e2e` (Playwright, 10 test, DB nuovo + seed)  | passa in locale                                               |
+| `npm test` (dopo `db:test:prepare`)                   | shared 54/54, api 149/149 (catalogo su fixture), mobile 66/66 |
+| Build web (`next build`, Next 16.4.2)                 | passa                                                         |
+| `npm run e2e` (Playwright, 12 test, DB + seed)        | passa in locale                                               |
 | `expo export` iOS + Android (`EXPO_OFFLINE=1`)        | passa (bundle Hermes ~5 MB per piattaforma)                   |
 | CI GitHub (`ci.yml`, job `verify` + `mobile` + `e2e`) | round 1 verde su GitHub; questo round non ancora eseguito     |
 
@@ -34,7 +35,7 @@ proxy risponde 403 a `CONNECT`). Quindi:
 | Copertine e anteprime reali in web e mobile                | nessuno                                                                | **no**                               |
 | `npm run catalog:smoke`                                    | eseguito: **6/6 falliti** per rete bloccata (nessun mock nello script) | **da rifare con rete**               |
 | Durata dei token delle anteprime Deezer (`hdnea=exp=…`)    | nessuno                                                                | **no**                               |
-| App mobile                                                 | typecheck, Jest (58), `expo export` iOS/Android                        | **no** (mai su device/simulatore/Go) |
+| App mobile                                                 | typecheck, Jest (66), `expo export` iOS/Android                        | **no** (mai su device/simulatore/Go) |
 | OAuth Spotify/Last.fm, Google Fonts nella build via turbo  | nessuno                                                                | **no**                               |
 
 Le fixture sono plausibili ma non registrate da risposte reali: se un servizio restituisce un
@@ -73,19 +74,20 @@ ricerca ricade sui risultati locali. Il primo passo con la rete è `npm run cata
 
 ### Web (`apps/web`) — tutte le pagine sull'API reale, nessun dato mock
 
-| Pagina                          | Cosa fa                                                                                                   |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `/auth`                         | Registrazione e login, redirect sicuro a `?next=`                                                         |
-| `/`                             | Feed (seguiti/globale), composizione post, amici in ascolto, suggerimenti                                 |
-| `/explore`                      | Ricerca, filtri per genere/ordinamento, griglia release, Roulette dei generi                              |
-| `/releases/[id]`                | Scheda SSR con SEO, tracklist, anteprime, dual score, recensioni e reazioni, compositore con bozza locale |
-| `/reels`                        | Feed verticale con anteprime pre-caricate                                                                 |
-| `/chat`                         | Inbox, conversazione, invio brano, reazioni, "ascoltato", aggiornamenti live                              |
-| `/notifications`                | Elenco, segna come lette, arrivo live                                                                     |
-| `/profile`, `/profile/[handle]` | Profilo, statistiche, heavy rotation, follow                                                              |
-| `/settings`                     | Profilo, password, Ghost Mode, collegamento Spotify/Last.fm                                               |
-| `/critics`                      | Richiesta di accredito, coda ADMIN                                                                        |
-| `/videos`                       | Feed video, pubblicazione per ruoli abilitati                                                             |
+| Pagina                          | Cosa fa                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `/auth`                         | Registrazione e login, redirect sicuro a `?next=`                                                     |
+| `/`                             | Feed (seguiti/globale), composizione post, amici in ascolto, suggerimenti                             |
+| `/explore`                      | Ricerca (edizioni dello stesso album in una card, "N edizioni"), filtri, griglia, Roulette dei generi |
+| `/releases/[id]`                | Scheda SSR con SEO, edizione e "Altre edizioni", tracklist, anteprime, dual score, recensioni, bozza  |
+| `/albums/[groupId]`             | Album come opera (ADR-012): voto complessivo di tutte le edizioni ed elenco edizioni con i loro voti  |
+| `/reels`                        | Feed verticale con anteprime pre-caricate                                                             |
+| `/chat`                         | Inbox, conversazione, invio brano, reazioni, "ascoltato", aggiornamenti live                          |
+| `/notifications`                | Elenco, segna come lette, arrivo live                                                                 |
+| `/profile`, `/profile/[handle]` | Profilo, statistiche, heavy rotation, follow                                                          |
+| `/settings`                     | Profilo, password, Ghost Mode, collegamento Spotify/Last.fm                                           |
+| `/critics`                      | Richiesta di accredito, coda ADMIN                                                                    |
+| `/videos`                       | Feed video, pubblicazione per ruoli abilitati                                                         |
 
 L'unico dato statico rimasto è l'elenco di generi di riserva in `GenrePicker`, usato solo se il
 catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsplash.
@@ -95,9 +97,10 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - ESLint + Prettier configurati; CI (Node 22 da `.nvmrc`) con job `verify` (lint, typecheck,
   test con `CATALOG_EXTERNAL_ENABLED=false`, build), `mobile` (typecheck, Jest, export iOS/Android
   offline) ed `e2e`.
-- Vitest: 41 test in `packages/shared`, 130 in `apps/api` (integrazione su Postgres/Redis reali,
-  catalogo su fixture). Jest: 58 test in `apps/mobile`.
-- Playwright (10 test): registrazione, login, feed, apertura release, recensione, messaggio in chat.
+- Vitest: 54 test in `packages/shared`, 149 in `apps/api` (integrazione su Postgres/Redis reali,
+  catalogo su fixture). Jest: 66 test in `apps/mobile`.
+- Playwright (12 test): registrazione, login, feed, apertura release, recensione, messaggio in
+  chat, ricerca che raggruppa le edizioni, pagina album, 404 reali di release e album.
 
 ## 3. Cosa è parziale o manca
 
@@ -118,10 +121,46 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - [x] ~~Import concorrenti dello stesso album creavano righe duplicate~~: lock per chiave di match
       e fusione sulla riga esistente in caso di conflitto unique (`03` §8.3), con test.
 - [x] ~~`/preview` chiamava Deezer/iTunes anche con `CATALOG_EXTERNAL_ENABLED=false`~~.
+- [x] ~~Album omonimi dello stesso artista (i vari "Weezer") uniti sulla stessa riga~~: modello
+      a edizioni + release group (ADR-012), regole di unione per edizione, autocorrezione degli id
+      agganciati per errore e `npm run catalog:audit` per le righe già fuse. Su fixture.
+- [ ] Edizioni (ADR-012): duplicati possibili della stessa edizione quando i provider non
+      concordano su anno o titolo (si preferisce il duplicato alla fusione sbagliata).
+- [ ] **Review avversariale delle edizioni e di Next 16 (2026-10-22).** Corretto, con test:
+  - [x] ~~Un risultato di ricerca senza data restava per sempre nel gruppo sbagliato~~ (il
+        "Weezer" del 2001 tra le edizioni di quello del 1994, con le sue recensioni nel voto
+        complessivo): ora viene spostato quando l'import completo ne rivela l'anno;
+  - [x] ~~Ri-registrazioni, live e "(with …)" nello stesso gruppo dell'originale~~ ("Fearless
+        (Taylor's Version)", "X (Live)", "X (with the London Symphony Orchestra)"; quest'ultimo
+        era trattato perfino come la stessa edizione): ora sono opere distinte, come in
+        MusicBrainz;
+  - [x] ~~Chiavi dei gruppi creati dalla migrazione~~ non confrontabili con quelle usate per
+        agganciare le nuove edizioni (NULL sulle righe legacy, diverse per "Album - Deluxe
+        Version"): la prossima edizione apriva un gruppo doppione. Riparazione con
+        `npm run catalog:audit -- --repair-group-keys`, **da eseguire una volta** su ogni DB già
+        migrato (sul DB di sviluppo locale, dopo il seed, segnala 0 chiavi da ricalcolare);
+  - [x] ~~Ogni visita alla pagina album dopo una sincronizzazione MusicBrainz fallita accodava
+        un'altra richiesta a MusicBrainz~~ (endpoint anonimo e senza rate limit): ora al massimo
+        un tentativo ogni 10 minuti per gruppo e per processo.
+  - Verificato e **senza problemi**: `params`/`searchParams` sempre attesi con `await`, nessun
+    `cookies()`/`headers()` lato server, le pagine SSR chiamano l'API senza cookie (nessun dato
+    per utente in cache condivisa), `fetch` non in cache in Next 16, `images.remotePatterns`
+    invariato (nessun proxy aperto), `proxy.ts` equivalente al vecchio `middleware.ts`, 404 reali
+    da `layout.tsx`; migrazione solo additiva (FK `ON DELETE SET NULL`, nessuna colonna tolta,
+    test del backfill su uno schema temporaneo).
+  - **Non corretto (scelta precedente, documentata in ADR-012):** la ricerca esterna nasconde
+    nella stessa pagina due risultati dello stesso provider con titolo e numero di tracce uguali
+    e senza data. Serve per i doppioni dei negozi (Deezer ha due "In Rainbows"), ma nasconde
+    anche album omonimi con lo stesso numero di tracce. Da rivedere con dati reali.
+  - **Rischio accettato:** un risultato senza data può ancora agganciarsi per errore alla riga
+    di un altro album non ancora importata per intero (caso "seed Weezer"); l'import completo lo
+    stacca (ADR-012 §4), ma fino ad allora la riga mostra dati misti.
+- [x] ~~UI delle edizioni~~: chip dell'edizione, formato/paese/etichetta, "Altre edizioni" e
+      pagina album (`/albums/[groupId]` sul web, `album/[id]` su mobile) con voto complessivo
+      separato da quello della singola edizione; la ricerca raggruppa le edizioni; il compositore
+      dice quale edizione si sta recensendo. Il seed offline ha Random Access Memories in due
+      edizioni (2013 e 10th Anniversary Edition 2023) per e2e e sviluppo.
 - [ ] **Catalogo, dalla review dell'import** (non ancora corretti):
-  - album omonimi dello stesso artista (es. i vari "Weezer") con id Deezer diversi vengono uniti
-    sulla stessa riga per `matchKey` e le tracklist si sommano. Serve una regola (id diverso dello
-    stesso provider + anno diverso = release diversa) che non rompa l'unione explicit/clean;
   - `GET /api/catalog/resolve` è limitato a 60/min per IP, ma la pagina web
     `/releases/external/...` lo chiama in SSR dall'IP del server web: tutti gli utenti anonimi
     condividono lo stesso limite. Servono chiave per utente o un IP inoltrato e fidato;
@@ -158,8 +197,8 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 
 ### Minori
 
-- [ ] Una release inesistente mostra la pagina "non trovato" ma risponde 200 anche nella build di
-      produzione (lo streaming del `loading` parte prima del 404).
+- [x] ~~Una release inesistente rispondeva 200~~: il controllo è in `releases/[id]/layout.tsx`
+      (prima del boundary `loading`), lo stesso per `/albums/[groupId]`; coperto da e2e.
 - [ ] Titoli troncati in "Dischi del momento" a 1280 px.
 
 ## 4. Mobile (`apps/mobile`): stato e prossimi passi
@@ -167,8 +206,8 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 **Stato:** Expo SDK 58 (React Native 0.88, React 19.3), Expo Router, client API tipizzato con
 Bearer in `expo-secure-store`, socket autenticato con `auth: { token }`, font e tema del design
 system. Home, Esplora, Reels (anteprime da 30 s con `expo-audio`), release (recensioni,
-reazioni, punteggi), chat, notifiche, profili e impostazioni usano l'API reale; nessun dato mock.
-Verificato con typecheck, Jest (58 test, anche sull'albero di route reale con API finta) ed
+reazioni, punteggi, edizioni), album (edizioni e voto complessivo), chat, notifiche, profili e impostazioni usano l'API reale; nessun dato mock.
+Verificato con typecheck, Jest (66 test, anche sull'albero di route reale con API finta) ed
 `expo export`; **mai provato su dispositivo, simulatore o Expo Go**, né contro un'API live.
 Richiede Node >= 22.13. Dettagli in `apps/mobile/README.md`.
 
@@ -182,15 +221,23 @@ Mancano / da decidere:
 - [ ] Componenti vecchi in `src/components/` non più usati (`LiveFriendsBar`, `MusicChatBubble`,
       `UserProfileView`, `DiscoveryReelsFeed`, `GenreRouletteWheel`, `ReleaseHeaderCard`,
       `DualScoreCard`, `ReviewComposer`, `CriticReviewCard`, `MusicVideoPlayerCard`): da eliminare.
-- [ ] Il typecheck carica sia i tipi di React 18 (web, root) sia di React 19 (mobile).
+- [x] Web e mobile usano la stessa React 19.3.0 (una sola copia in root, insieme a React Native
+      0.88): il typecheck non carica più due versioni dei tipi di React.
+- [ ] Web: le regole React Compiler di `eslint-plugin-react-hooks` 7 (`refs`,
+      `set-state-in-effect`, `immutability`) sono spente in `apps/web/eslint.config.mjs` (~65 punti
+      usano di proposito il pattern "ultimo valore in un ref"); riattivarle insieme al React
+      Compiler.
+- [ ] Mobile: `tooling/mobile-first.js` (e il paragrafo in `apps/mobile/README.md`) descrive ancora
+      React 18 in root; ora non ci sono copie mobile da preferire e il resolver è un no-op.
 - [ ] Solo dopo: modulo Android (ongoing notification, `NotificationListenerService`) e widget iOS /
       Live Activity (ADR-004).
 
 ## 5. Questioni aperte
 
-1. **Next.js:** `14.2.15` → l'ultima patch `14.2.35` ha le stesse dipendenze e peer
-   (React 18.2); va aggiornata insieme a `eslint-config-next` in una PR dedicata (cambia il
-   lockfile).
+1. ~~**Next.js 14**~~: aggiornato a Next.js 16.4 + React 19.3 (Next 14 è fuori supporto e
+   `npm audit` segnalava advisory critiche, RCE nell'image optimizer inclusa). `params` /
+   `searchParams` sono Promise, `middleware.ts` è diventato `proxy.ts`, `next lint` è sostituito
+   dalla CLI di ESLint 9 (flat config), `npm run typecheck` del web esegue prima `next typegen`.
 2. ~~Ordine del resolver anteprime (ADR-003)~~: risolto emendando l'ADR (Deezer → iTunes, Spotify
    escluso; vedi ADR-010). Resta da verificare dal vivo la durata degli URL Deezer firmati.
 3. **Media bayesiana:** attivarla ora (con `m` e `C` dell'ADR-001) o quando il catalogo ha abbastanza

@@ -7,7 +7,7 @@
 
 ## 1. Progetto
 
-Social network musicale open-source: Next.js 14 (web) + Expo (mobile) + Fastify/Socket.io (API) +
+Social network musicale open-source: Next.js 16 (web) + Expo (mobile) + Fastify/Socket.io (API) +
 PostgreSQL/Prisma + Redis, in un monorepo Turborepo. Il maintainer ha solide basi TypeScript/Java/
 Python/C ed è in fase di ramp-up su React Native: quando introduci pattern specifici di RN/Expo
 (worklet Reanimated, moduli nativi) commenta il _perché_.
