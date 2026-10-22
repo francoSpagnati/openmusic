@@ -11,7 +11,7 @@ import { SESSION_COOKIE_NAME } from '@openmusic/shared';
 import { env } from './config/env';
 import { registerAuth } from './lib/auth';
 import { BackgroundQueue } from './lib/background';
-import { RedisResponseCache, type Clock, type FetchLike } from './lib/upstream';
+import { RedisResponseCache, systemClock, type Clock, type FetchLike } from './lib/upstream';
 import { createCatalogProviders, type CatalogProviders } from './modules/catalog/providers';
 import { CatalogImportService } from './modules/catalog/catalog-import.service';
 import { CatalogEnrichmentService } from './modules/catalog/catalog-enrichment.service';
@@ -20,6 +20,16 @@ import { createRealtimeEmitter, type OpenMusicIo } from './lib/realtime';
 import { NowPlayingService } from './modules/now-playing/now-playing.service';
 import { registerNowPlayingGateway } from './modules/now-playing/now-playing.gateway';
 import { createNowPlayingRoutes } from './modules/now-playing/now-playing.routes';
+import { NowPlayingThrottle } from './modules/now-playing/now-playing.throttle';
+import { ListeningActivity } from './modules/now-playing/listening-activity';
+import { PollScheduler } from './modules/now-playing/poll-scheduler';
+import { ProviderSyncStore } from './modules/now-playing/provider-sync.store';
+import { ScrobbleRecorder } from './modules/now-playing/scrobble-recorder';
+import {
+  NowPlayingPoller,
+  type NowPlayingPollerDeps,
+  type NowPlayingPollerOptions,
+} from './modules/now-playing/now-playing.poller';
 import { SpotifyService } from './modules/auth/spotify.service';
 import { LastFmService } from './modules/auth/lastfm.service';
 import { AuthService } from './modules/auth/auth.service';
@@ -75,6 +85,20 @@ export interface AppContext {
   spotifySyncService: SpotifySyncService;
   usersService: UsersService;
   feedService: FeedService;
+  spotifyService: SpotifyService;
+  lastFmService: LastFmService;
+  /** ADR-013: background Spotify/Last.fm reader. Built here, started only by server.ts. */
+  nowPlayingPoller: NowPlayingPoller;
+  /** What the poller was built with (tests build a second instance from it). */
+  nowPlayingPollerDeps: NowPlayingPollerDeps;
+  nowPlayingPollerOptions: NowPlayingPollerOptions;
+  pollScheduler: PollScheduler;
+  listeningActivity: ListeningActivity;
+  providerSyncStore: ProviderSyncStore;
+  scrobbleRecorder: ScrobbleRecorder;
+  nowPlayingThrottle: NowPlayingThrottle;
+  /** Scrobble writes / catalog resolution queued by the poller. */
+  pollerBackground: BackgroundQueue;
 }
 
 export interface BuildAppOptions {
@@ -92,10 +116,25 @@ export interface BuildAppOptions {
   /** Socket gateway tuning (tests shorten these). */
   nowPlayingIntervalMs?: number;
   sessionRecheckMs?: number;
+  /**
+   * `fetch` for Spotify and Last.fm (linked accounts). Tests inject fixtures; when omitted in
+   * NODE_ENV=test every call fails immediately.
+   */
+  providerFetch?: FetchLike;
+  /** Overrides LASTFM_API_KEY (tests). */
+  lastFmApiKey?: string;
+  /** Overrides NOW_PLAYING_POLLER_ENABLED (only what the API reports/schedules; never starts it). */
+  nowPlayingPollerEnabled?: boolean;
+  /** Clock for the poller, its schedule and the sync status (tests pass a fake one). */
+  nowPlayingClock?: Clock;
+  /** Overrides of the poller tuning (tests). */
+  nowPlayingPoller?: Partial<NowPlayingPollerOptions>;
 }
 
 const offlineFetch: FetchLike = () =>
   Promise.reject(new Error('External catalog calls are disabled in tests'));
+const offlineProviderFetch: FetchLike = () =>
+  Promise.reject(new Error('Spotify/Last.fm calls are disabled in tests'));
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<AppContext> {
   const app = Fastify({
@@ -145,8 +184,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
   // 3. Services
   const notificationsService = new NotificationsService(prisma, realtime);
   const nowPlayingService = new NowPlayingService(redis, prisma, realtime);
-  const spotifyService = new SpotifyService();
-  const lastFmService = new LastFmService();
+  const providerFetch =
+    options.providerFetch ?? (env.NODE_ENV === 'test' ? offlineProviderFetch : undefined);
+  const spotifyService = new SpotifyService({ fetch: providerFetch });
+  const lastFmService = new LastFmService({ fetch: providerFetch, apiKey: options.lastFmApiKey });
   const authService = new AuthService(prisma, spotifyService, lastFmService);
 
   const catalogProviders = createCatalogProviders({
@@ -190,18 +231,82 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
 
   const criticService = new CriticService(prisma, notificationsService);
   const videosService = new VideosService(prisma);
+
+  // ADR-013: automatic now-playing sync (Spotify / Last.fm poller).
+  const npClock = options.nowPlayingClock ?? systemClock;
+  const pollerEnabled = options.nowPlayingPollerEnabled ?? env.NOW_PLAYING_POLLER_ENABLED;
+  const providerSyncStore = new ProviderSyncStore(prisma, npClock);
+  const scrobbleRecorder = new ScrobbleRecorder(prisma, redis, catalogService);
+  const pollScheduler = new PollScheduler(redis, { clock: npClock });
+  const nowPlayingThrottle = new NowPlayingThrottle(
+    options.nowPlayingIntervalMs ?? 2_000,
+    (userId, track) => nowPlayingService.updateUserNowPlaying(userId, track),
+    (err, userId) => app.log.warn({ err, userId }, 'Deferred now-playing update failed')
+  );
+  const nowPlayingPollerOptions: NowPlayingPollerOptions = {
+    activeIntervalMs: env.NOW_PLAYING_ACTIVE_INTERVAL_SECONDS * 1000,
+    idleIntervalMs: env.NOW_PLAYING_IDLE_INTERVAL_SECONDS * 1000,
+    inactiveAfterMs: env.NOW_PLAYING_INACTIVE_AFTER_DAYS * 24 * 60 * 60 * 1000,
+    concurrency: env.NOW_PLAYING_POLL_CONCURRENCY,
+    clock: npClock,
+    ...options.nowPlayingPoller,
+  };
+  const listeningActivity = new ListeningActivity(redis, prisma, {
+    clock: npClock,
+    onUserSeen: async (userId) => {
+      // Back after a long absence: accounts paused for inactivity are read again at once.
+      if ((await providerSyncStore.resumeUser(userId)) > 0 && pollerEnabled) {
+        await pollScheduler.wake(userId);
+      }
+    },
+    onUserOnline: async (userId) => {
+      // Opening the app pulls an idle user's next read close (fast interval from then on).
+      if (pollerEnabled) await pollScheduler.expedite(userId, npClock.now() + 2_000);
+    },
+  });
+
   const spotifySyncService = new SpotifySyncService(
     prisma,
     redis,
     spotifyService,
-    nowPlayingService
+    nowPlayingService,
+    scrobbleRecorder,
+    providerSyncStore
   );
+  const pollerBackground = new BackgroundQueue(app.log, 2, 500);
+  const nowPlayingPollerDeps: NowPlayingPollerDeps = {
+    prisma,
+    redis,
+    logger: app.log,
+    scheduler: pollScheduler,
+    activity: listeningActivity,
+    store: providerSyncStore,
+    spotify: spotifyService,
+    spotifyTokens: spotifySyncService,
+    lastfm: lastFmService,
+    presence: {
+      submit: (userId, track) => nowPlayingThrottle.submit(userId, track),
+      refresh: (userId) => nowPlayingService.refreshTrack(userId),
+      clear: async (userId) => {
+        nowPlayingThrottle.cancel(userId);
+        await nowPlayingService.clearTrack(userId);
+      },
+    },
+    scrobbles: scrobbleRecorder,
+    background: pollerBackground,
+  };
+  const nowPlayingPoller = new NowPlayingPoller(nowPlayingPollerDeps, nowPlayingPollerOptions);
+  app.addHook('onClose', async () => {
+    await nowPlayingPoller.stop();
+    await pollerBackground.close();
+  });
   const usersService = new UsersService(prisma, notificationsService);
   const feedService = new FeedService(prisma, notificationsService);
 
   const sessionSockets = registerNowPlayingGateway(app, io, prisma, nowPlayingService, {
-    nowPlayingIntervalMs: options.nowPlayingIntervalMs,
     sessionRecheckMs: options.sessionRecheckMs,
+    throttle: nowPlayingThrottle,
+    activity: listeningActivity,
   });
 
   // 4. Routes
@@ -218,6 +323,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
       presence: nowPlayingService,
       sockets: sessionSockets,
       webAppUrl: env.WEB_APP_URL,
+      activity: {
+        seen: (userId) => listeningActivity.touch(userId),
+        providerLinked: async (userId) => {
+          if (pollerEnabled) await pollScheduler.wake(userId);
+        },
+      },
     }),
     { prefix: '/api/auth' }
   );
@@ -232,7 +343,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
   await app.register(createNotificationsRoutes(notificationsService, notificationPresenceService), {
     prefix: '/api/notifications',
   });
-  await app.register(createNowPlayingRoutes(nowPlayingService), { prefix: '/api/now-playing' });
+  await app.register(
+    createNowPlayingRoutes(nowPlayingService, {
+      syncStatus: async (userId) =>
+        providerSyncStore.getStatus(userId, {
+          autoSyncEnabled: pollerEnabled,
+          nextDueAt: pollerEnabled ? await pollScheduler.nextDueAt(userId) : null,
+        }),
+    }),
+    { prefix: '/api/now-playing' }
+  );
   await app.register(createCriticRoutes(criticService), { prefix: '/api/critic' });
   await app.register(createVideosRoutes(videosService), { prefix: '/api/videos' });
   await app.register(createSpotifyRoutes(spotifySyncService), { prefix: '/api/spotify' });
@@ -260,5 +380,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     spotifySyncService,
     usersService,
     feedService,
+    spotifyService,
+    lastFmService,
+    nowPlayingPoller,
+    nowPlayingPollerDeps,
+    nowPlayingPollerOptions,
+    pollScheduler,
+    listeningActivity,
+    providerSyncStore,
+    scrobbleRecorder,
+    nowPlayingThrottle,
+    pollerBackground,
   };
 }

@@ -1,6 +1,10 @@
 import type { Redis } from 'ioredis';
 import type { PrismaClient } from '@openmusic/db';
-import { type FriendPresence, NowPlayingTrackSchema } from '@openmusic/shared';
+import {
+  type FriendPresence,
+  FriendPresenceSchema,
+  NowPlayingTrackSchema,
+} from '@openmusic/shared';
 import { NotFoundError } from '../../lib/errors';
 import { followerIdsOf } from '../../lib/follows';
 import type { RealtimeEmitter } from '../../lib/realtime';
@@ -88,6 +92,31 @@ export class NowPlayingService {
     await this.redis.setex(this.getKey(userId), PRESENCE_TTL_SECONDS, JSON.stringify(presence));
     await this.publish(presence);
     return presence;
+  }
+
+  /**
+   * Same track still playing (background poller): extends the presence TTL without notifying
+   * anyone. Returns false when there is no visible track to extend (expired, cleared, Ghost Mode
+   * just turned off), so the caller publishes it again.
+   */
+  async refreshTrack(userId: string): Promise<boolean> {
+    const raw = await this.redis.get(this.getKey(userId));
+    if (!raw) return false;
+    const stored = FriendPresenceSchema.safeParse(JSON.parse(raw));
+    if (!stored.success || !stored.data.currentlyPlaying) return false;
+    await this.redis.expire(this.getKey(userId), PRESENCE_TTL_SECONDS);
+    return true;
+  }
+
+  /** Playback stopped on the provider: followers see the user without a track. */
+  async clearTrack(userId: string): Promise<void> {
+    const raw = await this.redis.get(this.getKey(userId));
+    if (!raw) return;
+    const stored = FriendPresenceSchema.safeParse(JSON.parse(raw));
+    if (!stored.success || !stored.data.currentlyPlaying) return;
+    const presence: FriendPresence = { ...stored.data, currentlyPlaying: null };
+    await this.redis.setex(this.getKey(userId), PRESENCE_TTL_SECONDS, JSON.stringify(presence));
+    await this.publish(presence);
   }
 
   /** Called when the user's last socket disconnects. */

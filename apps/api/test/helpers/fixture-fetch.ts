@@ -57,9 +57,12 @@ export function createFixtureFetch(initial: FixtureRoute[] = []): {
     const response = route.responses.length > 1 ? route.responses.shift() : route.responses[0];
     if (!response || response.networkError) throw new TypeError('fetch failed');
     const raw = response.file ? catalogFixture(response.file) : (response.body ?? '');
-    const body = typeof raw === 'string' ? raw : new Uint8Array(raw);
+    const status = response.status ?? 200;
+    // 204/304 must not have a body (the Response constructor throws).
+    const body =
+      status === 204 || status === 304 ? null : typeof raw === 'string' ? raw : new Uint8Array(raw);
     return new Response(body, {
-      status: response.status ?? 200,
+      status,
       headers: {
         'content-type': response.file ? 'application/json' : 'application/octet-stream',
         ...response.headers,
