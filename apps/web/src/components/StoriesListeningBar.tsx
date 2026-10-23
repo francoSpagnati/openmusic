@@ -107,13 +107,7 @@ function MyBubble() {
   return (
     <div className="flex flex-col items-center gap-1.5">
       <span className="relative">
-        <Avatar
-          name={name}
-          src={user.avatarUrl}
-          size="lg"
-          status={ghost.enabled ? 'ghost' : 'online'}
-          decorative
-        />
+        <Avatar name={name} src={user.avatarUrl} size="lg" decorative />
         <button
           type="button"
           aria-pressed={ghost.enabled}
@@ -122,7 +116,7 @@ function MyBubble() {
           onClick={() => void ghost.set(!ghost.enabled)}
           title={ghost.enabled ? 'Disattiva Ghost Mode' : 'Attiva Ghost Mode'}
           className={cn(
-            'absolute -bottom-1 -left-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-canvas transition-colors duration-fast ease-out',
+            'absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-canvas transition-colors duration-fast ease-out',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus',
             'disabled:cursor-progress',
             ghost.enabled ? 'bg-fg text-canvas' : 'bg-surface-raised text-fg shadow-hairline'

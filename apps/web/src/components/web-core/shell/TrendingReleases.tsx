@@ -3,8 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { ErrorState, ScoreBadge, Skeleton } from '@/components/ui';
+import { ErrorState, Skeleton } from '@/components/ui';
 import { CoverArt } from '@/components/discovery/CoverArt';
+import { ScoreInline } from '@/components/discovery/ScoreFigure';
 import { useApiResource } from '../useApiResource';
 import { errorMessage, yearOf } from '../format';
 
@@ -70,15 +71,19 @@ export function TrendingReleases({ limit = 5 }: { limit?: number }) {
               </Link>
               <p className="truncate text-xs text-fg-muted">
                 {release.artistName}
-                {year && <span className="font-mono tabular-nums">, {year}</span>}
+                {year && (
+                  <>
+                    , <span className="font-mono tabular-nums">{year}</span>
+                  </>
+                )}
               </p>
             </div>
             {release.audienceCount > 0 && (
-              <ScoreBadge
+              <ScoreInline
                 kind="audience"
                 percentage={release.audienceFreshPct ?? null}
-                totalReviews={release.audienceCount}
-                size="sm"
+                count={release.audienceCount}
+                className="shrink-0"
               />
             )}
           </li>

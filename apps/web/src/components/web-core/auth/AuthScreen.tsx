@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { safeNextPath, useAuth } from '@/lib/auth';
-import { Spinner, Tabs } from '@/components/ui';
+import { Spinner, Tabs, ThemeToggle } from '@/components/ui';
 import { BrandMark } from '../shell/BrandMark';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
@@ -36,11 +36,16 @@ export function AuthScreen() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[26rem] flex-col px-4 pb-16 pt-10 sm:pt-16">
-      <div className="flex justify-center">
+      {/* Desktop has no navbar or sidebar here: keep the theme switch reachable. */}
+      <div className="fixed right-6 top-6 hidden lg:block">
+        <ThemeToggle variant="icon" />
+      </div>
+      {/* On mobile the navbar already shows the brand. */}
+      <div className="hidden justify-center lg:flex">
         <BrandMark compact />
       </div>
 
-      <section aria-labelledby="auth-title" className="om-enter mt-12 text-center">
+      <section aria-labelledby="auth-title" className="om-enter mt-4 text-center lg:mt-12">
         <h1 id="auth-title" className="om-headline text-display-sm text-fg">
           {mode === 'register' ? 'Apri il tuo scaffale.' : 'Bentornato al bancone.'}
         </h1>

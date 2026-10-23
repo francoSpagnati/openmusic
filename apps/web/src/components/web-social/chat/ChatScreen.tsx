@@ -62,7 +62,7 @@ export function ChatScreen() {
       <Sidebar />
       <div
         className={cn(
-          'sticky top-[3.75rem] flex h-[calc(100dvh-3.75rem)] min-w-0 max-w-5xl flex-1 border-line lg:top-0 lg:h-dvh lg:border-r',
+          'sticky top-[3.75rem] flex h-[calc(100dvh-3.75rem)] min-w-0 flex-1 border-line lg:top-0 lg:h-dvh lg:border-r',
           // Leave room for the fixed preview player so it never covers the composer.
           currentTrack && 'pb-24'
         )}

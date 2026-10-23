@@ -69,10 +69,12 @@ export const Navbar: React.FC = () => {
               </Link>
             </>
           ) : (
-            status === 'anonymous' && (
+            status === 'anonymous' &&
+            // Secondary: the page's own action (e.g. the login form) keeps the only clay fill.
+            !isActivePath(pathname, '/auth') && (
               <Link
                 href={loginRedirectUrl(pathname ?? '/')}
-                className={buttonClasses({ size: 'sm' })}
+                className={buttonClasses({ variant: 'secondary', size: 'sm' })}
               >
                 <SignIn aria-hidden="true" />
                 Accedi

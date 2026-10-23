@@ -63,7 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreatePost }) => {
                       'group relative flex h-10 items-center justify-between rounded-md pl-3 pr-2 text-[15px] transition-colors duration-fast ease-out',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                       active
-                        ? 'bg-fg/[0.045] font-medium text-fg before:absolute before:inset-y-2.5 before:-left-4 before:w-0.5 before:rounded-full before:bg-accent'
+                        ? 'bg-fg/[0.045] font-medium text-fg'
                         : 'text-fg-muted hover:bg-fg/[0.035] hover:text-fg'
                     )}
                   >

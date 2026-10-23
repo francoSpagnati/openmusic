@@ -86,7 +86,7 @@ export function CatalogQuickSearch({ className }: { className?: string }) {
         aria-controls={open ? listId : undefined}
       />
       {open && (
-        <div className="mt-2 overflow-hidden rounded-md border border-line bg-surface shadow-om-md">
+        <div className="mt-2 overflow-hidden rounded-md border border-line bg-surface">
           <p role="status" className="sr-only">
             {results.items.length === 0
               ? 'Nessun disco nel catalogo locale: premi Invio per cercare ovunque.'
@@ -115,7 +115,7 @@ export function CatalogQuickSearch({ className }: { className?: string }) {
                         </span>
                         <span className="block truncate text-xs text-fg-muted">
                           {release.artistName}
-                          {year ? ` · ${year}` : ''}
+                          {year ? `, ${year}` : ''}
                         </span>
                       </span>
                     </Link>
