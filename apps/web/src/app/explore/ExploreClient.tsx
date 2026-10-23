@@ -47,7 +47,7 @@ export function ExploreClient({ initialParams, initialGenres, initialPage }: Exp
   const genres = initialGenres ?? [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <form role="search" onSubmit={(event) => event.preventDefault()} className="relative">
         <Input
           label="Cerca nel catalogo"
@@ -90,16 +90,13 @@ export function ExploreClient({ initialParams, initialGenres, initialPage }: Exp
           onLoadMore={() => void search.loadMore()}
         />
       ) : (
-        <section aria-labelledby="browse-heading" className="space-y-5">
+        <section aria-labelledby="browse-heading" className="space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 id="browse-heading" className="om-headline text-2xl text-ink">
+              <h2 id="browse-heading" className="om-headline text-3xl text-fg">
                 {genre ?? 'Tutto il catalogo'}
               </h2>
-              <p
-                className="mt-1 font-mono text-xs tabular-nums text-ink-secondary"
-                aria-live="polite"
-              >
+              <p className="mt-1 text-sm text-fg-subtle" aria-live="polite">
                 {browse.status === 'ready'
                   ? `${plural(browse.items.length, 'disco', 'dischi')}${browse.nextCursor ? ' finora' : ''}`
                   : browse.status === 'loading'
@@ -124,7 +121,11 @@ export function ExploreClient({ initialParams, initialGenres, initialPage }: Exp
 
           {browse.status !== 'error' && browse.items.length > 0 && (
             <div
-              className={browse.status === 'loading' ? 'opacity-60 transition-opacity' : undefined}
+              className={
+                browse.status === 'loading'
+                  ? 'opacity-60 transition-opacity duration-base'
+                  : 'transition-opacity duration-base'
+              }
             >
               <ReleaseGrid
                 releases={browse.items}
@@ -146,9 +147,9 @@ export function ExploreClient({ initialParams, initialGenres, initialPage }: Exp
           )}
 
           {browse.status === 'ready' && browse.nextCursor && (
-            <div className="flex flex-col items-center gap-2 pt-2">
+            <div className="flex flex-col items-center gap-2 pt-6">
               <Button
-                variant="secondary"
+                variant="outline"
                 loading={browse.loadingMore}
                 loadingLabel="Carico altri dischi…"
                 onClick={() => void browse.loadMore()}

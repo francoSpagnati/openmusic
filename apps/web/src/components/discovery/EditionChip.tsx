@@ -18,10 +18,10 @@ export function EditionChip({
 }) {
   return (
     <Badge
-      tone={label ? 'accent' : 'neutral'}
-      variant="outline"
+      tone="neutral"
+      variant="soft"
       size={size}
-      icon={<VinylRecord weight="duotone" />}
+      icon={<VinylRecord />}
       className={cn('min-w-0 max-w-full', className)}
     >
       <span className="sr-only">Edizione: </span>

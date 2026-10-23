@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PencilSimple, UsersThree } from '@phosphor-icons/react';
+import { PencilSimple } from '@phosphor-icons/react';
 import type { ReactionType, ReviewItem } from '@openmusic/shared';
 import { api } from '../../../lib/api';
 import { loginRedirectUrl, useAuth } from '../../../lib/auth';
@@ -147,16 +147,15 @@ export function CommunityReviews({
   );
 
   return (
-    <section aria-labelledby="community-heading" className="space-y-5">
+    <section aria-labelledby="community-heading" className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h2
           id="community-heading"
-          className="om-headline flex items-center gap-2 text-2xl text-ink"
+          className="om-headline flex items-baseline gap-3 text-3xl text-fg"
         >
-          <UsersThree aria-hidden="true" weight="duotone" className="h-6 w-6 text-accent" />
           Il pubblico
           {reviews && (
-            <span className="font-mono text-sm font-normal tabular-nums text-ink-muted">
+            <span className="font-sans text-sm font-normal text-fg-subtle">
               {plural(community.length, 'recensione', 'recensioni')}
             </span>
           )}
@@ -165,7 +164,7 @@ export function CommunityReviews({
           <div
             role="group"
             aria-label="Ordina le recensioni"
-            className="inline-flex rounded-md border border-line bg-sunken p-0.5"
+            className="inline-flex rounded-md bg-sunken p-0.5"
           >
             {(
               [
@@ -181,8 +180,8 @@ export function CommunityReviews({
                 className={cn(
                   'rounded-[5px] px-3 py-1.5 text-sm transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus',
                   sort === mode
-                    ? 'bg-elevated font-semibold text-ink shadow-om-sm'
-                    : 'text-ink-secondary hover:text-ink'
+                    ? 'bg-surface-raised font-medium text-fg shadow-hairline'
+                    : 'text-fg-muted hover:text-fg'
                 )}
               >
                 {label}
@@ -200,11 +199,12 @@ export function CommunityReviews({
         </Card>
       ) : status === 'anonymous' ? (
         <Card
+          variant="outline"
           padding="md"
-          className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p className="text-sm text-ink-secondary">
-            <span className="font-semibold text-ink">Hai ascoltato {releaseTitle}?</span> Accedi per
+          <p className="text-sm text-fg-muted">
+            <span className="font-medium text-fg">Hai ascoltato {releaseTitle}?</span> Accedi per
             dare il tuo voto e reagire alle recensioni.
           </p>
           <Link href={loginHref} className={buttonClasses({ size: 'sm' })}>
@@ -224,7 +224,7 @@ export function CommunityReviews({
           </Button>
         </div>
       ) : (
-        <Card padding="lg">
+        <Card variant="outline" padding="md">
           <ReviewComposer
             releaseId={releaseId}
             releaseTitle={releaseTitle}
@@ -264,7 +264,7 @@ export function CommunityReviews({
           />
         )
       ) : (
-        <div className="space-y-3">{others.map(renderCard)}</div>
+        <div className="om-stagger space-y-6">{others.map(renderCard)}</div>
       )}
     </section>
   );

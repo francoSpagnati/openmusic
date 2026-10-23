@@ -61,21 +61,21 @@ export function SearchResults({
   const external = result.sources.filter((source) => source !== 'LOCAL');
 
   return (
-    <div className="space-y-8" aria-busy={state.status === 'loading' || searchingExternal}>
+    <div className="space-y-12" aria-busy={state.status === 'loading' || searchingExternal}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <p role="status" className="font-mono text-xs tabular-nums text-ink-secondary">
+        <p role="status" className="text-sm text-fg-muted">
           {state.status === 'loading'
             ? 'Aggiorno i risultati…'
             : `${plural(total, 'risultato', 'risultati')} per “${query.trim()}”`}
         </p>
         {searchingExternal ? (
-          <p className="inline-flex items-center gap-2 font-mono text-xs text-ink-muted">
+          <p className="inline-flex items-center gap-2 text-xs text-fg-subtle">
             <Spinner size="sm" label={null} />
             Cerco anche su Deezer e iTunes…
           </p>
         ) : (
           external.length > 0 && (
-            <p className="font-mono text-xs text-ink-muted">
+            <p className="text-xs text-fg-subtle">
               Copertine e metadati da{' '}
               {external.map((source) => CATALOG_SOURCE_LABEL[source]).join(', ')}
             </p>
@@ -94,7 +94,7 @@ export function SearchResults({
             <button
               type="button"
               onClick={onClear}
-              className="text-sm font-semibold text-accent underline-offset-4 hover:underline"
+              className="om-link rounded-sm text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
               Torna a sfogliare il catalogo
             </button>
@@ -103,8 +103,8 @@ export function SearchResults({
       )}
 
       {result.releases.length > 0 && (
-        <section aria-labelledby="search-releases" className="space-y-3">
-          <h2 id="search-releases" className="om-eyebrow">
+        <section aria-labelledby="search-releases" className="space-y-5">
+          <h2 id="search-releases" className="om-headline text-2xl text-fg">
             Dischi · {albumCount}
           </h2>
           <ReleaseGrid releases={result.releases} label="Dischi trovati" foldEditions />
@@ -112,36 +112,45 @@ export function SearchResults({
       )}
 
       {result.tracks.length > 0 && (
-        <section aria-labelledby="search-tracks" className="space-y-3">
-          <h2 id="search-tracks" className="om-eyebrow">
+        <section aria-labelledby="search-tracks" className="space-y-5">
+          <h2 id="search-tracks" className="om-headline text-2xl text-fg">
             Brani · {result.tracks.length}
           </h2>
-          <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+          <ul className="border-t border-line">
             {result.tracks.map((track) => (
-              <li key={track.id} className="flex items-center gap-3 px-3 py-2.5">
+              <li
+                key={track.id}
+                className="flex items-center gap-3 border-b border-line px-1 py-2.5 transition-colors duration-fast hover:bg-fg/[0.03] sm:gap-4 sm:px-2"
+              >
                 <CoverArt
                   src={track.coverUrl}
                   alt=""
                   sizes="40px"
+                  framed
                   className="h-10 w-10 shrink-0 rounded-xs"
                 />
                 <div className="min-w-0 flex-1">
                   {track.releaseId ? (
                     <Link
                       href={`/releases/${track.releaseId}#track-${track.id}`}
-                      className="block truncate text-sm font-semibold text-ink hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                      className="block truncate rounded-xs text-[0.9375rem] text-fg underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                     >
                       {track.title}
                     </Link>
                   ) : (
-                    <p className="truncate text-sm font-semibold text-ink">{track.title}</p>
+                    <p className="truncate text-[0.9375rem] text-fg">{track.title}</p>
                   )}
-                  <p className="truncate text-xs text-ink-secondary">{track.artistName}</p>
+                  <p className="truncate text-sm text-fg-muted">{track.artistName}</p>
                 </div>
-                <span className="hidden font-mono text-xs tabular-nums text-ink-muted sm:inline">
+                <span className="hidden font-mono text-sm tabular-nums text-fg-muted sm:inline">
                   {formatTrackDuration(track.durationMs)}
                 </span>
-                <PreviewPlayButton track={toPlayingTrack(track)} size="sm" variant="subtle" />
+                <PreviewPlayButton
+                  track={toPlayingTrack(track)}
+                  size="sm"
+                  variant="subtle"
+                  shape="round"
+                />
               </li>
             ))}
           </ul>
@@ -151,7 +160,7 @@ export function SearchResults({
       {state.status === 'ready' && state.result.hasMore && (
         <div className="flex flex-col items-center gap-2 pt-2">
           <Button
-            variant="secondary"
+            variant="outline"
             loading={state.loadingMore}
             loadingLabel="Cerco altri risultati…"
             onClick={onLoadMore}

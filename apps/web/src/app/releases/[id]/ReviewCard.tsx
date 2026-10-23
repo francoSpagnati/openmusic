@@ -39,14 +39,17 @@ export function ReviewCard({
   return (
     <article
       aria-label={`Recensione di ${name}`}
-      className={cn('om-sleeve space-y-3 p-4 sm:p-5', isOwn && 'border-accent/50')}
+      className={cn(
+        'space-y-4',
+        isOwn ? 'rounded-lg border border-accent/40 p-5' : 'border-t border-line pt-6'
+      )}
     >
       <header className="flex items-start gap-3">
         <Avatar name={name} src={review.user.avatarUrl} size="md" decorative />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            <span className="font-semibold text-ink">{name}</span>
-            <span className="text-ink-muted">@{review.user.username}</span>
+            <span className="font-medium text-fg">{name}</span>
+            <span className="text-fg-subtle">@{review.user.username}</span>
             {isOwn && (
               <Badge tone="accent" size="sm">
                 La tua
@@ -65,12 +68,9 @@ export function ReviewCard({
                 Ascolto verificato
               </Badge>
             )}
-            <time
-              dateTime={review.updatedAt}
-              className="font-mono text-[11px] tabular-nums text-ink-muted"
-            >
+            <time dateTime={review.updatedAt} className="text-xs text-fg-subtle">
               {formatRelative(review.updatedAt)}
-              {edited && ' · modificata'}
+              {edited && ', modificata'}
             </time>
           </p>
         </div>
@@ -80,7 +80,7 @@ export function ReviewCard({
         <div>
           <p
             className={cn(
-              'whitespace-pre-line text-sm leading-relaxed text-ink',
+              'whitespace-pre-line text-base leading-relaxed text-fg',
               !expanded && long && 'line-clamp-6'
             )}
           >
@@ -91,7 +91,7 @@ export function ReviewCard({
               type="button"
               onClick={() => setExpanded((v) => !v)}
               aria-expanded={expanded}
-              className="mt-1 text-xs font-semibold text-accent underline-offset-4 hover:underline"
+              className="om-link mt-2 rounded-sm text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
               {expanded ? 'Mostra meno' : 'Leggi tutta'}
             </button>
@@ -103,7 +103,7 @@ export function ReviewCard({
         <ul className="flex flex-wrap gap-1.5" aria-label="Vibe">
           {review.vibeTags.map((tag) => (
             <li key={tag}>
-              <Badge tone="neutral" variant="outline" size="sm" mono>
+              <Badge tone="neutral" variant="soft" size="sm">
                 #{tag}
               </Badge>
             </li>

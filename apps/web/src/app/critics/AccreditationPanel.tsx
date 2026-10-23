@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Hourglass, Newspaper, SealCheck } from '@phosphor-icons/react';
+import { Hourglass, SealCheck } from '@phosphor-icons/react';
 import type { CriticAccreditationStatus } from '@openmusic/shared';
 import { api } from '../../lib/api';
 import { loginRedirectUrl, useAuth } from '../../lib/auth';
@@ -43,15 +43,14 @@ export function AccreditationPanel() {
   }, [approved, user, refresh]);
 
   const heading = (
-    <h2 id="accredito" className="om-headline flex items-center gap-2 text-2xl text-ink">
-      <Newspaper aria-hidden="true" weight="duotone" className="h-6 w-6 text-fresh" />
+    <h2 id="accredito" className="om-headline text-2xl text-fg">
       Accredito per la critica
     </h2>
   );
 
   if (authStatus === 'loading' || (authStatus === 'authenticated' && load.status === 'loading')) {
     return (
-      <Card padding="lg" aria-busy="true" className="space-y-4">
+      <Card variant="outline" padding="md" aria-busy="true" className="space-y-4">
         {heading}
         <span className="sr-only">Caricamento…</span>
         <Skeleton shape="text" lines={4} />
@@ -61,9 +60,9 @@ export function AccreditationPanel() {
 
   if (authStatus === 'anonymous') {
     return (
-      <Card padding="lg" className="space-y-4">
+      <Card variant="outline" padding="md" className="space-y-4">
         {heading}
-        <p className="text-sm text-ink-secondary">
+        <p className="text-sm text-fg-muted">
           Scrivi di musica per una testata? Accedi o crea un account, poi invia la richiesta: la
           verifichiamo a mano prima di assegnare il badge.
         </p>
@@ -76,7 +75,7 @@ export function AccreditationPanel() {
 
   if (load.status === 'error') {
     return (
-      <Card padding="lg" className="space-y-4">
+      <Card variant="outline" padding="md" className="space-y-4">
         {heading}
         <ErrorState
           variant="inline"
@@ -91,12 +90,12 @@ export function AccreditationPanel() {
   const { data } = load;
 
   return (
-    <Card padding="lg" className="space-y-5">
+    <Card variant="outline" padding="md" className="space-y-5">
       {heading}
 
       {data.status === 'APPROVED' ? (
         <div className="space-y-3">
-          <p className="flex items-start gap-2 text-ink">
+          <p className="flex items-start gap-2 text-fg">
             <SealCheck
               aria-hidden="true"
               weight="fill"
@@ -113,7 +112,7 @@ export function AccreditationPanel() {
               {data.verifiedAt && <> dal {formatDate(data.verifiedAt)}</>}.
             </span>
           </p>
-          <p className="text-sm text-ink-secondary">
+          <p className="text-sm text-fg-muted">
             Apri la scheda di un disco: al posto della recensione del pubblico troverai il modulo
             per il voto della critica, con il link al tuo articolo.
           </p>
@@ -123,11 +122,11 @@ export function AccreditationPanel() {
         </div>
       ) : data.status === 'PENDING' && !editing ? (
         <div className="space-y-3" role="status">
-          <p className="flex items-start gap-2 text-ink">
+          <p className="flex items-start gap-2 text-fg">
             <Hourglass
               aria-hidden="true"
               weight="duotone"
-              className="mt-0.5 h-5 w-5 shrink-0 text-accent"
+              className="mt-0.5 h-5 w-5 shrink-0 text-warning"
             />
             <span>
               Richiesta in verifica
@@ -140,7 +139,7 @@ export function AccreditationPanel() {
               {data.requestedAt && <>, inviata il {formatDate(data.requestedAt)}</>}.
             </span>
           </p>
-          <p className="text-sm text-ink-secondary">
+          <p className="text-sm text-fg-muted">
             Ti avvisiamo con una notifica appena lo staff la approva. Nel frattempo puoi
             correggerla.
           </p>
@@ -150,7 +149,7 @@ export function AccreditationPanel() {
         </div>
       ) : (
         <>
-          <p className="text-sm text-ink-secondary">
+          <p className="text-sm text-fg-muted">
             Niente recensioni anonime o comprate: ogni voto della critica porta una firma e il link
             all’articolo originale.
           </p>

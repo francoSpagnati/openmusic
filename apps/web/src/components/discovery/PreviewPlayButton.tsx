@@ -3,7 +3,12 @@
 import React from 'react';
 import { Pause, Play, SpeakerSlash } from '@phosphor-icons/react';
 import { useAudioPlayer, type PlayingTrack } from '../../context/AudioPlayerContext';
-import { IconButton, type IconButtonSize, type IconButtonVariant } from '../ui';
+import {
+  IconButton,
+  type IconButtonShape,
+  type IconButtonSize,
+  type IconButtonVariant,
+} from '../ui';
 
 export interface PreviewPlayButtonProps {
   track: PlayingTrack;
@@ -11,6 +16,7 @@ export interface PreviewPlayButtonProps {
   label?: string;
   size?: IconButtonSize;
   variant?: IconButtonVariant;
+  shape?: IconButtonShape;
   className?: string;
 }
 
@@ -20,6 +26,7 @@ export function PreviewPlayButton({
   label,
   size = 'md',
   variant = 'solid',
+  shape,
   className,
 }: PreviewPlayButtonProps) {
   const { currentTrack, status, playTrack } = useAudioPlayer();
@@ -40,6 +47,7 @@ export function PreviewPlayButton({
       }
       size={size}
       variant={variant}
+      shape={shape}
       loading={isCurrent && (status === 'resolving' || status === 'loading')}
       disabled={unavailable}
       className={className}

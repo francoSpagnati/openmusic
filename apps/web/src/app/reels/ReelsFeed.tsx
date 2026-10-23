@@ -132,9 +132,15 @@ export function ReelsFeed() {
 
   if (feed.status === 'loading') {
     return (
-      <div aria-busy="true" className="flex h-full flex-col items-center justify-center gap-5 px-4">
+      <div
+        aria-busy="true"
+        className="flex h-full flex-col items-center gap-5 pb-24 sm:justify-center"
+      >
         <span className="sr-only">Caricamento dei reels…</span>
-        <Skeleton shape="cover" className="w-[min(72vw,22rem)]" />
+        <Skeleton
+          shape="cover"
+          className="w-full max-w-[min(100%,48dvh)] sm:max-w-[min(100%,52dvh)]"
+        />
         <Skeleton className="h-7 w-56" />
         <Skeleton className="h-4 w-40" />
       </div>
@@ -208,11 +214,11 @@ export function ReelsFeed() {
           aria-labelledby="reels-end-title"
           className="flex h-full snap-start flex-col items-center justify-center gap-4 px-6 pb-24 text-center focus-visible:outline-none"
         >
-          <span aria-hidden="true" className="om-grooves h-24 w-24" />
-          <h2 id="reels-end-title" className="om-headline text-3xl text-ink">
+          <span aria-hidden="true" className="om-grooves h-20 w-20 opacity-80" />
+          <h2 id="reels-end-title" className="om-headline text-3xl text-fg">
             Fine del lato B
           </h2>
-          <p className="max-w-sm text-sm text-ink-secondary">
+          <p className="max-w-sm text-fg-muted">
             Hai ascoltato tutti i reels per ora. Gira il disco o vai a cercare il prossimo da solo.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
@@ -222,7 +228,7 @@ export function ReelsFeed() {
                 setToken((t) => t + 1);
                 containerRef.current?.scrollTo({ top: 0 });
               }}
-              className={buttonClasses({ variant: 'secondary' })}
+              className={buttonClasses({ variant: 'outline' })}
             >
               <Waveform aria-hidden="true" /> Ricomincia
             </button>
@@ -237,15 +243,17 @@ export function ReelsFeed() {
       <div className="absolute right-4 top-1/2 hidden -translate-y-1/2 flex-col gap-2 md:flex">
         <IconButton
           label="Reel precedente"
-          icon={<ArrowUp weight="bold" />}
-          variant="subtle"
+          icon={<ArrowUp />}
+          variant="ghost"
+          shape="round"
           disabled={active === 0}
           onClick={() => scrollTo(active - 1)}
         />
         <IconButton
           label="Reel successivo"
-          icon={<ArrowDown weight="bold" />}
-          variant="subtle"
+          icon={<ArrowDown />}
+          variant="ghost"
+          shape="round"
           disabled={active >= items.length}
           onClick={() => scrollTo(active + 1)}
         />

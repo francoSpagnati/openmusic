@@ -5,7 +5,7 @@ import { Play } from '@phosphor-icons/react';
 import type { CatalogRelease, CatalogTrack } from '@openmusic/shared';
 import { api } from '../../lib/api';
 import { useAudioPlayer, type PlayingTrack } from '../../context/AudioPlayerContext';
-import { IconButton, useToast, type IconButtonSize } from '../ui';
+import { IconButton, useToast, type IconButtonSize, type IconButtonVariant } from '../ui';
 import { PreviewPlayButton } from './PreviewPlayButton';
 
 export function toPlayingTrack(
@@ -26,6 +26,11 @@ export function toPlayingTrack(
 interface ReleasePreviewButtonProps {
   release: Pick<CatalogRelease, 'id' | 'title' | 'artistName' | 'coverUrl' | 'tracks'>;
   size?: IconButtonSize;
+  /**
+   * `subtle` (default): a paper disc with a hairline that sits calmly on any sleeve. The clay
+   * fill is kept for the one primary action of the view (ADR-015).
+   */
+  variant?: IconButtonVariant;
   className?: string;
 }
 
@@ -36,6 +41,7 @@ interface ReleasePreviewButtonProps {
 export function ReleasePreviewButton({
   release,
   size = 'md',
+  variant = 'subtle',
   className,
 }: ReleasePreviewButtonProps) {
   const { playTrack } = useAudioPlayer();
@@ -50,6 +56,8 @@ export function ReleasePreviewButton({
         track={toPlayingTrack(opening, fallback)}
         label={`${opening.title}, da ${release.title}`}
         size={size}
+        variant={variant}
+        shape="round"
         className={className}
       />
     );
@@ -80,7 +88,8 @@ export function ReleasePreviewButton({
   return (
     <IconButton
       label={`Ascolta l’anteprima di ${release.title} di ${release.artistName}`}
-      variant="solid"
+      variant={variant}
+      shape="round"
       size={size}
       loading={loading}
       className={className}

@@ -57,7 +57,7 @@ export function ReviewReactions({
           pill,
           active
             ? 'border-accent/60 bg-accent/10 text-accent'
-            : 'border-line text-ink-secondary hover:border-line-strong hover:text-ink'
+            : 'border-line text-fg-muted hover:border-line-strong hover:text-fg'
         );
         return (
           <li key={type}>

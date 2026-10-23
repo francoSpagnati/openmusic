@@ -107,7 +107,7 @@ export default async function ReleaseDetailPage({ params }: Props) {
   ]);
 
   return (
-    <DiscoveryShell className="space-y-10 pt-0 lg:pt-0">
+    <DiscoveryShell className="space-y-16 pt-0 lg:pt-0">
       <ReleaseScoreProvider initialScore={scoreOf(release)}>
         <ReleaseHero release={release} />
 
@@ -119,21 +119,21 @@ export default async function ReleaseDetailPage({ params }: Props) {
         />
 
         {release.otherEditions && release.otherEditions.length > 0 && (
-          <section aria-labelledby="other-editions" className="space-y-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 id="other-editions" className="om-headline text-2xl text-ink">
+          <section aria-labelledby="other-editions" className="space-y-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+              <h2 id="other-editions" className="om-headline text-3xl text-fg">
                 Altre edizioni
               </h2>
               {release.group && (
                 <Link
                   href={`/albums/${release.group.id}`}
-                  className="rounded-sm text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                  className="om-link rounded-sm text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   Pagina dell’album
                 </Link>
               )}
             </div>
-            <p className="text-sm text-ink-secondary">
+            <p className="max-w-prose text-sm text-fg-muted">
               Ristampe, remaster ed edizioni ampliate dello stesso album. Ognuna ha la sua tracklist
               e i suoi voti.
             </p>
@@ -141,8 +141,9 @@ export default async function ReleaseDetailPage({ params }: Props) {
           </section>
         )}
 
-        <div className="grid gap-10 xl:grid-cols-2">
+        <div className="max-w-prose space-y-16">
           <CriticReviews reviews={settled(critics, null)} />
+          <hr className="om-rule" />
           <CommunityReviews
             releaseId={release.id}
             releaseTitle={release.title}

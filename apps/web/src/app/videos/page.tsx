@@ -1,6 +1,5 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { VideoCamera } from '@phosphor-icons/react/dist/ssr';
 import type { MusicVideoItem } from '@openmusic/shared';
 import { api } from '../../lib/api';
 import { DiscoveryShell, PageOpener } from '../../components/discovery/DiscoveryShell';
@@ -23,10 +22,8 @@ export default async function VideosPage() {
   }
 
   return (
-    <DiscoveryShell className="space-y-8">
+    <DiscoveryShell className="space-y-10">
       <PageOpener
-        eyebrow="Video · Approfondimenti"
-        icon={<VideoCamera weight="duotone" />}
         title="L’approfondimento che la musica merita"
         deck="Analisi, interviste e sessioni dal vivo selezionate dalla critica, con un link diretto al video originale."
       />
