@@ -28,8 +28,8 @@
     "catalog:import": "npm --workspace=@openmusic/api run catalog:import --",
     "catalog:smoke": "npm --workspace=@openmusic/api run catalog:smoke",
     "catalog:audit": "npm --workspace=@openmusic/api run catalog:audit --",
-    "start:api": "npm run db:migrate:deploy && npm --workspace=@openmusic/api run start",
-    "start:web": "npm --workspace=@openmusic/web run start --"
+    "start:api": "npm run db:migrate:deploy && exec npm --workspace=@openmusic/api run start",
+    "start:web": "exec npm --workspace=@openmusic/web run start --"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
