@@ -128,10 +128,10 @@ export function ReelCard({
       />
       <View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(colors.bg, 0.55) }]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(colors.bg, 0.78) }]}
       />
 
-      <View style={[styles.topRow, { paddingHorizontal: space[4], paddingTop: space[3] }]}>
+      <View style={[styles.topRow, { paddingHorizontal: space[5], paddingTop: space[3] }]}>
         <ScoreBadge
           kind="audience"
           size="sm"
@@ -161,7 +161,7 @@ export function ReelCard({
       <View
         style={[
           styles.bottom,
-          { paddingHorizontal: space[4], paddingBottom: space[4], gap: space[3] },
+          { paddingHorizontal: space[5], paddingBottom: space[5], gap: space[4] },
         ]}
       >
         <View style={styles.info}>
@@ -169,10 +169,10 @@ export function ReelCard({
             {[release.genres[0], release.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ') ||
               'Anteprima 30 s'}
           </Text>
-          <Text variant="headline" numberOfLines={2} accessibilityRole="header">
+          <Text variant="headline" size="3xl" numberOfLines={2} accessibilityRole="header">
             {track.title}
           </Text>
-          <Text variant="bodyStrong" tone="accent" numberOfLines={1}>
+          <Text variant="bodyStrong" numberOfLines={1}>
             {track.artistName}
           </Text>
           <Text size="sm" tone="secondary" numberOfLines={1}>
@@ -185,7 +185,7 @@ export function ReelCard({
               style={[
                 styles.review,
                 {
-                  backgroundColor: withAlpha(colors.surface, 0.88),
+                  backgroundColor: withAlpha(colors.surfaceRaised, 0.92),
                   borderColor: colors.border,
                   borderRadius: radii.md,
                   padding: space[3],
@@ -193,13 +193,13 @@ export function ReelCard({
               ]}
             >
               <View style={styles.reviewHead}>
-                <Quotes size={16} color={colors.accent} weight="fill" />
+                <Quotes size={16} color={colors.textSubtle} weight="fill" />
                 <RatingStars value={starsFromRating(review.rating)} size="sm" />
                 {review.isVerifiedListen ? (
                   <SealCheck size={14} color={colors.fresh} weight="fill" />
                 ) : null}
               </View>
-              <Text size="sm" numberOfLines={3} style={styles.quote}>
+              <Text variant="deck" size="base" numberOfLines={3}>
                 “{review.snippet}”
               </Text>
               <Text variant="caption" size="xs" tone="secondary">
@@ -230,7 +230,7 @@ export function ReelCard({
             caption="Indietro"
             disabled={!canGoBack}
             onPress={onBack}
-            icon={<ArrowUUpLeft size={22} color={colors.text} weight="bold" />}
+            icon={<ArrowUUpLeft size={22} color={colors.text} weight="regular" />}
           />
           <IconAction
             overlay
@@ -246,7 +246,7 @@ export function ReelCard({
             icon={
               <BookmarkSimple
                 size={22}
-                color={saved ? colors.onAccent : colors.text}
+                color={saved ? colors.accentContrast : colors.text}
                 weight={saved ? 'fill' : 'regular'}
               />
             }
@@ -260,7 +260,7 @@ export function ReelCard({
               haptics.thud();
               onHide();
             }}
-            icon={<X size={22} color={colors.text} weight="bold" />}
+            icon={<X size={22} color={colors.text} weight="regular" />}
           />
           <IconAction
             overlay
@@ -282,9 +282,9 @@ export function ReelCard({
             }}
             icon={
               unavailable ? (
-                <SpeakerSlash size={26} color={colors.muted} />
+                <SpeakerSlash size={26} color={colors.textSubtle} />
               ) : playing ? (
-                <Pause size={28} color={colors.onAccent} weight="fill" />
+                <Pause size={28} color={colors.accentContrast} weight="fill" />
               ) : (
                 <Play size={28} color={colors.text} weight="fill" />
               )
@@ -316,10 +316,9 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center' },
   bottom: { flexDirection: 'row', alignItems: 'flex-end' },
   info: { flex: 1, minWidth: 0, gap: 4 },
-  review: { borderWidth: 1, gap: 6, marginTop: 6 },
+  review: { borderWidth: StyleSheet.hairlineWidth, gap: 6, marginTop: 8 },
   reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  quote: { fontStyle: 'italic' },
   rail: { alignItems: 'center' },
-  progressTrack: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3 },
-  progressFill: { height: 3, width: '100%', transformOrigin: 'left' },
+  progressTrack: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 2 },
+  progressFill: { height: 2, width: '100%', transformOrigin: 'left' },
 });

@@ -10,7 +10,7 @@ export function CriticReviewCard({ review }: { review: CriticReviewItem }) {
   const { colors, space } = useTheme();
   const url = review.originalReviewUrl;
   return (
-    <Card variant="surface" padding="md" style={{ gap: space[3] }}>
+    <Card variant="sleeve" padding="md" style={{ gap: space[3] }}>
       <View style={styles.head}>
         <Avatar
           name={review.criticName}
@@ -29,8 +29,8 @@ export function CriticReviewCard({ review }: { review: CriticReviewItem }) {
         <ScoreBadge kind="critic" size="sm" percentage={review.rating} />
       </View>
       <View style={styles.quote}>
-        <Quotes size={18} color={colors.accent} weight="fill" />
-        <Text variant="deck" style={styles.flex}>
+        <Quotes size={18} color={colors.textSubtle} weight="fill" />
+        <Text variant="deck" size="xl" style={styles.flex}>
           {review.quoteSnippet}
         </Text>
       </View>

@@ -35,6 +35,9 @@ const variantStep: Record<TextVariant, TypeStep> = {
   mono: 'sm',
 };
 
+/** 13px, the web `.om-eyebrow` size (between the xs and sm steps). */
+const EYEBROW_SCALE = { fontSize: 13, lineHeight: 18 };
+
 function variantStyle(variant: TextVariant, theme: AppTheme, fontSize: number): TextStyle {
   switch (variant) {
     case 'display':
@@ -47,12 +50,8 @@ function variantStyle(variant: TextVariant, theme: AppTheme, fontSize: number): 
     case 'bodyStrong':
       return { fontFamily: theme.font.sansSemiBold };
     case 'eyebrow':
-      return {
-        fontFamily: theme.font.mono,
-        textTransform: 'uppercase',
-        letterSpacing: tracking('label', fontSize),
-        fontVariant: ['tabular-nums'],
-      };
+      // Sentence-case sans label (web `.om-eyebrow`): never tracked-out caps, never mono.
+      return { fontFamily: theme.font.sansMedium };
     case 'mono':
       return { fontFamily: theme.font.mono, fontVariant: ['tabular-nums'] };
     default:
@@ -64,25 +63,27 @@ function toneColor(tone: TextTone, theme: AppTheme): string {
   const c = theme.colors;
   const map: Record<TextTone, string> = {
     primary: c.text,
-    secondary: c.textSecondary,
-    muted: c.muted,
+    secondary: c.textMuted,
+    muted: c.textSubtle,
     accent: c.accent,
     fresh: c.fresh,
     rotten: c.rotten,
-    onAccent: c.onAccent,
+    onAccent: c.accentContrast,
   };
   return map[tone];
 }
 
 /**
- * Typography primitive: Fraunces for editorial variants, Plus Jakarta Sans for UI, JetBrains Mono
- * (tabular) for numbers and catalogue eyebrows. Mirrors `.om-headline` / `.om-deck` / `.om-eyebrow`.
+ * Typography primitive: Newsreader for editorial variants (display, headline, title, deck),
+ * Instrument Sans for UI and labels, Spline Sans Mono (tabular) only for numbers.
+ * Mirrors `.om-headline` / `.om-deck` / `.om-eyebrow`.
  */
 export function Text({ variant = 'body', tone, size, style, ...rest }: TextProps) {
   const theme = useTheme();
-  const scale = typeScale(size ?? variantStep[variant]);
+  const scale =
+    variant === 'eyebrow' && !size ? EYEBROW_SCALE : typeScale(size ?? variantStep[variant]);
   const defaultTone: TextTone =
-    variant === 'eyebrow' || variant === 'caption' ? 'secondary' : 'primary';
+    variant === 'eyebrow' ? 'muted' : variant === 'caption' ? 'secondary' : 'primary';
   return (
     <RNText
       {...rest}

@@ -16,6 +16,7 @@ import { useAuth } from '../../src/lib/auth';
 import { useTheme } from '../../src/theme';
 import {
   Button,
+  Enter,
   EmptyState,
   ErrorState,
   Skeleton,
@@ -68,11 +69,11 @@ export default function HomeScreen() {
   );
 
   const header = (
-    <View style={{ gap: space[4], paddingBottom: space[4] }}>
+    <View style={{ gap: space[6], paddingBottom: space[2] }}>
       <View style={styles.titleRow}>
         <View style={styles.flex}>
           <Text variant="eyebrow">OpenMusic</Text>
-          <Text variant="headline" accessibilityRole="header">
+          <Text variant="headline" size="3xl" accessibilityRole="header">
             Sui piatti oggi
           </Text>
         </View>
@@ -83,10 +84,10 @@ export default function HomeScreen() {
           onPress={() => router.push('/notifications')}
           style={styles.iconButton}
         >
-          <Bell size={26} color={colors.text} weight={unread > 0 ? 'fill' : 'regular'} />
+          <Bell size={24} color={colors.text} weight={unread > 0 ? 'fill' : 'regular'} />
           {unread > 0 ? (
-            <View style={[styles.dot, { backgroundColor: colors.accent, borderColor: colors.bg }]}>
-              <Text variant="mono" size="xs" tone="onAccent" style={styles.dotText}>
+            <View style={[styles.dot, { backgroundColor: colors.text, borderColor: colors.bg }]}>
+              <Text variant="mono" size="xs" style={[styles.dotText, { color: colors.bg }]}>
                 {unread > 99 ? '99+' : unread}
               </Text>
             </View>
@@ -111,7 +112,7 @@ export default function HomeScreen() {
       </View>
 
       <View
-        style={[styles.segment, { backgroundColor: colors.surface, borderRadius: radii.pill }]}
+        style={[styles.segment, { borderBottomColor: colors.border }]}
         accessibilityRole="tablist"
       >
         {SCOPES.map((s) => {
@@ -127,13 +128,10 @@ export default function HomeScreen() {
               }}
               style={[
                 styles.segmentItem,
-                {
-                  borderRadius: radii.pill,
-                  backgroundColor: selected ? colors.elevated : 'transparent',
-                },
+                { borderBottomColor: selected ? colors.text : 'transparent' },
               ]}
             >
-              <Text variant="bodyStrong" size="sm" tone={selected ? 'accent' : 'secondary'}>
+              <Text variant="eyebrow" size="base" tone={selected ? 'primary' : 'secondary'}>
                 {s.label}
               </Text>
             </Pressable>
@@ -148,16 +146,23 @@ export default function HomeScreen() {
       <FlatList
         data={feed.items}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ padding: space[4], gap: space[4], paddingBottom: 96 }}
+        contentContainerStyle={{
+          paddingHorizontal: space[5],
+          paddingTop: space[4],
+          gap: space[5],
+          paddingBottom: 112,
+        }}
         ListHeaderComponent={header}
-        renderItem={({ item }) => (
-          <FeedPostCard
-            post={item}
-            viewerId={user?.id}
-            onToggleLike={actions.toggleLike}
-            onToggleSave={actions.toggleSave}
-            onDelete={(p) => void actions.remove(p)}
-          />
+        renderItem={({ item, index }) => (
+          <Enter index={index}>
+            <FeedPostCard
+              post={item}
+              viewerId={user?.id}
+              onToggleLike={actions.toggleLike}
+              onToggleSave={actions.toggleSave}
+              onDelete={(p) => void actions.remove(p)}
+            />
+          </Enter>
         )}
         onEndReached={() => void feed.loadMore()}
         onEndReachedThreshold={0.5}
@@ -231,12 +236,12 @@ export default function HomeScreen() {
           {
             backgroundColor: colors.accent,
             borderRadius: radii.pill,
-            right: space[4],
-            bottom: space[4],
+            right: space[5],
+            bottom: space[5],
           },
         ]}
       >
-        <PencilSimple size={22} color={colors.onAccent} weight="bold" />
+        <PencilSimple size={20} color={colors.accentContrast} weight="regular" />
         <Text variant="bodyStrong" tone="onAccent">
           Scrivi
         </Text>
@@ -269,19 +274,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   dotText: { fontSize: 10, lineHeight: 12 },
-  segment: { flexDirection: 'row', padding: 4, alignSelf: 'flex-start' },
-  segmentItem: { paddingHorizontal: 16, minHeight: 36, justifyContent: 'center' },
+  segment: { flexDirection: 'row', gap: 24, borderBottomWidth: StyleSheet.hairlineWidth },
+  segmentItem: { minHeight: 44, justifyContent: 'center', borderBottomWidth: 2, marginBottom: -1 },
   fab: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 20,
-    minHeight: 56,
-    elevation: 6,
-    shadowColor: '#0A0805',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    minHeight: 52,
   },
 });

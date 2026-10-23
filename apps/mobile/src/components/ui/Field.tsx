@@ -45,7 +45,7 @@ export function Field({
   return (
     <View style={styles.wrap}>
       <View style={styles.labelRow}>
-        <Text variant="bodyStrong" size="sm" importantForAccessibility="no">
+        <Text variant="eyebrow" tone="primary" size="sm" importantForAccessibility="no">
           {label}
           {required ? <Text tone="accent"> *</Text> : null}
         </Text>
@@ -60,7 +60,7 @@ export function Field({
         accessibilityLabel={a11yLabel}
         accessibilityState={{ disabled: Boolean(disabled) }}
         editable={!disabled}
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={colors.textSubtle}
         selectionColor={colors.accent}
         onFocus={(e) => {
           setFocused(true);
@@ -77,7 +77,7 @@ export function Field({
           {
             fontFamily: font.sans,
             color: colors.text,
-            backgroundColor: colors.sunken,
+            backgroundColor: colors.surfaceRaised,
             borderRadius: radii.md,
             borderColor: error ? colors.rotten : focused ? colors.focus : colors.borderStrong,
             borderWidth: focused || error ? 2 : 1,
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     gap: 8,
   },
-  input: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10 },
+  input: { minHeight: 48, paddingHorizontal: 14, paddingVertical: 12 },
   multiline: { minHeight: 120, textAlignVertical: 'top' },
   errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   flex: { flex: 1 },

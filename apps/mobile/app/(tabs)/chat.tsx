@@ -13,7 +13,9 @@ import {
   Avatar,
   Badge,
   Button,
+  Divider,
   EmptyState,
+  Enter,
   ErrorState,
   Skeleton,
   Text,
@@ -82,7 +84,12 @@ export default function ChatInboxScreen() {
       <FlatList
         data={conversations}
         keyExtractor={(c) => c.otherUser.id}
-        contentContainerStyle={{ padding: space[4], paddingBottom: 96 }}
+        contentContainerStyle={{
+          paddingHorizontal: space[5],
+          paddingTop: space[4],
+          paddingBottom: 112,
+        }}
+        ItemSeparatorComponent={() => <Divider style={{ marginLeft: 56 }} />}
         refreshControl={
           <RefreshControl
             refreshing={inbox.refreshing}
@@ -91,75 +98,83 @@ export default function ChatInboxScreen() {
           />
         }
         ListHeaderComponent={
-          <Text variant="headline" accessibilityRole="header" style={{ marginBottom: space[3] }}>
+          <Text
+            variant="headline"
+            size="3xl"
+            accessibilityRole="header"
+            style={{ marginBottom: space[4] }}
+          >
             Chat
           </Text>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const name = item.otherUser.displayName ?? item.otherUser.username;
           const presence = online.get(item.otherUser.id);
           const unread = item.unreadCount > 0;
           return (
-            <Pressable
-              accessibilityRole="link"
-              accessibilityLabel={`Conversazione con ${name}${unread ? `, ${item.unreadCount} non letti` : ''}. Ultimo: ${preview(item, user?.id)}`}
-              onPress={() => router.push(`/chat/${item.otherUser.id}`)}
-              style={({ pressed }) => [
-                styles.row,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: pressed ? colors.surface : 'transparent',
-                  borderRadius: radii.md,
-                },
-              ]}
-            >
-              <Avatar
-                name={name}
-                src={item.otherUser.avatarUrl}
-                status={
-                  presence
-                    ? presence.isGhostMode
-                      ? 'ghost'
-                      : presence.currentlyPlaying?.isPlaying
-                        ? 'live'
-                        : 'online'
-                    : undefined
-                }
-                decorative
-              />
-              <View style={styles.text}>
-                <Text variant={unread ? 'bodyStrong' : 'body'} numberOfLines={1}>
-                  {name}
-                </Text>
-                <View style={styles.previewRow}>
-                  {item.lastMessage.track ? (
-                    <MusicNote size={14} color={colors.accent} weight="bold" />
-                  ) : null}
-                  <Text
-                    size="sm"
-                    tone={unread ? 'primary' : 'secondary'}
-                    numberOfLines={1}
-                    style={styles.text}
-                  >
-                    {preview(item, user?.id)}
+            <Enter index={index}>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={`Conversazione con ${name}${unread ? `, ${item.unreadCount} non letti` : ''}. Ultimo: ${preview(item, user?.id)}`}
+                onPress={() => router.push(`/chat/${item.otherUser.id}`)}
+                style={({ pressed }) => [
+                  styles.row,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: pressed ? colors.surface : 'transparent',
+                    opacity: pressed ? 0.9 : 1,
+                    borderRadius: radii.md,
+                  },
+                ]}
+              >
+                <Avatar
+                  name={name}
+                  src={item.otherUser.avatarUrl}
+                  status={
+                    presence
+                      ? presence.isGhostMode
+                        ? 'ghost'
+                        : presence.currentlyPlaying?.isPlaying
+                          ? 'live'
+                          : 'online'
+                      : undefined
+                  }
+                  decorative
+                />
+                <View style={styles.text}>
+                  <Text variant={unread ? 'bodyStrong' : 'body'} numberOfLines={1}>
+                    {name}
                   </Text>
+                  <View style={styles.previewRow}>
+                    {item.lastMessage.track ? (
+                      <MusicNote size={14} color={colors.textMuted} weight="regular" />
+                    ) : null}
+                    <Text
+                      size="sm"
+                      tone={unread ? 'primary' : 'secondary'}
+                      numberOfLines={1}
+                      style={styles.text}
+                    >
+                      {preview(item, user?.id)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.meta}>
-                <Text variant="mono" size="xs" tone="muted">
-                  {formatRelative(item.lastMessage.createdAt)}
-                </Text>
-                {unread ? (
-                  <Badge
-                    label={String(item.unreadCount)}
-                    tone="accent"
-                    variant="solid"
-                    size="sm"
-                    mono
-                  />
-                ) : null}
-              </View>
-            </Pressable>
+                <View style={styles.meta}>
+                  <Text size="xs" tone="muted">
+                    {formatRelative(item.lastMessage.createdAt)}
+                  </Text>
+                  {unread ? (
+                    <Badge
+                      label={String(item.unreadCount)}
+                      tone="neutral"
+                      variant="solid"
+                      size="sm"
+                      mono
+                    />
+                  ) : null}
+                </View>
+              </Pressable>
+            </Enter>
           );
         }}
         ListEmptyComponent={
@@ -204,12 +219,12 @@ export default function ChatInboxScreen() {
           {
             backgroundColor: colors.accent,
             borderRadius: radii.pill,
-            right: space[4],
-            bottom: space[4],
+            right: space[5],
+            bottom: space[5],
           },
         ]}
       >
-        <PencilSimple size={24} color={colors.onAccent} weight="bold" />
+        <PencilSimple size={22} color={colors.accentContrast} weight="regular" />
       </PressableScale>
 
       <UserPickerSheet
@@ -231,9 +246,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    minHeight: 64,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    minHeight: 72,
   },
   text: { flex: 1, minWidth: 0 },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -244,10 +259,5 @@ const styles = StyleSheet.create({
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#0A0805',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
   },
 });

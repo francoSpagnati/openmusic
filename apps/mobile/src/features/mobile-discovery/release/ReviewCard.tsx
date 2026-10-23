@@ -46,7 +46,7 @@ export function ReviewCard({ review, isMine, onReact, pending }: ReviewCardProps
   const name = review.user.displayName ?? review.user.username;
   const mine = new Set(myReactions(review));
   return (
-    <Card variant="sleeve" padding="sm" style={{ gap: space[2] }}>
+    <Card variant="sleeve" padding="md" style={{ gap: space[3] }}>
       <View style={styles.head}>
         <Pressable
           accessibilityRole="link"
@@ -67,7 +67,7 @@ export function ReviewCard({ review, isMine, onReact, pending }: ReviewCardProps
         </Pressable>
         <RatingStars value={starsFromRating(review.rating)} size="sm" label={`Voto di ${name}`} />
       </View>
-      {review.content ? <Text size="sm">{review.content}</Text> : null}
+      {review.content ? <Text>{review.content}</Text> : null}
       {review.vibeTags.length > 0 || review.isVerifiedListen ? (
         <View style={styles.tags}>
           {review.isVerifiedListen ? (
@@ -79,7 +79,7 @@ export function ReviewCard({ review, isMine, onReact, pending }: ReviewCardProps
             />
           ) : null}
           {review.vibeTags.map((tag) => (
-            <Badge key={tag} label={`#${tag}`} size="sm" mono />
+            <Badge key={tag} label={`#${tag}`} size="sm" />
           ))}
         </View>
       ) : null}
@@ -109,18 +109,18 @@ export function ReviewCard({ review, isMine, onReact, pending }: ReviewCardProps
                 styles.reaction,
                 {
                   borderRadius: radii.pill,
-                  borderColor: active ? colors.accent : colors.border,
-                  backgroundColor: active ? withAlpha(colors.accent, 0.14) : 'transparent',
+                  borderColor: active ? colors.borderStrong : colors.border,
+                  backgroundColor: active ? withAlpha(colors.text, 0.06) : 'transparent',
                   opacity: isMine ? 0.6 : 1,
                 },
               ]}
             >
               <ReactionIcon
                 type={type}
-                color={active ? colors.accent : colors.textSecondary}
+                color={active ? colors.text : colors.textMuted}
                 active={active}
               />
-              <Text variant="mono" size="xs" tone={active ? 'accent' : 'secondary'}>
+              <Text variant="mono" size="xs" tone={active ? 'primary' : 'secondary'}>
                 {count}
               </Text>
             </Pressable>
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 36,
     minWidth: 56,
-    paddingHorizontal: 10,
-    borderWidth: 1,
+    paddingHorizontal: 12,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

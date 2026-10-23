@@ -77,13 +77,13 @@ export function RatingStars({
         <Star size={px} weight="fill" color={colors.accent} />
       ) : fill === 0.5 ? (
         <View>
-          <Star size={px} weight="regular" color={colors.muted} />
+          <Star size={px} weight="regular" color={colors.borderStrong} />
           <View style={StyleSheet.absoluteFill}>
             <StarHalf size={px} weight="fill" color={colors.accent} />
           </View>
         </View>
       ) : (
-        <Star size={px} weight="regular" color={colors.muted} />
+        <Star size={px} weight="regular" color={colors.borderStrong} />
       );
     if (!interactive) return <View key={index}>{glyph}</View>;
     return (

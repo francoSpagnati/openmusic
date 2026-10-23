@@ -7,7 +7,15 @@ import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth';
 import { useApiQuery } from '../../src/lib/useApiQuery';
 import { useTheme } from '../../src/theme';
-import { EmptyState, ErrorState, Skeleton, SkeletonText, Text } from '../../src/components/ui';
+import {
+  Divider,
+  EmptyState,
+  Enter,
+  ErrorState,
+  Skeleton,
+  SkeletonText,
+  Text,
+} from '../../src/components/ui';
 import { PreviewPlayerProvider } from '../../src/features/mobile-discovery/PreviewPlayer';
 import { applyReaction, myReactions } from '../../src/features/mobile-discovery/reactions';
 import { haptics } from '../../src/features/mobile-discovery/haptics';
@@ -47,11 +55,16 @@ export default function ReleaseScreen() {
   );
 }
 
+/** Section heading: a hairline rule, then the title in the editorial serif. */
 function SectionTitle({ children }: { children: string }) {
+  const { space } = useTheme();
   return (
-    <Text variant="eyebrow" accessibilityRole="header">
-      {children}
-    </Text>
+    <View style={{ gap: space[4], marginBottom: space[1] }}>
+      <Divider />
+      <Text variant="title" size="xl" accessibilityRole="header">
+        {children}
+      </Text>
+    </View>
   );
 }
 
@@ -185,7 +198,7 @@ function ReleaseContent() {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={{ paddingBottom: space[10] }}
+        contentContainerStyle={{ paddingBottom: space[12] }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -204,7 +217,7 @@ function ReleaseContent() {
           hasOtherEditions={hasOtherEditions}
         />
 
-        <View style={{ paddingHorizontal: space[4], gap: space[5] }}>
+        <View style={{ paddingHorizontal: space[5], gap: space[8] }}>
           <DualScoreCard
             score={dual}
             title={hasOtherEditions ? 'Voti di questa edizione' : undefined}
@@ -219,7 +232,7 @@ function ReleaseContent() {
               <Text variant="bodyStrong" tone="accent" size="sm">
                 {`Tutte le ${otherEditions.length + 1} edizioni e il voto complessivo`}
               </Text>
-              <CaretRight size={16} color={colors.accent} weight="bold" />
+              <CaretRight size={16} color={colors.accent} weight="regular" />
             </Pressable>
           ) : null}
 
@@ -282,14 +295,15 @@ function ReleaseContent() {
                     description="Sii il primo a dire la tua."
                   />
                 ) : (
-                  others.map((r) => (
-                    <ReviewCard
-                      key={r.id}
-                      review={r}
-                      isMine={false}
-                      onReact={onReact}
-                      pending={pending[r.id]}
-                    />
+                  others.map((r, i) => (
+                    <Enter key={r.id} index={i}>
+                      <ReviewCard
+                        review={r}
+                        isMine={false}
+                        onReact={onReact}
+                        pending={pending[r.id]}
+                      />
+                    </Enter>
                   ))
                 )}
               </>

@@ -27,7 +27,7 @@ export function EditionScores({ edition }: { edition: EditionSummary }) {
     count > 0 && avg !== null ? `★ ${avg.toFixed(1).replace('.', ',')} · ${count}` : '—';
   return (
     <Text
-      variant="mono"
+      variant="caption"
       size="xs"
       tone="secondary"
       accessibilityLabel={`${critic}. ${audience}.`}
@@ -65,7 +65,7 @@ export function EditionStrip({ editions }: { editions: EditionSummary[] }) {
               gap: space[2],
               padding: space[3],
               borderRadius: radii.sleeve,
-              backgroundColor: colors.surface,
+              backgroundColor: colors.surfaceRaised,
               borderColor: colors.border,
               opacity: pressed ? 0.7 : 1,
             },

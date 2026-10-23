@@ -50,16 +50,16 @@ export function ErrorState({
         inline ? styles.inline : styles.block,
         {
           borderRadius: radii.lg,
-          borderColor: withAlpha(colors.rotten, 0.4),
-          backgroundColor: withAlpha(colors.rotten, 0.08),
+          borderColor: withAlpha(colors.rotten, 0.35),
+          backgroundColor: withAlpha(colors.rotten, 0.06),
         },
       ]}
     >
-      {!inline ? <SmileySad size={40} color={colors.rotten} weight="duotone" /> : null}
+      {!inline ? <SmileySad size={32} color={colors.rotten} weight="light" /> : null}
       <View style={inline ? styles.inlineText : styles.blockText}>
         <Text
           variant={inline ? 'bodyStrong' : 'headline'}
-          size={inline ? 'sm' : 'xl'}
+          size={inline ? 'sm' : 'lg'}
           style={!inline && styles.center}
         >
           {title}
@@ -83,8 +83,14 @@ export function ErrorState({
 }
 
 const styles = StyleSheet.create({
-  block: { alignItems: 'center', gap: 12, padding: 24, borderWidth: 1 },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1 },
+  block: { alignItems: 'center', gap: 12, padding: 24, borderWidth: StyleSheet.hairlineWidth },
+  inline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   blockText: { gap: 4, alignItems: 'center' },
   inlineText: { flex: 1, gap: 2 },
   center: { textAlign: 'center' },

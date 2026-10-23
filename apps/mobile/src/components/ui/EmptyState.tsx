@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Disc } from '../icons';
-import { useTheme } from '../../theme';
+import { useTheme, withAlpha } from '../../theme';
 import { Text } from './Text';
 
 export interface EmptyStateProps {
@@ -29,26 +29,26 @@ export function EmptyState({
       style={[
         styles.box,
         {
-          borderColor: colors.border,
-          borderRadius: radii.lg,
+          borderColor: withAlpha(colors.borderStrong, 0.6),
+          borderRadius: radii.xl,
           paddingVertical: compact ? 24 : 48,
           gap: compact ? 8 : 12,
         },
       ]}
     >
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        {icon ?? <Disc size={compact ? 32 : 48} color={colors.muted} weight="duotone" />}
+        {icon ?? <Disc size={compact ? 32 : 40} color={colors.textSubtle} weight="light" />}
       </View>
       <Text
         variant="headline"
-        size={compact ? 'lg' : '2xl'}
+        size={compact ? 'lg' : 'xl'}
         style={styles.center}
         accessibilityRole="header"
       >
         {title}
       </Text>
       {description ? (
-        <Text size="sm" tone="secondary" style={styles.center}>
+        <Text size="sm" tone="secondary" style={[styles.center, styles.measure]}>
           {description}
         </Text>
       ) : null}
@@ -60,5 +60,6 @@ export function EmptyState({
 const styles = StyleSheet.create({
   box: { alignItems: 'center', borderWidth: 1, borderStyle: 'dashed', paddingHorizontal: 24 },
   center: { textAlign: 'center' },
-  action: { marginTop: 4 },
+  action: { marginTop: 8 },
+  measure: { maxWidth: 360 },
 });

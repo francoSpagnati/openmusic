@@ -46,13 +46,13 @@ export function GenreChips({ genres, selected, onSelect, max = 15 }: GenreChipsP
               styles.chip,
               {
                 borderRadius: radii.pill,
-                borderColor: active ? colors.accent : colors.border,
-                backgroundColor: active ? withAlpha(colors.accent, 0.16) : colors.surface,
+                borderColor: active ? colors.text : colors.border,
+                backgroundColor: active ? withAlpha(colors.text, 0.06) : 'transparent',
                 paddingHorizontal: space[3],
               },
             ]}
           >
-            <Text variant="bodyStrong" size="sm" tone={active ? 'accent' : 'secondary'}>
+            <Text variant="eyebrow" size="sm" tone={active ? 'primary' : 'secondary'}>
               {chip.label}
             </Text>
           </Pressable>

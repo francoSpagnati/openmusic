@@ -44,7 +44,7 @@ export function ReleaseHeaderCard({
   const country = countryName(release.country);
 
   return (
-    <View style={[styles.wrap, { paddingTop: space[6], paddingBottom: space[4], gap: space[4] }]}>
+    <View style={[styles.wrap, { paddingTop: space[6], paddingBottom: space[6], gap: space[5] }]}>
       <Svg
         style={StyleSheet.absoluteFill}
         width="100%"
@@ -71,7 +71,7 @@ export function ReleaseHeaderCard({
         />
       </View>
 
-      <View style={[styles.meta, { paddingHorizontal: space[4] }]}>
+      <View style={[styles.meta, { paddingHorizontal: space[5] }]}>
         <Text variant="eyebrow">{releaseMeta(release)}</Text>
         <Text
           variant="display"
@@ -93,13 +93,13 @@ export function ReleaseHeaderCard({
         </View>
         <View style={styles.badges}>
           {release.genres.slice(0, 4).map((g) => (
-            <Badge key={g} label={g} mono size="sm" />
+            <Badge key={g} label={g} size="sm" />
           ))}
           {source ? <Badge label={`Copertina: ${source}`} size="sm" variant="outline" /> : null}
-          {format ? <Badge label={format} size="sm" variant="outline" mono /> : null}
-          {country ? <Badge label={country} size="sm" variant="outline" mono /> : null}
+          {format ? <Badge label={format} size="sm" variant="outline" /> : null}
+          {country ? <Badge label={country} size="sm" variant="outline" /> : null}
           {release.trackCount ? (
-            <Badge label={`${release.trackCount} brani`} size="sm" variant="outline" mono />
+            <Badge label={`${release.trackCount} brani`} size="sm" variant="outline" />
           ) : null}
         </View>
       </View>
@@ -110,8 +110,8 @@ export function ReleaseHeaderCard({
 const styles = StyleSheet.create({
   wrap: { overflow: 'hidden' },
   center: { alignItems: 'center' },
-  meta: { gap: 6 },
+  meta: { gap: 8 },
   artistRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   flex: { flex: 1, minWidth: 0 },
-  badges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  badges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 8 },
 });

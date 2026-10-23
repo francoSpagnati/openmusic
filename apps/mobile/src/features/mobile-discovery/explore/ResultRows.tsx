@@ -52,7 +52,7 @@ export function ReleaseResultRow({
           <View style={styles.metaRow}>
             {release.editionLabel ? <EditionChip label={release.editionLabel} size="sm" /> : null}
             {folded ? (
-              <Text variant="eyebrow" tone="accent">
+              <Text variant="eyebrow" tone="secondary">
                 {`${editionCount} edizioni`}
               </Text>
             ) : null}
@@ -62,7 +62,7 @@ export function ReleaseResultRow({
           <Text variant="eyebrow" numberOfLines={1} style={styles.shrink}>
             {[releaseMeta(release), release.genres[0]].filter(Boolean).join(' · ')}
           </Text>
-          {source ? <Badge label={source} size="sm" mono variant="outline" /> : null}
+          {source ? <Badge label={source} size="sm" variant="outline" /> : null}
         </View>
       </View>
       <ScoreBadge
@@ -107,9 +107,9 @@ export function TrackResultRow({ track }: { track: CatalogTrack }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, minHeight: 56 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, minHeight: 56 },
   trackBody: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 },
-  text: { flex: 1, minWidth: 0, gap: 2 },
+  text: { flex: 1, minWidth: 0, gap: 3 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   shrink: { flexShrink: 1 },
 });

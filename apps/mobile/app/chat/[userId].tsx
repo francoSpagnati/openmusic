@@ -171,7 +171,7 @@ export default function ConversationScreen() {
 
       {thread.loading ? (
         <View
-          style={[styles.flex, { padding: space[4], gap: space[3] }]}
+          style={[styles.flex, { padding: space[5], gap: space[3] }]}
           accessibilityLabel="Caricamento dei messaggi"
         >
           {[0, 1, 2, 3].map((i) => (
@@ -181,7 +181,7 @@ export default function ConversationScreen() {
           ))}
         </View>
       ) : thread.error ? (
-        <View style={[styles.flex, { padding: space[4] }]}>
+        <View style={[styles.flex, { padding: space[5] }]}>
           <ErrorState
             title="Conversazione non disponibile"
             error={thread.error}
@@ -194,7 +194,7 @@ export default function ConversationScreen() {
           inverted={messages.length > 0}
           data={reversed}
           keyExtractor={(m) => m.id}
-          contentContainerStyle={{ padding: space[4], flexGrow: 1 }}
+          contentContainerStyle={{ padding: space[5], flexGrow: 1 }}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
@@ -213,7 +213,7 @@ export default function ConversationScreen() {
             <EmptyState
               title="Nessun messaggio"
               description="Rompi il ghiaccio con un brano: tocca la nota in basso."
-              icon={<MusicNote size={28} color={colors.muted} />}
+              icon={<MusicNote size={28} color={colors.textSubtle} />}
             />
           }
         />
@@ -256,7 +256,7 @@ export default function ConversationScreen() {
               onPress={() => setTrack(null)}
               style={styles.iconBtn}
             >
-              <X size={18} color={colors.textSecondary} />
+              <X size={18} color={colors.textMuted} />
             </Pressable>
           </View>
         ) : null}
@@ -275,13 +275,13 @@ export default function ConversationScreen() {
             }}
             style={[styles.iconBtn, { backgroundColor: colors.surface, borderRadius: radii.pill }]}
           >
-            <MusicNote size={22} color={colors.accent} weight="bold" />
+            <MusicNote size={22} color={colors.textMuted} weight="regular" />
           </Pressable>
           <TextInput
             ref={inputRef}
             accessibilityLabel="Messaggio"
             placeholder={track ? 'Aggiungi due parole (facoltativo)' : 'Scrivi un messaggio'}
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textSubtle}
             value={draft}
             onChangeText={setDraft}
             multiline
@@ -290,8 +290,8 @@ export default function ConversationScreen() {
               styles.input,
               {
                 color: colors.text,
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
+                backgroundColor: colors.surfaceRaised,
+                borderColor: colors.borderStrong,
                 borderRadius: radii.lg,
                 fontFamily: font.sans,
               },
@@ -306,14 +306,14 @@ export default function ConversationScreen() {
             style={[
               styles.iconBtn,
               {
-                backgroundColor: canSend ? colors.accent : colors.elevated,
+                backgroundColor: canSend ? colors.accent : colors.surface,
                 borderRadius: radii.pill,
               },
             ]}
           >
             <PaperPlaneRight
               size={22}
-              color={canSend ? colors.onAccent : colors.muted}
+              color={canSend ? colors.accentContrast : colors.textSubtle}
               weight="fill"
             />
           </Pressable>
@@ -341,11 +341,17 @@ const styles = StyleSheet.create({
   headerTitle: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 240 },
   composer: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingTop: 8,
     gap: 8,
   },
-  attachment: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 6, borderWidth: 1 },
+  attachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   input: {
     flex: 1,

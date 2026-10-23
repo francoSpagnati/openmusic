@@ -14,6 +14,7 @@ import {
   Field,
   Screen,
   Text,
+  ThemeToggle,
   describeError,
 } from '../src/components/ui';
 import { haptics } from '../src/features/mobile-social/haptics';
@@ -148,10 +149,15 @@ export default function SettingsScreen() {
       </Card>
 
       <Card>
+        <CardHeader eyebrow="Aspetto" title="Tema" />
+        <ThemeToggle />
+      </Card>
+
+      <Card>
         <View style={styles.switchRow}>
           <Ghost
             size={24}
-            color={ghost.isGhostMode ? colors.accent : colors.muted}
+            color={ghost.isGhostMode ? colors.accent : colors.textSubtle}
             weight={ghost.isGhostMode ? 'fill' : 'regular'}
           />
           <View style={styles.flex}>
@@ -167,7 +173,7 @@ export default function SettingsScreen() {
             disabled={ghost.pending}
             onValueChange={(v) => void ghost.setGhostMode(v)}
             trackColor={{ true: colors.accent, false: colors.borderStrong }}
-            thumbColor={colors.elevated}
+            thumbColor={colors.surfaceRaised}
           />
         </View>
         {ghost.error ? (
@@ -281,7 +287,7 @@ function ProviderSyncRow({
         <Text size="sm" tone="secondary">
           {info.lastSyncedAt ? 'Ultimo aggiornamento ' : 'Nessuna lettura ancora'}
           {info.lastSyncedAt ? (
-            <Text variant="mono" size="sm" tone="primary">
+            <Text size="sm" tone="primary">
               {formatRelative(info.lastSyncedAt)}
             </Text>
           ) : null}

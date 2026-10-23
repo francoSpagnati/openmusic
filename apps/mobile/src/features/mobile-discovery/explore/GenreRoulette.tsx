@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { GenreRouletteResult } from '@openmusic/shared';
 import { api } from '../../../lib/api';
-import { useTheme, withAlpha } from '../../../theme';
+import { useTheme } from '../../../theme';
 import { Button, Card, ErrorState, Text } from '../../../components/ui';
 import { Disc } from '../../../components/icons';
 import { MagnifyingGlass, Shuffle } from '../icons';
@@ -82,22 +82,22 @@ export function GenreRoulette({
   const spinning = state.status === 'spinning';
 
   return (
-    <Card variant="sleeve" padding="md" style={{ gap: space[3] }}>
+    <Card variant="sleeve" padding="md" style={{ gap: space[4] }}>
       <View style={[styles.head, { gap: space[3] }]}>
         <Animated.View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           style={[
             styles.disc,
-            { backgroundColor: withAlpha(colors.accent, 0.12), borderRadius: radii.pill },
+            { backgroundColor: colors.sunken, borderRadius: radii.pill },
             discStyle,
           ]}
         >
-          <Disc size={40} color={colors.accent} weight="duotone" />
+          <Disc size={36} color={colors.textMuted} weight="light" />
         </Animated.View>
         <View style={styles.flex}>
           <Text variant="eyebrow">Roulette dei generi</Text>
-          <Text variant="title" accessibilityRole="header">
+          <Text variant="title" size="xl" accessibilityRole="header">
             {current ? current.genre : 'Esci dalla tua bolla'}
           </Text>
           <Text size="sm" tone="secondary">
@@ -134,7 +134,7 @@ export function GenreRoulette({
                 }}
                 style={styles.searchBtn}
               >
-                <MagnifyingGlass size={20} color={colors.textSecondary} />
+                <MagnifyingGlass size={20} color={colors.textMuted} />
               </Pressable>
             </View>
           ))
@@ -152,7 +152,7 @@ export function GenreRoulette({
       <Button
         label={spinning ? 'Gira…' : current ? 'Gira ancora' : 'Gira la roulette'}
         loading={spinning}
-        leadingIcon={<Shuffle size={18} color={colors.onAccent} weight="bold" />}
+        leadingIcon={<Shuffle size={18} color={colors.accentContrast} weight="regular" />}
         onPress={() => void onSpin()}
         fullWidth
       />

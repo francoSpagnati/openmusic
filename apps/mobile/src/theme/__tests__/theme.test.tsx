@@ -1,0 +1,53 @@
+import React from 'react';
+import * as SecureStore from 'expo-secure-store';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { THEME } from '@openmusic/shared';
+import { AppThemeProvider, resolveScheme, useTheme } from '..';
+import { Text, ThemeToggle } from '../../components/ui';
+
+function SchemeProbe() {
+  const theme = useTheme();
+  return <Text testID="probe">{`${theme.name} ${theme.colors.bg}`}</Text>;
+}
+
+describe('theme', () => {
+  beforeEach(() => {
+    (SecureStore as unknown as { __store: Map<string, string> }).__store.clear();
+  });
+
+  it('follows the OS unless the user picked a scheme; light when the OS does not say', () => {
+    expect(resolveScheme('system', 'dark')).toBe('dark');
+    expect(resolveScheme('system', null)).toBe('light');
+    expect(resolveScheme('light', 'dark')).toBe('light');
+    expect(resolveScheme('dark', 'light')).toBe('dark');
+  });
+
+  it('switches scheme from Settings and remembers the choice', async () => {
+    await render(
+      <AppThemeProvider>
+        <SchemeProbe />
+        <ThemeToggle />
+      </AppThemeProvider>
+    );
+    await fireEvent.press(screen.getByRole('radio', { name: 'Scuro' }));
+    expect(screen.getByTestId('probe').props.children).toBe(`dark ${THEME.dark.bg}`);
+    expect(screen.getByRole('radio', { name: 'Scuro' }).props.accessibilityState).toEqual({
+      checked: true,
+    });
+    await waitFor(() =>
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith('om_theme_preference', 'dark')
+    );
+  });
+
+  it('restores a stored preference on launch', async () => {
+    await SecureStore.setItemAsync('om_theme_preference', 'dark');
+    await render(
+      <AppThemeProvider>
+        <SchemeProbe />
+      </AppThemeProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('probe').props.children).toBe(`dark ${THEME.dark.bg}`)
+    );
+  });
+});

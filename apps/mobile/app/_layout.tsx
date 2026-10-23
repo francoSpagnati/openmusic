@@ -9,10 +9,11 @@ import {
   type Theme,
 } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/lib/auth';
-import { FONT, FONT_ASSETS, useTheme } from '../src/theme';
+import { AppThemeProvider, FONT, FONT_ASSETS, useTheme } from '../src/theme';
 import { Spinner } from '../src/components/ui';
 
 void SplashScreen.preventAutoHideAsync();
@@ -27,7 +28,7 @@ function useNavigationTheme(): Theme {
       ...base.colors,
       primary: colors.accent,
       background: colors.bg,
-      card: colors.surface,
+      card: colors.bg,
       text: colors.text,
       border: colors.border,
       notification: colors.accent,
@@ -44,7 +45,14 @@ function RootNavigator() {
   const { name, colors } = useTheme();
   const navTheme = useNavigationTheme();
 
-  if (status === 'loading') return <Spinner label="Apro la sessione…" />;
+  if (status === 'loading') {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <StatusBar style={name === 'dark' ? 'light' : 'dark'} />
+        <Spinner label="Apro la sessione…" />
+      </View>
+    );
+  }
 
   const signedIn = status === 'authenticated';
   return (
@@ -54,7 +62,7 @@ function RootNavigator() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.bg },
           headerTintColor: colors.text,
-          headerTitleStyle: { fontFamily: FONT.editorial },
+          headerTitleStyle: { fontFamily: FONT.editorial, fontSize: 18 },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.bg },
           headerBackButtonDisplayMode: 'minimal',
@@ -92,9 +100,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
+        <AppThemeProvider>
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        </AppThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

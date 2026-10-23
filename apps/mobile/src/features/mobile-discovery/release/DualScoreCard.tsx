@@ -47,7 +47,7 @@ function Column({
           </Text>
         </View>
       ) : null}
-      <Text variant="mono" size="xs" tone="muted">
+      <Text variant="caption" size="xs" tone="muted">
         {count === 0 ? 'nessuna recensione' : count === 1 ? '1 recensione' : `${count} recensioni`}
       </Text>
     </View>
@@ -61,9 +61,9 @@ function Column({
 export function DualScoreCard({ score, title, note }: DualScoreCardProps) {
   const { space, colors } = useTheme();
   return (
-    <Card variant="surface" padding="md" style={{ gap: space[3] }}>
+    <Card variant="sleeve" padding="md" style={{ gap: space[4] }}>
       {title ? (
-        <Text variant="eyebrow" tone="accent" accessibilityRole="header">
+        <Text variant="eyebrow" tone="secondary" accessibilityRole="header">
           {title}
         </Text>
       ) : null}
@@ -93,5 +93,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'stretch' },
   column: { flex: 1, alignItems: 'flex-start' },
   avg: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  divider: { width: StyleSheet.hairlineWidth, marginHorizontal: 12 },
+  divider: { width: StyleSheet.hairlineWidth, marginHorizontal: 16 },
 });

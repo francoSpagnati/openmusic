@@ -11,7 +11,7 @@ export interface AvatarProps {
   name: string;
   src?: string | null;
   size?: AvatarSize;
-  /** `live` draws an accent ring: the user is listening right now. */
+  /** `live` draws a quiet, still green ring and dot: the user is listening right now. */
   status?: AvatarStatus;
   /** Hide from assistive tech when the name is already written next to it. */
   decorative?: boolean;
@@ -61,9 +61,9 @@ export function Avatar({ name, src, size = 'md', status, decorative = false }: A
             width: d.box,
             height: d.box,
             borderRadius: d.box / 2,
-            backgroundColor: colors.elevated,
-            borderColor: status === 'live' ? colors.accent : colors.border,
-            borderWidth: status === 'live' ? 2 : 1,
+            backgroundColor: colors.surface,
+            borderColor: status === 'live' ? colors.fresh : colors.border,
+            borderWidth: status === 'live' ? 2 : StyleSheet.hairlineWidth,
             opacity: status === 'ghost' ? 0.6 : 1,
           },
         ]}
@@ -73,7 +73,7 @@ export function Avatar({ name, src, size = 'md', status, decorative = false }: A
             fontFamily: font.editorial,
             fontSize: d.text,
             lineHeight: d.text * 1.2,
-            color: colors.textSecondary,
+            color: colors.textMuted,
           }}
         >
           {initials(name)}
@@ -97,7 +97,7 @@ export function Avatar({ name, src, size = 'md', status, decorative = false }: A
               width: d.dot,
               height: d.dot,
               borderRadius: d.dot / 2,
-              backgroundColor: status === 'ghost' ? colors.muted : colors.live,
+              backgroundColor: status === 'ghost' ? colors.textSubtle : colors.fresh,
               borderColor: colors.bg,
             },
           ]}

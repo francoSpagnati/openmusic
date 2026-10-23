@@ -43,7 +43,7 @@ export function UndoToast({
       style={[
         styles.toast,
         {
-          backgroundColor: colors.elevated,
+          backgroundColor: colors.surfaceRaised,
           borderColor: colors.borderStrong,
           borderRadius: radii.lg,
           padding: space[3],

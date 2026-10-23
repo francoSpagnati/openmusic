@@ -50,7 +50,7 @@ export function CoverArt({ uri, label, size, rounded = 'sleeve', style }: CoverA
         />
       ) : (
         <View testID="cover-placeholder">
-          <Disc size={Math.max(20, (size ?? 96) * 0.4)} color={colors.muted} weight="duotone" />
+          <Disc size={Math.max(20, (size ?? 96) * 0.36)} color={colors.textSubtle} weight="light" />
         </View>
       )}
     </View>

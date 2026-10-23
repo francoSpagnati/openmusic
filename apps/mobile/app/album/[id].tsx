@@ -9,7 +9,9 @@ import { useTheme } from '../../src/theme';
 import {
   Badge,
   CoverArt,
+  Divider,
   EmptyState,
+  Enter,
   ErrorState,
   Skeleton,
   SkeletonText,
@@ -96,7 +98,12 @@ export default function AlbumScreen() {
     <SafeAreaView edges={[]} style={[styles.flex, { backgroundColor: colors.bg }]}>
       <Stack.Screen options={{ title: data.title }} />
       <ScrollView
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+        contentContainerStyle={{
+          paddingHorizontal: space[5],
+          paddingTop: space[6],
+          paddingBottom: space[12],
+          gap: space[8],
+        }}
         refreshControl={
           <RefreshControl
             refreshing={group.refreshing}
@@ -113,7 +120,7 @@ export default function AlbumScreen() {
             label={`Copertina di ${data.title}, ${data.artistName}`}
           />
         </View>
-        <View style={{ gap: 6 }}>
+        <View style={{ gap: space[2] }}>
           <Text variant="eyebrow">
             {[
               GROUP_TYPE_LABEL[data.primaryType],
@@ -131,12 +138,11 @@ export default function AlbumScreen() {
           <View style={styles.badges}>
             <Badge
               label={count === 1 ? '1 edizione' : `${count} edizioni`}
-              tone="accent"
               variant="outline"
               size="sm"
             />
             {data.genres.slice(0, 3).map((g) => (
-              <Badge key={g} label={g} mono size="sm" />
+              <Badge key={g} label={g} size="sm" />
             ))}
           </View>
         </View>
@@ -147,8 +153,9 @@ export default function AlbumScreen() {
           note="Somma le recensioni di tutte le edizioni contando ogni persona una volta sola (la sua recensione più recente)."
         />
 
-        <View style={{ gap: space[2] }}>
-          <Text variant="eyebrow" accessibilityRole="header">
+        <View style={{ gap: space[3] }}>
+          <Divider />
+          <Text variant="title" size="xl" accessibilityRole="header">
             Edizioni
           </Text>
           <Text variant="caption" tone="muted">
@@ -167,7 +174,12 @@ export default function AlbumScreen() {
             </View>
           ) : null}
           {count > 0 ? (
-            data.editions.map((edition) => <EditionRow key={edition.id} edition={edition} />)
+            data.editions.map((edition, i) => (
+              <Enter key={edition.id} index={i}>
+                {i > 0 ? <Divider /> : null}
+                <EditionRow edition={edition} />
+              </Enter>
+            ))
           ) : (
             <EmptyState
               size="compact"
@@ -188,6 +200,6 @@ export default function AlbumScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center' },
-  badges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  badges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 8 },
   syncRow: { flexDirection: 'row', alignItems: 'center' },
 });

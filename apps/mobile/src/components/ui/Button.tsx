@@ -11,7 +11,8 @@ import {
 import { useTheme, withAlpha, type AppTheme } from '../../theme';
 import { Text } from './Text';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+/** `primary` is the only clay fill: one per screen. `link` is an inline text action. */
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'link';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
@@ -26,16 +27,20 @@ export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> 
   style?: StyleProp<ViewStyle>;
 }
 
-const heights: Record<ButtonSize, number> = { sm: 32, md: 44, lg: 52 };
+const heights: Record<ButtonSize, number> = { sm: 36, md: 44, lg: 52 };
 const paddings: Record<ButtonSize, number> = { sm: 12, md: 16, lg: 24 };
 
 function palette(variant: ButtonVariant, t: AppTheme, pressed: boolean) {
   const c = t.colors;
   switch (variant) {
     case 'primary':
-      return { bg: pressed ? c.accentStrong : c.accent, border: 'transparent', fg: c.onAccent };
+      return {
+        bg: pressed ? c.accentHover : c.accent,
+        border: 'transparent',
+        fg: c.accentContrast,
+      };
     case 'secondary':
-      return { bg: pressed ? c.surface : c.elevated, border: c.border, fg: c.text };
+      return { bg: pressed ? c.surface : c.surfaceRaised, border: c.border, fg: c.text };
     case 'outline':
       return {
         bg: pressed ? withAlpha(c.text, 0.06) : 'transparent',
@@ -46,8 +51,10 @@ function palette(variant: ButtonVariant, t: AppTheme, pressed: boolean) {
       return {
         bg: pressed ? withAlpha(c.text, 0.06) : 'transparent',
         border: 'transparent',
-        fg: c.textSecondary,
+        fg: c.textMuted,
       };
+    case 'link':
+      return { bg: 'transparent', border: 'transparent', fg: pressed ? c.accentHover : c.accent };
     case 'danger':
       return {
         bg: pressed ? withAlpha(c.rotten, 0.12) : 'transparent',
@@ -57,7 +64,10 @@ function palette(variant: ButtonVariant, t: AppTheme, pressed: boolean) {
   }
 }
 
-/** Mirrors the web `<Button>`: same variants/sizes, 44pt min touch target for `md`. */
+/**
+ * Mirrors the web `<Button>`: same variants/sizes, 44pt min touch target for `md`. Calm press
+ * feedback (colour only, no lift); `primary` is the single clay action of a screen.
+ */
 export function Button({
   label,
   variant = 'primary',
@@ -80,7 +90,7 @@ export function Button({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       onPress={onPress}
-      hitSlop={size === 'sm' ? 6 : 0}
+      hitSlop={size === 'sm' ? 4 : 0}
       {...rest}
       style={({ pressed }) => {
         const p = palette(variant, theme, pressed);
@@ -88,12 +98,11 @@ export function Button({
           styles.base,
           {
             height: heights[size],
-            paddingHorizontal: paddings[size],
+            paddingHorizontal: variant === 'link' ? 4 : paddings[size],
             borderRadius: size === 'lg' ? theme.radii.lg : theme.radii.md,
             backgroundColor: p.bg,
             borderColor: p.border,
             opacity: disabled ? 0.5 : 1,
-            transform: [{ translateY: pressed ? 1 : 0 }],
           },
           fullWidth && styles.fullWidth,
           style,
@@ -109,7 +118,7 @@ export function Button({
               <Text
                 variant="bodyStrong"
                 size={size === 'lg' ? 'base' : 'sm'}
-                style={{ color: p.fg }}
+                style={[{ color: p.fg }, variant === 'link' && styles.underline]}
                 numberOfLines={1}
               >
                 {label}
@@ -128,10 +137,11 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderWidth: 1,
     alignSelf: 'flex-start',
   },
   fullWidth: { alignSelf: 'stretch' },
   content: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   hidden: { opacity: 0 },
+  underline: { textDecorationLine: 'underline' },
 });

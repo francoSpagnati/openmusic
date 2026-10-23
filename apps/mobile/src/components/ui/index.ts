@@ -26,3 +26,5 @@ export {
 export { CoverArt, type CoverArtProps } from './CoverArt';
 export { Screen, type ScreenProps } from './Screen';
 export { Spinner } from './Spinner';
+export { ThemeToggle } from './ThemeToggle';
+export { Enter, Divider, type EnterProps } from './Enter';
