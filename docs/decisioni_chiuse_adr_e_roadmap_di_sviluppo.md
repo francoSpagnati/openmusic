@@ -7,22 +7,23 @@
 
 ## Indice
 
-| ADR | Titolo                                              | Stato decisione                | Implementazione      |
-| --- | --------------------------------------------------- | ------------------------------ | -------------------- |
-| 001 | Voto ibrido (stelle, media bayesiana, % gradimento) | Accettata                      | Parziale             |
-| 002 | Moderazione "safe space" e Ascolto Verificato       | Accettata                      | Sì                   |
-| 003 | Anteprime audio 30 s universali                     | Accettata, emendata da ADR-010 | Sì (Deezer → iTunes) |
-| 004 | Rilevamento musicale universale e notifica OS       | Accettata                      | Solo cloud (Spotify) |
-| 005 | Infrastruttura open source e hosting a costo zero   | Accettata, emendata da ADR-014 | Render (Blueprint)   |
-| 006 | Account locali e modello di sessione                | Accettata                      | Sì                   |
-| 007 | Gestione centralizzata degli errori API             | Accettata                      | Sì                   |
-| 008 | Tipografia e token di design                        | Accettata                      | Sì (web e mobile)    |
-| 009 | Tipi di reazione alle recensioni                    | Accettata                      | Sì                   |
-| 010 | Catalogo da database musicali esterni               | Accettata                      | Sì, solo su fixture  |
-| 011 | App mobile: Expo SDK 58 ed expo-router              | Accettata                      | Mai su device        |
-| 012 | Edizioni e release group (modello MusicBrainz)      | Accettata                      | Sì, solo su fixture  |
-| 013 | Lettura automatica di Spotify e Last.fm (polling)   | Accettata                      | Sì, solo su fixture  |
-| 014 | Deploy su Render e same-origin proxy                | Accettata                      | Sì, mai su Render    |
+| ADR | Titolo                                              | Stato decisione                | Implementazione       |
+| --- | --------------------------------------------------- | ------------------------------ | --------------------- |
+| 001 | Voto ibrido (stelle, media bayesiana, % gradimento) | Accettata                      | Parziale              |
+| 002 | Moderazione "safe space" e Ascolto Verificato       | Accettata                      | Sì                    |
+| 003 | Anteprime audio 30 s universali                     | Accettata, emendata da ADR-010 | Sì (Deezer → iTunes)  |
+| 004 | Rilevamento musicale universale e notifica OS       | Accettata                      | Solo cloud (Spotify)  |
+| 005 | Infrastruttura open source e hosting a costo zero   | Accettata, emendata da ADR-014 | Render (Blueprint)    |
+| 006 | Account locali e modello di sessione                | Accettata                      | Sì                    |
+| 007 | Gestione centralizzata degli errori API             | Accettata                      | Sì                    |
+| 008 | Tipografia e token di design                        | Accettata, emendata da ADR-015 | Sì (web e mobile)     |
+| 009 | Tipi di reazione alle recensioni                    | Accettata                      | Sì                    |
+| 010 | Catalogo da database musicali esterni               | Accettata                      | Sì, solo su fixture   |
+| 011 | App mobile: Expo SDK 58 ed expo-router              | Accettata                      | Mai su device         |
+| 012 | Edizioni e release group (modello MusicBrainz)      | Accettata                      | Sì, solo su fixture   |
+| 013 | Lettura automatica di Spotify e Last.fm (polling)   | Accettata                      | Sì, solo su fixture   |
+| 014 | Deploy su Render e same-origin proxy                | Accettata                      | Sì, mai su Render     |
+| 015 | Restyling: direzione visiva calda e minimale        | Accettata                      | Token e primitive web |
 
 ---
 
@@ -494,6 +495,65 @@ RENDER_EXTERNAL_URL`; segreti con `generateValue`; Spotify/Last.fm e `DEMO_PASSW
 e2e`, anche in CI). `render.yaml` validato come YAML e contro i campi documentati, non contro
     lo schema JSON ufficiale (non scaricabile dalla sandbox).
 - **Dettagli:** [`07_DEPLOY.md`](./07_DEPLOY.md), `06` §1 e §5.
+
+### ADR-015: Restyling: direzione visiva calda e minimale ispirata a Claude
+
+- **Data:** 2026-10.
+- **Contesto:** il proprietario vuole un'interfaccia più calma e leggibile, ispirata
+  all'atmosfera di Claude / Anthropic (claude.ai): calda, minimale, editoriale. Il sistema
+  "Warm Editorial Vinyl" (ADR-008) era solo scuro di fatto (il chiaro era opt-in e mai
+  attivabile dall'utente), con grana analogica globale, ombre, Fraunces "wonky" ed etichette
+  mono in maiuscolo: carattere forte ma rumoroso. I colori erano copiati a mano in tre posti
+  (`theme.ts`, `globals.css`, documentazione).
+- **Decisione:**
+  1. **Due temi di pari dignità.** Chiaro = carta avorio, inchiostro quasi nero caldo, pietra
+     morbida; scuro = grafite calda (né nero né grigio-blu). Un solo accento terracotta/argilla,
+     usato poco (azione primaria, focus, nav attiva, link). Ruoli semantici: `bg`, `surface`,
+     `surfaceRaised`, `border`, `borderStrong`, `text`, `textMuted`, `textSubtle`, `accent`,
+     `accentHover`, `accentContrast`, `focus`, `fresh`, `rotten`, `warning`, `overlay` (+ `sunken`).
+  2. **Fonte unica reale:** `THEME.light` / `THEME.dark` in `packages/shared`. Il plugin
+     `themeTokens` di `tailwind.config.ts` genera le variabili `--om-*` (canali RGB) per
+     `:root`, `prefers-color-scheme: dark` e `[data-theme]`: niente più copie a mano.
+  3. **Scelta del tema:** default = sistema; scelta esplicita salvata in `localStorage`
+     (`om-theme`, in `try/catch`) e riflessa su `<html data-theme>` da uno script inline nel
+     `<head>` prima del paint (nessun flash). `ThemeProvider`/`useTheme` in
+     `apps/web/src/lib/theme`; `ThemeToggle` (a tre stati per le impostazioni, a due per l'header)
+     in `components/ui`.
+  4. **Tipografia open source (SIL OFL) via `next/font/google`:** Newsreader (serif editoriale,
+     asse `opsz`), Instrument Sans (UI), Spline Sans Mono (numeri, zero senza barra, pesi reali).
+  5. **Elevazione quasi nulla:** fili da 1 px invece di ombre; ombre tenui solo su dialog,
+     toast e popover. Raggi morbidi (4–16 px). Rimossi grana globale, anello d'usura delle card,
+     vinile che gira sull'avatar.
+  6. **Movimento:** 150/200/250 ms, curva `ease-out` (0.22, 1, 0.36, 1), traslazioni 4–8 px,
+     stagger 40 ms (max 8). Utility `om-enter`, `om-fade`, `om-stagger`, `om-press`; con
+     `prefers-reduced-motion` stanno ferme. View Transitions solo per il cambio tema.
+  7. **Accessibilità:** WCAG 2.x AA in entrambi i temi, misurata da `scripts/check-contrast.ts`
+     (testo ≥ 4,5:1 su tutte le superfici, bordi di componenti e focus ≥ 3:1, badge soft all'8%).
+  8. **Compatibilità:** tutti i nomi Tailwind/CSS precedenti restano come alias (tabella in
+     `05_DESIGN_SYSTEM.md` §4); `THEME.scheme`, `THEME.colors` e le chiavi vecchie di
+     `ColorScheme` restano per il mobile.
+- **Limiti vincolanti dell'ispirazione:** nessun logo, nome, marchio, illustrazione o font
+  proprietario di Anthropic/Claude (Styrene, Tiempos, Copernicus…); nessun valore di colore
+  copiato; OpenMusic mantiene nome, marchio e voce. Ispirazione = linguaggio visivo generale.
+- **Alternative scartate:**
+  - **Tenere Fraunces** con assi più calmi: resta un display anni '70, troppo carattere per una
+    direzione silenziosa; Newsreader nasce per la lettura editoriale su schermo.
+  - **Inter / Geist per la UI:** default onnipresenti, nessuna personalità.
+  - **DM Mono / JetBrains Mono:** zero barrato ("Ø1" nei numeri di traccia); DM Mono ha solo tre
+    pesi e produrrebbe grassetti sintetici.
+  - **`light-dark()` con colori esadecimali:** elegante, ma le variabili devono restare canali
+    RGB per i modificatori di opacità di Tailwind 3 e per il codice esistente
+    (`rgb(var(--om-text)/…)`); `light-dark()` non lavora su triplette.
+  - **Toggle sempre visibile a tre stati nell'header:** troppo peso per una scelta rara; tre
+    stati solo in Impostazioni.
+- **Conseguenze:**
+  - Le pagine cambiano aspetto senza modifiche (chiaro quando il sistema è chiaro), ma alcune
+    scelte locali pensate per il solo scuro (tinte ambientali, `hover:-translate-y`,
+    `uppercase`) vanno riviste dagli agenti delle pagine.
+  - Il mobile compila invariato; adotterà `THEME.light/dark` e i nuovi font in un passo successivo.
+  - **Stato di verifica:** lint, typecheck (5 pacchetti), build web e test verdi; screenshot
+    prima/dopo in entrambi i temi a 1280 e 390 px.
+- **Dettagli:** [`05_DESIGN_SYSTEM.md`](./05_DESIGN_SYSTEM.md).
 
 ---
 
