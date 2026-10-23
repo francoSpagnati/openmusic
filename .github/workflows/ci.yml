@@ -48,6 +48,8 @@ jobs:
       # Catalog provider/import tests run on recorded fixtures through an injected fetch; the
       # API also refuses live provider calls when NODE_ENV=test. Never hit Deezer/iTunes/MB here.
       CATALOG_EXTERNAL_ENABLED: 'false'
+      # ADR-013: no background Spotify/Last.fm polling in CI (tests drive the poller by hand).
+      NOW_PLAYING_POLLER_ENABLED: 'false'
       NEXT_TELEMETRY_DISABLED: 1
       TURBO_TELEMETRY_DISABLED: 1
 
@@ -151,11 +153,14 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openmusic?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
-      CORS_ORIGIN: http://localhost:3000
-      NEXT_PUBLIC_API_URL: http://localhost:4000
+      # Same loopback host as local dev (127.0.0.1, see .env.example): web and API share it.
+      CORS_ORIGIN: http://127.0.0.1:3000
+      WEB_APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
       # Deterministic e2e data: no real-catalog upgrade of the seed, no live provider calls.
       CATALOG_SEED_IMPORT: 'false'
       CATALOG_EXTERNAL_ENABLED: 'false'
+      NOW_PLAYING_POLLER_ENABLED: 'false'
       NEXT_TELEMETRY_DISABLED: 1
       TURBO_TELEMETRY_DISABLED: 1
 

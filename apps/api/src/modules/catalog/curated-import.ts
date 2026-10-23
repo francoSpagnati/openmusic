@@ -70,24 +70,29 @@ export async function findCuratedAlbum(
   const rank = (r: ProviderRelease) =>
     (normalizeCatalogText(r.title) === exactTitle ? 0 : 2) + (r.releaseType === 'ALBUM' ? 0 : 1);
 
-  const hits = await providers.deezer.searchAlbums(
+  // Deezer's advanced syntax is precise when it works, but it misses some catalogue staples
+  // (live: Michael Jackson "Thriller", Marvin Gaye "What's Going On") that a plain query finds.
+  const queries = [
     `artist:"${entry.artist}" album:"${entry.title}"`,
-    { limit: 15, offset: 0 }
-  );
-  const candidates = hits.items
-    .filter((r) => catalogMatchKey(r.title, r.artist.name) === key)
-    .sort((a, b) => rank(a) - rank(b))
-    .slice(0, 3);
-  let fallback: ProviderRelease | null = null;
-  for (const candidate of candidates) {
-    const detail = await providers.deezer.getAlbum(candidate.externalId);
-    if (!detail) continue;
-    const year = yearOf(detail);
-    // Reissues carry the reissue date: accept them only if nothing closer exists.
-    if (!entry.year || year === null || Math.abs(year - entry.year) <= 1) return detail;
-    fallback ??= detail;
+    `${entry.artist} ${entry.title}`,
+  ];
+  for (const query of queries) {
+    const hits = await providers.deezer.searchAlbums(query, { limit: 15, offset: 0 });
+    const candidates = hits.items
+      .filter((r) => catalogMatchKey(r.title, r.artist.name) === key)
+      .sort((a, b) => rank(a) - rank(b))
+      .slice(0, 3);
+    let fallback: ProviderRelease | null = null;
+    for (const candidate of candidates) {
+      const detail = await providers.deezer.getAlbum(candidate.externalId);
+      if (!detail) continue;
+      const year = yearOf(detail);
+      // Reissues carry the reissue date: accept them only if nothing closer exists.
+      if (!entry.year || year === null || Math.abs(year - entry.year) <= 1) return detail;
+      fallback ??= detail;
+    }
+    if (fallback) return fallback;
   }
-  if (fallback) return fallback;
 
   const itunes = await providers.itunes.searchAlbums(`${entry.artist} ${entry.title}`, 10);
   const match = itunes.items

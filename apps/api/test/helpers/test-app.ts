@@ -8,7 +8,15 @@ import { buildApp, type AppContext, type BuildAppOptions } from '../../src/app';
 export async function createTestApp(options: BuildAppOptions = {}): Promise<AppContext> {
   assertTestEnvironment();
   // Many suites register/login repeatedly from the same IP; only rate-limit.test.ts lowers this.
-  const ctx = await buildApp({ authRateLimitMax: 10_000, ...options });
+  const ctx = await buildApp({
+    authRateLimitMax: 10_000,
+    ...options,
+    // A suite that injects catalog fixtures wants the external catalog ON, whatever the shell
+    // exported (CATALOG_EXTERNAL_ENABLED=false from a dev .env would silently disable the
+    // fixtures). Without fixtures buildApp already forces it OFF in tests. An explicit option wins.
+    catalogExternalEnabled:
+      options.catalogExternalEnabled ?? (options.catalogFetch ? true : undefined),
+  });
   await ctx.redis.connect();
   await ctx.app.ready();
   return ctx;

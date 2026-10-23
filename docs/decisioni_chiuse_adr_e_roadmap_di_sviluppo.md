@@ -21,6 +21,7 @@
 | 010 | Catalogo da database musicali esterni               | Accettata                      | Sì, solo su fixture  |
 | 011 | App mobile: Expo SDK 58 ed expo-router              | Accettata                      | Mai su device        |
 | 012 | Edizioni e release group (modello MusicBrainz)      | Accettata                      | Sì, solo su fixture  |
+| 013 | Lettura automatica di Spotify e Last.fm (polling)   | Accettata                      | Sì, solo su fixture  |
 
 ---
 
@@ -70,9 +71,9 @@
      (`NotificationListenerService` / `MediaSession`) per qualsiasi player.
   2. Spazio notifiche: ongoing notification silenziosa su Android; Lock Screen widget + Live
      Activity su iOS.
-- **Stato:** Spotify (currently playing, sync, scrobble) e collegamento Last.fm implementati; Apple
-  Music e i moduli nativi no. L'endpoint `GET /api/notifications/presence-summary` esiste, i widget
-  di sistema no.
+- **Stato:** Spotify (currently playing, sync, scrobble) e collegamento Last.fm implementati, con
+  lettura automatica in background di entrambi (ADR-013); Apple Music e i moduli nativi no.
+  L'endpoint `GET /api/notifications/presence-summary` esiste, i widget di sistema no.
 
 ### ADR-005: Infrastruttura open source e hosting a costo zero
 
@@ -321,6 +322,99 @@
   - **Stato di verifica:** come ADR-010, solo fixture costruite sulla forma documentata delle
     API (browse MusicBrainz incluso); nessuna chiamata live.
 
+### ADR-013: Lettura automatica di Spotify e Last.fm (polling lato server)
+
+- **Data:** 2026-10.
+- **Contesto:** l'ascolto live e gli scrobble arrivavano da Spotify solo quando l'utente premeva
+  "Sincronizza ora" in Impostazioni; Last.fm era collegato ma mai letto. Il proprietario del
+  prodotto ha chiesto la lettura automatica di entrambi.
+- **Decisione:**
+  1. **Polling lato server.** Spotify non offre webhook né stream per il "currently playing" di un
+     utente (solo `GET /me/player/currently-playing`); Last.fm nemmeno (`user.getRecentTracks`).
+     Il client non può farlo al posto nostro: il web non ha i token (stanno nel DB) e un'app in
+     background viene sospesa. Un poller nell'API (`NowPlayingPoller`) legge per ogni utente con
+     un account collegato e utilizzabile.
+  2. **Intervallo adattivo:** ~25 s (`NOW_PLAYING_ACTIVE_INTERVAL_SECONDS`) se l'utente o almeno
+     un suo follower ha un socket aperto, o se ha ascoltato qualcosa negli ultimi 10 minuti;
+     ~3 min (`NOW_PLAYING_IDLE_INTERVAL_SECONDS`) altrimenti; **nessuna lettura** per chi non apre
+     l'app da `NOW_PLAYING_INACTIVE_AFTER_DAYS` giorni (default 14: account in `PAUSED`, ripresa
+     automatica al ritorno). Jitter ±20 % su ogni intervallo. Aprire l'app anticipa la lettura
+     successiva; collegare o ricollegare un account la fa partire subito.
+  3. **Scalabilità orizzontale:** lo stato vive in Redis. `np:poll:due` (sorted set utente →
+     prossima lettura) sopravvive ai riavvii ed è condiviso; ogni lettura è protetta da un lease
+     `SET NX PX` per utente (rilasciato con compare-and-delete), quindi due istanze non leggono mai
+     lo stesso utente insieme; dopo il lease si ricontrolla che l'utente sia ancora "dovuto".
+     Uno sweep periodico (un'istanza alla volta, lease `np:poll:sweep`) riallinea il sorted set
+     al DB. Chi è online è in `np:online` (heartbeat dei gateway ogni 60 s), così anche il
+     "follower online" vale tra istanze. Concorrenza limitata per istanza
+     (`NOW_PLAYING_POLL_CONCURRENCY`).
+  4. **Limiti dei provider:** token bucket per provider (`RateLimiter` di `lib/upstream.ts`,
+     Spotify 10 req/s e Last.fm 4 req/s per istanza, coda limitata) e circuit breaker
+     (`CircuitBreaker`, estratto dallo stesso file). Un **429** mette in pausa il provider **per
+     tutti gli utenti e tutte le istanze** per `Retry-After` (Spotify; default 30 s) o 60 s
+     (Last.fm, errore 29), tramite `np:poll:backoff:<provider>`.
+  5. **Token Spotify:** si riusa `SpotifySyncService.getValidAccessToken` (refresh se il token
+     scade entro 60 s). Un 401 forza un refresh e ritenta **una** volta. Un refresh rifiutato
+     (`invalid_grant`, o refresh token assente) porta l'account in `ERROR` / `TOKEN_REVOKED` e il
+     poller smette di leggerlo finché l'utente non lo ricollega (il callback OAuth lo rimette in
+     `ACTIVE`). Un 403 (utente fuori dall'allowlist della Development Mode) → `ERROR` /
+     `ACCESS_DENIED`. Last.fm: profilo privato (errore 17) → `PRIVATE_PROFILE`, utente
+     inesistente (6) → `ACCOUNT_NOT_FOUND`, entrambi `ERROR`. Errori temporanei (5xx, rete, 429)
+     lasciano lo stato `ACTIVE` con il codice in `syncError`.
+  6. **Precedenza:** Spotify in riproduzione > Last.fm "now playing" > Spotify in pausa > niente.
+     Se Spotify sta suonando Last.fm non viene nemmeno interrogato (risparmio di richieste). Se un
+     provider non è stato letto (backoff, errore), la presenza non viene mai cancellata per
+     mancanza di informazioni.
+  7. **Solo sui cambiamenti:** la presenza (`NowPlayingService`, attraverso lo **stesso throttle
+     di 2 s** del gateway socket) viene pubblicata solo quando cambia il brano o lo stato
+     play/pausa; a brano invariato si rinnova solo il TTL in Redis; a riproduzione finita la
+     traccia sparisce dalla presenza. Lo scrobble (`ScrobbleLog`, badge _Ascolto Verificato_)
+     segue la regola già esistente (> 30 s o >= 50 % del brano; per Last.fm, che non dà il
+     progresso, 30 s di osservazione) con la stessa deduplica Redis di 3 minuti della sync
+     manuale. La risoluzione nel catalogo (ISRC o id Spotify locali → import da Deezer per ISRC o
+     per artista + titolo esatti, solo con `CATALOG_EXTERNAL_ENABLED=true` → riga minima locale
+     come ultima risorsa) gira in una `BackgroundQueue` e non blocca il ciclo.
+  8. **Privacy e Ghost Mode:** in Ghost Mode il poller **non scrive né trasmette** alcuna
+     presenza, ma **registra comunque lo scrobble**: è un dato privato che pesa solo sulle
+     recensioni dell'utente stesso (ADR-002) e non rivela cosa sta ascoltando ora. Disattivata la
+     Ghost Mode, il brano in corso ricompare alla lettura successiva. La lettura riguarda solo chi
+     ha collegato un account e si ferma dopo N giorni di inattività.
+  9. **Stato visibile:** `ConnectedAccount.syncStatus` (`ACTIVE | ERROR | PAUSED`),
+     `lastSyncedAt` (scritto al massimo una volta al minuto), `syncError`
+     (`ProviderSyncErrorCode`); `User.lastSeenAt` (socket o `GET /api/auth/me`, al massimo una
+     volta l'ora). `GET /api/now-playing/sync-status` li espone con `nextPollInSeconds`; web e
+     mobile li mostrano in Impostazioni, con "Ricollega" (web) su `ERROR`. "Sincronizza ora"
+     resta come fallback manuale.
+  10. **Avvio:** il poller è costruito in `buildApp` ma avviato solo da `server.ts`
+      (`NOW_PLAYING_POLLER_ENABLED`, default `true`; `false` in test, CI e Playwright). SIGTERM /
+      SIGINT fermano il ciclo, aspettano le letture in corso e chiudono socket, HTTP, Redis e DB.
+- **Alternative scartate:**
+  - **Polling dal client (web/app):** i token restano sul server; il browser in background e le
+    app sospese non leggono nulla, e ogni dispositivo moltiplicherebbe le chiamate.
+  - **BullMQ / job queue dedicata:** dipendenza nuova per uno scheduling che un sorted set e un
+    lease Redis coprono; nessun beneficio finché i job sono letture brevi e idempotenti.
+  - **Intervallo fisso a 5–10 s:** latenza migliore, ma con i limiti di Spotify (finestra mobile
+    di 30 s, non pubblicata) e di Last.fm (5 req/s per IP) non scala oltre poche decine di utenti.
+  - **Solo `recently-played` / scrobble completati:** affidabili per lo storico ma in ritardo di
+    minuti: inutili per la presenza "in ascolto ora".
+- **Conseguenze:**
+  - **Spotify Development Mode:** finché l'app Spotify non è approvata (Extended Quota Mode) può
+    collegare al massimo **5 utenti** elencati a mano in User Management (`06` §7): il poller non
+    cambia questo limite.
+  - Rate limiter e circuit breaker restano **per processo**; la pausa da 429 invece è globale.
+    Con N istanze il budget totale è N volte quello per istanza.
+  - Il "seen" di Redis (`np:online`) dipende dagli heartbeat: un'istanza caduta lascia un utente
+    "online" al massimo ~150 s.
+  - Un utente che ascolta su Spotify appare ai follower anche senza l'app aperta (con
+    `isOnline: true`, come già la sync manuale): è lo scopo della funzione; la Ghost Mode lo
+    impedisce.
+  - Last.fm non dà la durata del brano: `NowPlayingTrack.durationMs` ammette `0` = sconosciuta
+    e i client nascondono la barra di avanzamento.
+  - **Stato di verifica:** testato solo con risposte registrate sulla forma **documentata** delle
+    API (fetch finto e orologio finto, `apps/api/test/now-playing-poller.test.ts`); nessuna
+    chiamata reale a Spotify o Last.fm (servono credenziali e account reali).
+- **Dettagli:** `03` §4.1, `06` §4 e §7.
+
 ---
 
 ## Roadmap
@@ -339,6 +433,8 @@ Legenda: **[x]** reale (API + web, su DB, testato) · **[~]** parziale · **[ ]*
 - [x] Follow, feed post, like, salvati, notifiche persistenti e live.
 - [x] Presenza live via Socket.io autenticato, solo ai follower; Ghost Mode.
 - [x] Collegamento Spotify e Last.fm.
+- [~] Lettura automatica di Spotify e Last.fm in background (ADR-013): fatta, testata solo con
+  fixture; manca una prova con account reali.
 - [x] Ritorno all'app dopo l'OAuth (redirect a `/settings?oauth=…`).
 - [x] Socket revocato a logout / cambio password / scadenza.
 - [ ] Adapter Redis per più istanze.

@@ -121,7 +121,14 @@ test('search folds editions of one album and the album page lists them', async (
     })
   ).toBeVisible();
   await expect(page.getByText(`Edizione: ${ANNIVERSARY}`).first()).toBeVisible();
-  await expect(page.getByText('Columbia')).toBeVisible();
+  // Scoped to the release header's "Etichetta" fact: on a database with live-imported data the
+  // label name can also appear elsewhere on the page (other editions, related releases).
+  const hero = page.locator('header', { has: page.getByRole('heading', { level: 1 }) });
+  const label = hero
+    .getByRole('term')
+    .filter({ hasText: /^Etichetta$/ })
+    .locator('xpath=following-sibling::dd[1]');
+  await expect(label).toHaveText('Columbia');
 
   const others = page.getByRole('list', { name: 'Altre edizioni' });
   await expect(others.getByRole('link', { name: 'Random Access Memories' })).toBeVisible();

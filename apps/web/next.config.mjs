@@ -9,6 +9,10 @@ nextEnv.loadEnvConfig(path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ['@openmusic/shared'],
+  // Local dev runs on http://127.0.0.1:3000 (Spotify rejects `localhost` redirect URIs, and the
+  // web app must share the API's host for the session cookie). Next 16 only trusts `localhost`
+  // for dev resources (HMR websocket, /_next/*): allow the loopback IP as well.
+  allowedDevOrigins: ['127.0.0.1'],
   images: {
     // Only the catalog CDNs and seed hosts (see image-hosts.mjs): never an open image proxy.
     remotePatterns: IMAGE_REMOTE_PATTERNS.map((pattern) => ({ ...pattern })),

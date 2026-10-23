@@ -134,6 +134,9 @@ export class AuthService {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt,
+      // (Re)linking resets the automatic sync (ADR-013): a revoked account becomes ACTIVE again.
+      syncStatus: 'ACTIVE' as const,
+      syncError: null,
     };
 
     const existing = await this.prisma.connectedAccount.findUnique({
@@ -200,7 +203,7 @@ export class AuthService {
 
     await this.prisma.connectedAccount.upsert({
       where: { provider_providerId: { provider: 'LASTFM', providerId: session.name } },
-      update: { accessToken: session.sessionKey },
+      update: { accessToken: session.sessionKey, syncStatus: 'ACTIVE', syncError: null },
       create: {
         userId,
         provider: 'LASTFM',

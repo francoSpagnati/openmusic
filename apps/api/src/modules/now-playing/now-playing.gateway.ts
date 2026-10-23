@@ -7,7 +7,6 @@ import {
   SocketHandshakeAuthSchema,
   ToggleGhostModeSchema,
   WS_EVENTS,
-  type NowPlayingTrack,
   type SessionRevoked,
   type WsAck,
   type WsAckCallback,
@@ -17,6 +16,8 @@ import { toApiError } from '../../lib/error-handler';
 import { UnauthorizedError } from '../../lib/errors';
 import { userRoom, type OpenMusicIo } from '../../lib/realtime';
 import type { NowPlayingService } from './now-playing.service';
+import { NowPlayingThrottle } from './now-playing.throttle';
+import type { ListeningActivity } from './listening-activity';
 
 interface SocketData {
   userId: string;
@@ -33,6 +34,13 @@ export interface GatewayOptions {
   sessionRecheckMs?: number;
   /** Minimum spacing of now-playing broadcasts per user; extra updates are coalesced. */
   nowPlayingIntervalMs?: number;
+  /**
+   * Shared with the background poller so both sources respect the same per-user throttle.
+   * When omitted the gateway creates its own (with `nowPlayingIntervalMs`).
+   */
+  throttle?: NowPlayingThrottle;
+  /** Online/last-seen tracking used by the poller to pick its interval (ADR-013). */
+  activity?: ListeningActivity;
 }
 
 /** Closes sockets whose session ended (used by logout and password change). */
@@ -61,65 +69,6 @@ function respond(ack: unknown, result: WsAck): void {
   if (typeof ack === 'function') (ack as WsAckCallback)(result);
 }
 
-/**
- * Leading + trailing throttle per user: the first update is broadcast at once, later ones within
- * the interval are coalesced and only the latest is sent when the interval ends. Scrubbing a
- * track or a buggy client can no longer flood every follower.
- */
-class NowPlayingThrottle {
-  private readonly lastSent = new Map<string, number>();
-  private readonly pending = new Map<string, { track: NowPlayingTrack; timer: NodeJS.Timeout }>();
-
-  constructor(
-    private readonly intervalMs: number,
-    private readonly publish: (userId: string, track: NowPlayingTrack) => Promise<unknown>,
-    private readonly onError: (err: unknown, userId: string) => void
-  ) {}
-
-  /** Returns true when the update was published now, false when it was deferred. */
-  async submit(userId: string, track: NowPlayingTrack): Promise<boolean> {
-    const now = Date.now();
-    const last = this.lastSent.get(userId) ?? 0;
-    const queued = this.pending.get(userId);
-    if (!queued && now - last >= this.intervalMs) {
-      this.lastSent.set(userId, now);
-      await this.publish(userId, track);
-      return true;
-    }
-    if (queued) {
-      queued.track = track;
-      return false;
-    }
-    const timer = setTimeout(
-      () => {
-        const entry = this.pending.get(userId);
-        this.pending.delete(userId);
-        if (!entry) return;
-        this.lastSent.set(userId, Date.now());
-        this.publish(userId, entry.track).catch((err: unknown) => this.onError(err, userId));
-      },
-      this.intervalMs - (now - last)
-    );
-    timer.unref();
-    this.pending.set(userId, { track, timer });
-    return false;
-  }
-
-  /** Drops a pending update (user went offline / session revoked). */
-  cancel(userId: string): void {
-    const entry = this.pending.get(userId);
-    if (entry) clearTimeout(entry.timer);
-    this.pending.delete(userId);
-    this.lastSent.delete(userId);
-  }
-
-  dispose(): void {
-    for (const entry of this.pending.values()) clearTimeout(entry.timer);
-    this.pending.clear();
-    this.lastSent.clear();
-  }
-}
-
 export function registerNowPlayingGateway(
   app: FastifyInstance,
   io: OpenMusicIo,
@@ -128,13 +77,31 @@ export function registerNowPlayingGateway(
   options: GatewayOptions = {}
 ): SessionSockets {
   const recheckMs = options.sessionRecheckMs ?? 15_000;
-  const throttle = new NowPlayingThrottle(
-    options.nowPlayingIntervalMs ?? 2_000,
-    (userId, track) => nowPlayingService.updateUserNowPlaying(userId, track),
-    (err, userId) => app.log.warn({ err, userId }, 'Deferred now-playing update failed')
-  );
+  const throttle =
+    options.throttle ??
+    new NowPlayingThrottle(
+      options.nowPlayingIntervalMs ?? 2_000,
+      (userId, track) => nowPlayingService.updateUserNowPlaying(userId, track),
+      (err, userId) => app.log.warn({ err, userId }, 'Deferred now-playing update failed')
+    );
+  const activity = options.activity;
+  // Online users are refreshed regularly so a crashed instance cannot keep them "online".
+  const heartbeat = activity
+    ? setInterval(() => {
+        const online = new Set<string>();
+        for (const socket of io.sockets.sockets.values()) {
+          const id = (socket.data as Partial<SocketData>).userId;
+          if (id) online.add(id);
+        }
+        activity.heartbeat([...online]).catch((err: unknown) => {
+          app.log.warn({ err }, 'Online heartbeat failed');
+        });
+      }, activity.heartbeatMs)
+    : null;
+  heartbeat?.unref();
   const expiryTimers = new Map<string, NodeJS.Timeout>();
   app.addHook('onClose', async () => {
+    if (heartbeat) clearInterval(heartbeat);
     throttle.dispose();
     for (const timer of expiryTimers.values()) clearTimeout(timer);
     expiryTimers.clear();
@@ -174,6 +141,9 @@ export function registerNowPlayingGateway(
     const { userId } = data;
     // In-memory adapter: join is synchronous, so handlers below are attached before any await.
     void socket.join(userRoom(userId));
+    activity?.socketConnected(userId).catch((err: unknown) => {
+      app.log.warn({ err, userId }, 'Failed to record online user');
+    });
 
     // A token expiring while connected closes the socket at that moment.
     if (data.expiresAt !== null) {
@@ -240,6 +210,9 @@ export function registerNowPlayingGateway(
       const remaining = io.sockets.adapter.rooms.get(userRoom(userId))?.size ?? 0;
       if (remaining === 0) {
         throttle.cancel(userId);
+        activity?.socketsClosed(userId).catch((err: unknown) => {
+          app.log.warn({ err, userId }, 'Failed to record offline user');
+        });
         nowPlayingService.setOffline(userId).catch((err: unknown) => {
           app.log.warn({ err, userId }, 'Failed to publish offline presence');
         });

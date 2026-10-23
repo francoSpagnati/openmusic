@@ -101,10 +101,14 @@ export class CatalogEnrichmentService {
       if (label) data.editionLabel = label;
     }
 
+    // The MBID/UPC may already belong to another local row (duplicate edition): keep the
+    // metadata only. Checked first, so the expected case does not hit the unique index (Prisma
+    // logs every P2002 as `prisma:error`, even when the caller handles it).
+    await this.dropOwnedReleaseIds(release.id, data);
     try {
       await this.prisma.release.update({ where: { id: release.id }, data });
     } catch {
-      // The MBID/UPC belongs to another local row (duplicate edition): keep the metadata only.
+      // Lost a race with a concurrent import of the same edition.
       delete data.musicbrainzId;
       delete data.upc;
       await this.prisma.release.update({ where: { id: release.id }, data });
@@ -267,7 +271,33 @@ export class CatalogEnrichmentService {
     return hit?.mbid ?? null;
   }
 
-  /** Sets recording MBIDs on local tracks matched by ISRC or by title inside the release. */
+  /** Removes from `data` the MBID / UPC another release row already owns (both are unique). */
+  private async dropOwnedReleaseIds(
+    releaseId: string,
+    data: Prisma.ReleaseUpdateInput
+  ): Promise<void> {
+    const mbid = typeof data.musicbrainzId === 'string' ? data.musicbrainzId : null;
+    const upc = typeof data.upc === 'string' ? data.upc : null;
+    if (!mbid && !upc) return;
+    const owners = await this.prisma.release.findMany({
+      where: {
+        id: { not: releaseId },
+        OR: [...(mbid ? [{ musicbrainzId: mbid }] : []), ...(upc ? [{ upc }] : [])],
+      },
+      select: { musicbrainzId: true, upc: true },
+    });
+    if (mbid && owners.some((o) => o.musicbrainzId === mbid)) delete data.musicbrainzId;
+    if (upc && owners.some((o) => o.upc === upc)) delete data.upc;
+  }
+
+  /**
+   * Sets recording MBIDs on local tracks matched by ISRC or by title inside the release.
+   *
+   * `Track.musicbrainzId` is unique, but a MusicBrainz recording is shared by every edition that
+   * reuses it (ADR-012 imports sibling editions) and can appear twice in one release (the title
+   * fallback, a reprise, a bonus disc): the first row keeps it, the others stay without. Owners
+   * are looked up first, so these expected cases never reach the unique index.
+   */
   private async linkRecordings(
     releaseId: string,
     recordings: ReadonlyArray<{
@@ -280,16 +310,30 @@ export class CatalogEnrichmentService {
     const tracks = await this.prisma.track.findMany({
       where: { releaseId, musicbrainzId: null },
       select: { id: true, isrc: true, title: true, artistName: true },
+      orderBy: [{ discNumber: 'asc' }, { trackNumber: 'asc' }, { id: 'asc' }],
     });
+    if (tracks.length === 0) return;
+    const mbids = recordings
+      .map((r) => r.musicbrainzId)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+    if (mbids.length === 0) return;
+    const owned = await this.prisma.track.findMany({
+      where: { musicbrainzId: { in: mbids } },
+      select: { musicbrainzId: true },
+    });
+    const taken = new Set(owned.map((t) => t.musicbrainzId));
     for (const track of tracks) {
       const key = catalogMatchKey(track.title, track.artistName);
+      const isrc = normalizeIsrc(track.isrc);
       const recording =
-        recordings.find((r) => r.isrc && r.isrc === track.isrc) ??
+        (isrc ? recordings.find((r) => normalizeIsrc(r.isrc) === isrc) : undefined) ??
         recordings.find((r) => catalogMatchKey(r.title, track.artistName) === key);
-      if (!recording?.musicbrainzId) continue;
+      const mbid = recording?.musicbrainzId;
+      if (!mbid || taken.has(mbid)) continue;
+      taken.add(mbid);
       await this.prisma.track
-        .update({ where: { id: track.id }, data: { musicbrainzId: recording.musicbrainzId } })
-        .catch(() => null); // MBID already on another row (same recording on two releases)
+        .update({ where: { id: track.id }, data: { musicbrainzId: mbid } })
+        .catch(() => null); // lost a race with a concurrent enrichment of a sibling edition
     }
   }
 }

@@ -80,6 +80,7 @@ async function main(): Promise<void> {
     cache: new MemoryResponseCache(),
     musicbrainzContact: env.MUSICBRAINZ_CONTACT,
     itunesCountry: env.ITUNES_COUNTRY,
+    batch: true,
   });
 
   try {

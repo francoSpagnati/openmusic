@@ -117,6 +117,37 @@ export class RateLimiter {
   }
 }
 
+/**
+ * Consecutive-failure circuit breaker: after `threshold` failures in a row the provider is skipped
+ * for `cooldownMs`. Shared by the catalog clients and the now-playing poller (one per provider).
+ */
+export class CircuitBreaker {
+  private consecutiveFailures = 0;
+  private openUntil = 0;
+
+  constructor(
+    private readonly clock: Clock = systemClock,
+    private readonly threshold = 3,
+    private readonly cooldownMs = 30_000
+  ) {}
+
+  get isOpen(): boolean {
+    return this.clock.now() < this.openUntil;
+  }
+
+  recordSuccess(): void {
+    this.consecutiveFailures = 0;
+  }
+
+  recordFailure(): void {
+    this.consecutiveFailures++;
+    if (this.consecutiveFailures >= this.threshold) {
+      this.openUntil = this.clock.now() + this.cooldownMs;
+      this.consecutiveFailures = 0;
+    }
+  }
+}
+
 /** Key/value cache for upstream responses. Implementations must never throw. */
 export interface ResponseCache {
   get(key: string): Promise<string | null>;
@@ -181,6 +212,11 @@ export interface UpstreamClientOptions {
   maxQueue?: number;
   /** Retries after the first attempt, on 429 / 5xx / network errors. */
   maxRetries?: number;
+  /**
+   * Extra statuses this provider uses for throttling, retried like 429 (iTunes answers 403 when
+   * called too fast). Never set it globally: a real 403 elsewhere is a permanent refusal.
+   */
+  throttleStatuses?: readonly number[];
   /** First backoff delay; doubles at every retry (plus jitter), capped by `maxBackoffMs`. */
   baseBackoffMs?: number;
   maxBackoffMs?: number;
@@ -212,7 +248,8 @@ const NOT_FOUND_SENTINEL = '__openmusic_not_found__';
 /**
  * HTTP client for one external catalog provider. Every request goes through: response cache →
  * circuit breaker → rate limiter → `fetch` with timeout → retry with exponential backoff on
- * 429/5xx/network errors (honouring `Retry-After`) → Zod validation of the documented shape.
+ * 429/5xx/network errors and the provider's `throttleStatuses` (honouring `Retry-After`) → Zod
+ * validation of the documented shape.
  */
 export class UpstreamClient {
   readonly provider: string;
@@ -221,16 +258,14 @@ export class UpstreamClient {
   private readonly cache: ResponseCache | null;
   private readonly limiter: RateLimiter;
   private readonly maxRetries: number;
+  private readonly throttleStatuses: ReadonlySet<number>;
   private readonly baseBackoffMs: number;
   private readonly maxBackoffMs: number;
   private readonly timeoutMs: number;
   private readonly defaultTtlSeconds: number;
   private readonly headers: Record<string, string>;
-  private readonly circuitThreshold: number;
-  private readonly circuitCooldownMs: number;
+  private readonly circuit: CircuitBreaker;
   private readonly detectError: UpstreamClientOptions['detectError'];
-  private consecutiveFailures = 0;
-  private circuitOpenUntil = 0;
 
   constructor(options: UpstreamClientOptions) {
     this.provider = options.provider;
@@ -244,13 +279,17 @@ export class UpstreamClient {
       options.burst ?? 1
     );
     this.maxRetries = options.maxRetries ?? 2;
+    this.throttleStatuses = new Set(options.throttleStatuses ?? []);
     this.baseBackoffMs = options.baseBackoffMs ?? 300;
     this.maxBackoffMs = options.maxBackoffMs ?? 5_000;
     this.timeoutMs = options.timeoutMs ?? UPSTREAM_TIMEOUT_MS;
     this.defaultTtlSeconds = options.defaultTtlSeconds ?? 60 * 60;
     this.headers = { Accept: 'application/json', ...options.headers };
-    this.circuitThreshold = options.circuitThreshold ?? 3;
-    this.circuitCooldownMs = options.circuitCooldownMs ?? 30_000;
+    this.circuit = new CircuitBreaker(
+      this.clock,
+      options.circuitThreshold ?? 3,
+      options.circuitCooldownMs ?? 30_000
+    );
     this.detectError = options.detectError;
   }
 
@@ -310,7 +349,7 @@ export class UpstreamClient {
   }
 
   private async request(url: string, mode: 'json' | 'bytes'): Promise<Buffer | null> {
-    if (this.clock.now() < this.circuitOpenUntil) {
+    if (this.circuit.isOpen) {
       throw new UpstreamRequestError(this.provider, 'CIRCUIT_OPEN', 'temporarily disabled');
     }
 
@@ -341,7 +380,11 @@ export class UpstreamClient {
         this.recordSuccess();
         return null;
       }
-      if (response.status === 429 || response.status >= 500) {
+      if (
+        response.status === 429 ||
+        response.status >= 500 ||
+        this.throttleStatuses.has(response.status)
+      ) {
         lastError = new UpstreamRequestError(
           this.provider,
           'HTTP',
@@ -401,15 +444,11 @@ export class UpstreamClient {
   }
 
   private recordSuccess(): void {
-    this.consecutiveFailures = 0;
+    this.circuit.recordSuccess();
   }
 
   private recordFailure(): void {
-    this.consecutiveFailures++;
-    if (this.consecutiveFailures >= this.circuitThreshold) {
-      this.circuitOpenUntil = this.clock.now() + this.circuitCooldownMs;
-      this.consecutiveFailures = 0;
-    }
+    this.circuit.recordFailure();
   }
 }
 
@@ -424,7 +463,8 @@ function describeNetworkError(err: unknown): string {
   return err.message;
 }
 
-function parseRetryAfter(value: string | null): number | undefined {
+/** `Retry-After` (seconds or HTTP date) in milliseconds, undefined when absent/invalid. */
+export function parseRetryAfter(value: string | null): number | undefined {
   if (!value) return undefined;
   const seconds = Number(value);
   if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);

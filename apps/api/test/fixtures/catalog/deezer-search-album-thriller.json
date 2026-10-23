@@ -1,0 +1,74 @@
+{
+  "data": [
+    {
+      "id": 96126,
+      "title": "Thriller",
+      "link": "https://www.deezer.com/album/96126",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f01e09ceb8ad1e96707c1b4aadb5911b/1000x1000-000000-80-0-0.jpg",
+      "nb_tracks": 9,
+      "record_type": "album",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 259,
+        "name": "Michael Jackson",
+        "link": "https://www.deezer.com/artist/259",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/97fae13b2b30e4aec2e8c9e0c7839d92/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    },
+    {
+      "id": 49012482,
+      "title": "Thriller (Steve Aoki Midnight Hour Remix)",
+      "link": "https://www.deezer.com/album/49012482",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8d4b8fa7bc6dd4bc96115c9ebb1a6651/1000x1000-000000-80-0-0.jpg",
+      "nb_tracks": 1,
+      "record_type": "single",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 259,
+        "name": "Michael Jackson",
+        "link": "https://www.deezer.com/artist/259",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/97fae13b2b30e4aec2e8c9e0c7839d92/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    },
+    {
+      "id": 72819,
+      "title": "Thriller 25 Super Deluxe Edition",
+      "link": "https://www.deezer.com/album/72819",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/92a024220a9532489c75c9d994835697/1000x1000-000000-80-0-0.jpg",
+      "nb_tracks": 30,
+      "record_type": "album",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 259,
+        "name": "Michael Jackson",
+        "link": "https://www.deezer.com/artist/259",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/97fae13b2b30e4aec2e8c9e0c7839d92/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    },
+    {
+      "id": 375513297,
+      "title": "Thriller 40",
+      "link": "https://www.deezer.com/album/375513297",
+      "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ad147d71933eb449a3bc3417e2f8b62d/1000x1000-000000-80-0-0.jpg",
+      "nb_tracks": 34,
+      "record_type": "album",
+      "explicit_lyrics": false,
+      "artist": {
+        "id": 259,
+        "name": "Michael Jackson",
+        "link": "https://www.deezer.com/artist/259",
+        "picture_xl": "https://cdn-images.dzcdn.net/images/artist/97fae13b2b30e4aec2e8c9e0c7839d92/1000x1000-000000-80-0-0.jpg",
+        "type": "artist"
+      },
+      "type": "album"
+    }
+  ],
+  "total": 88,
+  "next": "https://api.deezer.com/search/album?q=Michael%20Jackson%20Thriller&limit=4&index=4"
+}

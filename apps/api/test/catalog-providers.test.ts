@@ -88,6 +88,26 @@ describe('UpstreamClient', () => {
     await expect(http.getJson('https://example.test/missing', Schema)).resolves.toBeNull();
   });
 
+  it('retries a provider-specific throttle status only where it is configured', async () => {
+    const routes = (): FixtureRoute[] => [
+      { match: /throttled/, responses: [{ status: 403 }, { body: '{"ok":true}' }] },
+    ];
+    const plain = client(routes());
+    await expect(
+      plain.http.getJson('https://example.test/throttled', Schema)
+    ).rejects.toMatchObject({ kind: 'HTTP', status: 403 });
+    expect(plain.fixtures.calls).toHaveLength(1);
+
+    const throttled = client(routes(), { throttleStatuses: [403], baseBackoffMs: 1_000 });
+    await expect(throttled.http.getJson('https://example.test/throttled', Schema)).resolves.toEqual(
+      {
+        ok: true,
+      }
+    );
+    expect(throttled.fixtures.calls).toHaveLength(2);
+    expect(throttled.clock.sleeps[0]).toBeGreaterThanOrEqual(1_000);
+  });
+
   it('rejects bodies that do not match the documented shape', async () => {
     const { http } = client([{ match: /x/, responses: [{ body: '{"ok":"yes"}' }] }]);
     await expect(http.getJson('https://example.test/x', Schema)).rejects.toMatchObject({
@@ -261,6 +281,59 @@ describe('ItunesProvider', () => {
     ]);
     const songs = await p.itunes.searchTracks('reckoner', 1);
     expect(songs.items[0]?.previewUrl).toMatch(/^https:\/\/audio-ssl\.itunes\.apple\.com\//);
+  });
+
+  it('treats HTTP 403 as throttling: backs off and retries (iTunes only)', async () => {
+    const { p, fixtures, clock } = providers([
+      {
+        match: /itunes\.apple\.com\/search\?.*entity=album/,
+        responses: [{ status: 403 }, { status: 403 }, { file: 'itunes-search-album.json' }],
+      },
+      { match: /api\.deezer\.com\/search\/album\?/, responses: [{ status: 403 }] },
+    ]);
+    const page = await p.itunes.searchAlbums('in rainbows', 5);
+    expect(page.items[0]?.title).toBe('In Rainbows');
+    expect(fixtures.callsTo(/itunes\.apple\.com\/search/)).toHaveLength(3);
+    const backoffs = clock.sleeps.filter((ms) => ms >= 3_000);
+    expect(backoffs).toHaveLength(2);
+    expect(backoffs[1]).toBeGreaterThanOrEqual(6_000);
+
+    // Other providers keep treating 403 as a permanent refusal.
+    await expect(
+      p.deezer.searchAlbums('in rainbows', { limit: 5, offset: 0 })
+    ).rejects.toMatchObject({ kind: 'HTTP', status: 403 });
+    expect(fixtures.callsTo(/api\.deezer\.com\/search/)).toHaveLength(1);
+  });
+
+  it('gives up after the retries when iTunes keeps answering 403', async () => {
+    const { p, fixtures } = providers([
+      { match: /itunes\.apple\.com\/lookup\?/, responses: [{ status: 403 }] },
+    ]);
+    await expect(p.itunes.getAlbum('1109714933')).rejects.toMatchObject({
+      provider: 'itunes',
+      kind: 'HTTP',
+      status: 403,
+    });
+    expect(fixtures.callsTo(/itunes\.apple\.com\/lookup/)).toHaveLength(3);
+  });
+
+  it('waits iTunes throttling out much longer in batch scripts', async () => {
+    const fixtures = createFixtureFetch([
+      ...inRainbowsRoutes(),
+      { match: /itunes\.apple\.com\/lookup\?/, responses: [{ status: 403 }] },
+    ]);
+    const clock = createFakeClock();
+    const p = createCatalogProviders({
+      fetch: fixtures.fetch,
+      clock,
+      musicbrainzContact: 'https://github.com/francoSpagnati/openmusic',
+      batch: true,
+    });
+    await expect(p.itunes.getAlbum('1109714933')).rejects.toMatchObject({ status: 403 });
+    expect(fixtures.callsTo(/itunes\.apple\.com\/lookup/)).toHaveLength(5);
+    const backoffs = clock.sleeps.filter((ms) => ms >= 5_000);
+    expect(backoffs).toHaveLength(4);
+    expect(backoffs[3]).toBeGreaterThanOrEqual(40_000);
   });
 });
 

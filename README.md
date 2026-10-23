@@ -50,7 +50,13 @@ cp .env.example packages/db/.env   # la CLI Prisma legge DATABASE_URL da qui
   una chiave effimera e le sessioni si azzerano a ogni riavvio. Per generarla:
   `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
 - Spotify e Last.fm sono **facoltativi**: senza chiavi l'app funziona, solo il collegamento di
-  quegli account non è disponibile.
+  quegli account non è disponibile. Per attivarli segui
+  [Collegare Spotify e Last.fm](#collegare-spotify-e-lastfm-facoltativo).
+- In locale tutti gli URL usano **`127.0.0.1`, mai `localhost`** (web `http://127.0.0.1:3000`, API
+  `http://127.0.0.1:4000`): Spotify accetta come redirect solo IP di loopback, e web e API devono
+  stare sullo stesso host perché il cookie di sessione e quello di stato OAuth viaggino. Se hai un
+  `.env` creato prima di questa modifica, aggiorna `CORS_ORIGIN`, `NEXT_PUBLIC_API_URL`,
+  `WEB_APP_URL`, `SPOTIFY_REDIRECT_URI` e `LASTFM_CALLBACK_URL` come in `.env.example`.
 
 ### 3. Database
 
@@ -74,11 +80,15 @@ Per modificare lo schema: `npm run db:migrate` (crea una nuova migrazione con `p
 ### 4. Avvio
 
 ```bash
-npm run dev                  # API su http://localhost:4000 + web su http://localhost:3000
+npm run dev                  # API su http://127.0.0.1:4000 + web su http://127.0.0.1:3000
 npm run dev:api              # solo API
 npm run dev:web              # solo web
 npm run dev:mobile           # Expo (vedi "App mobile" sotto)
 ```
+
+Apri il web su **http://127.0.0.1:3000** (non `localhost:3000`: il cookie di sessione è legato
+all'host dell'API, `127.0.0.1:4000`). `next.config.mjs` include `allowedDevOrigins: ['127.0.0.1']`,
+senza il quale Next 16 blocca l'HMR e le risorse `/_next/*` aperte da quell'indirizzo.
 
 ### 5. Qualità e test
 
@@ -104,8 +114,48 @@ npm run e2e
 ```
 
 Playwright avvia da solo API (`:4000`) e `next start` (`:3000`), oppure riusa server già attivi.
+Il browser apre il web sullo stesso host di `NEXT_PUBLIC_API_URL` (di default `127.0.0.1`);
+`E2E_WEB_URL`/`E2E_API_URL` li sovrascrivono.
 Il test registra un account `e2e-*@openmusic.test` che viene cancellato alla fine
 (`E2E_KEEP_DATA=1` per conservarlo).
+
+## Collegare Spotify e Last.fm (facoltativo)
+
+Guida completa, con i problemi frequenti: [`docs/06`](./docs/06_API_AND_AUTH.md) §7.
+
+**Spotify**
+
+1. Vai su [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), accedi e
+   premi **Create app**.
+2. In **Redirect URIs** inserisci esattamente `http://127.0.0.1:4000/api/auth/spotify/callback`
+   e premi **Add**. Spotify non accetta più `localhost`: solo IP di loopback come `127.0.0.1`.
+3. In "Which API/SDKs are you planning to use?" spunta **Web API**, accetta i termini e salva.
+4. In **Settings → User Management** aggiungi nome ed email dell'account Spotify con cui farai il
+   collegamento. In _Development Mode_ l'app accetta al massimo 5 utenti registrati qui; inoltre,
+   secondo gli annunci sul forum sviluppatori Spotify, da febbraio 2026 l'account sviluppatore che
+   possiede l'app deve essere **Premium**.
+5. In **Settings → Basic Information** copia **Client ID** e **Client secret** nel `.env`:
+
+   ```bash
+   SPOTIFY_CLIENT_ID="..."
+   SPOTIFY_CLIENT_SECRET="..."
+   SPOTIFY_REDIRECT_URI="http://127.0.0.1:4000/api/auth/spotify/callback"   # identico al punto 2
+   ```
+
+6. Riavvia `npm run dev`, apri **http://127.0.0.1:3000** (non `localhost`), registrati (o accedi
+   con un utente del seed) e vai su **Impostazioni → Collega Spotify**. Dopo il consenso torni su
+   `/settings` con l'esito.
+
+**Last.fm**
+
+1. Crea un'applicazione su [last.fm/api/account/create](https://www.last.fm/api/account/create)
+   (serve un account Last.fm) con **Callback URL** `http://127.0.0.1:4000/api/auth/lastfm/callback`.
+2. Copia **API key** e **Shared secret** nel `.env` (`LASTFM_API_KEY`, `LASTFM_SHARED_SECRET`;
+   `LASTFM_CALLBACK_URL` uguale al punto 1).
+3. Riavvia l'API e, da loggato su http://127.0.0.1:3000, **Impostazioni → Collega Last.fm**.
+
+Dietro un proxy con allowlist servono anche `accounts.spotify.com`, `api.spotify.com`,
+`www.last.fm` e `ws.audioscrobbler.com`.
 
 ## Catalogo musicale esterno
 
@@ -146,8 +196,15 @@ Se l'API gira dietro un firewall o un proxy con allowlist, servono in uscita (HT
 | `audio-ssl.itunes.apple.com`                                      | web, mobile      | anteprime AAC iTunes                 |
 | `musicbrainz.org`                                                 | API              | arricchimento (`/ws/2`)              |
 | `coverartarchive.org`, `archive.org`, `*.archive.org`             | API, web, mobile | copertine di riserva (redirect a IA) |
+| `accounts.spotify.com`, `api.spotify.com`                         | API, browser     | collegamento Spotify (facoltativo)   |
+| `www.last.fm`, `ws.audioscrobbler.com`                            | API, browser     | collegamento Last.fm (facoltativo)   |
 | `images.unsplash.com`                                             | web, mobile      | cover e avatar del seed              |
 | `fonts.googleapis.com`, `fonts.gstatic.com`                       | build web        | font (`next/font/google`)            |
+
+Attenzione: `*.archive.org` **non** copre il dominio apex `archive.org`, che va aggiunto a parte.
+Cover Art Archive risponde con un redirect (307) a `archive.org/download/...` e poi (302) a un
+nodo come `dn711103.ca.archive.org`: senza l'apex le copertine di riserva falliscono anche con il
+wildcard.
 
 Per disattivare del tutto le chiamate esterne (CI, sviluppo offline): `CATALOG_EXTERNAL_ENABLED=false`
 (ricerca solo locale, nessuna anteprima, nessun import). Altre variabili: `MUSICBRAINZ_CONTACT`
@@ -163,7 +220,7 @@ expo-router; la scelta è motivata nell'ADR-011. Richiede Node >= 22.13 e, sul t
 ```bash
 cp apps/mobile/.env.example apps/mobile/.env
 # imposta EXPO_PUBLIC_API_URL: deve essere raggiungibile DAL TELEFONO
-#   simulatore iOS sulla stessa macchina:  http://localhost:4000
+#   simulatore iOS sulla stessa macchina:  http://127.0.0.1:4000
 #   emulatore Android:                     http://10.0.2.2:4000
 #   telefono fisico con Expo Go:           http://<IP LAN del computer>:4000
 npm run dev:api              # API su :4000 (telefono e computer sulla stessa rete Wi-Fi)
@@ -172,7 +229,7 @@ npm run dev:mobile           # expo start: scansiona il QR con Expo Go (Android)
 
 - `EXPO_PUBLIC_API_URL` viene inserita nel bundle da Metro all'avvio: dopo averla cambiata
   riavvia con `npx expo start -c`. Non metterci segreti.
-- Su un telefono fisico `localhost` è il telefono stesso: usa l'IP LAN e verifica che il firewall
+- Su un telefono fisico `127.0.0.1` (come `localhost`) è il telefono stesso: usa l'IP LAN e verifica che il firewall
   del computer accetti connessioni sulla porta 4000. In alternativa `npx expo start --tunnel`
   per Metro (l'API deve comunque essere raggiungibile all'URL configurato).
 - Login con gli utenti del seed (password `openmusic-dev`). Il collegamento Spotify/Last.fm è

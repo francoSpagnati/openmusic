@@ -9,7 +9,8 @@ import { newTestAccount } from './account';
  * Each run registers a fresh account, so it can run repeatedly against the same database.
  */
 
-const API_URL = process.env.E2E_API_URL ?? 'http://localhost:4000';
+// Set by playwright.config.ts (same host as the web app, so the session cookie applies).
+const API_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:4000';
 const SEEDED_PEER = 'francospagnati';
 
 const account = newTestAccount();

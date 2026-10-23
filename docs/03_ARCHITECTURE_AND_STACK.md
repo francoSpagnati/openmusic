@@ -63,7 +63,7 @@ packages/db                # prisma/schema.prisma, prisma/migrations, src/seed.t
 | `chat`          | `/api/chat`                 | Inbox, conversazioni, messaggi con brano, reazioni, "ascoltato"                      |
 | `playlists`     | `/api/playlists`            | Playlist Lato A / Lato B                                                             |
 | `notifications` | `/api/notifications`        | Notifiche persistenti, non lette, riepilogo presenza                                 |
-| `now-playing`   | `/api/now-playing` + socket | Presenza live in Redis, Ghost Mode, gateway Socket.io                                |
+| `now-playing`   | `/api/now-playing` + socket | Presenza live in Redis, Ghost Mode, gateway Socket.io, poller Spotify/Last.fm        |
 | `critic`        | `/api/critic`               | Accredito critici (coda ADMIN), recensioni della critica, dual score                 |
 | `videos`        | `/api/videos`               | Video-recensioni (pubblicazione riservata a CRITIC/MODERATOR/ADMIN)                  |
 | `spotify`       | `/api/spotify`              | Currently playing, sync playback → scrobble, top artisti, export playlist            |
@@ -85,8 +85,9 @@ L'elenco completo degli endpoint con livello di autenticazione è in `06` §4.
 
 ## 4. Presenza live ("Now Playing")
 
-1. Il client invia `now_playing:update_track` sul socket (oppure il web chiama
-   `POST /api/spotify/sync-playback`, che legge Spotify e registra anche uno `ScrobbleLog`).
+1. Il client invia `now_playing:update_track` sul socket, oppure il **poller** dell'API legge da
+   solo Spotify e Last.fm (§4.1), oppure il web chiama `POST /api/spotify/sync-playback`
+   ("Sincronizza ora", fallback manuale che registra anche uno `ScrobbleLog`).
 2. `NowPlayingService` scrive `presence:user:{id}` in Redis con `SETEX` 300 s.
 3. Il server emette `now_playing:friend_presence_changed` **solo nelle stanze `user:<id>` dei
    follower**. Alla connessione ogni socket riceve `now_playing:initial_friends_state`.
@@ -94,11 +95,50 @@ L'elenco completo degli endpoint con livello di autenticazione è in `06` §4.
    `NowPlayingService.setGhostMode`, che pubblica subito lo stato nascosto.
 
 **Limite attuale:** Socket.io usa l'adapter **in memoria**: tutto funziona con una sola istanza
-API. Per scalare orizzontalmente serve `@socket.io/redis-adapter` (Redis Pub/Sub), non ancora
+API (il poller di §4.1 invece è già pronto per più istanze: stato e lease in Redis). Per scalare orizzontalmente serve `@socket.io/redis-adapter` (Redis Pub/Sub), non ancora
 presente. La sessione del socket è verificata alla connessione e ricontrollata sul DB agli eventi
 (al massimo ogni 15 s per socket); il socket si
 chiude alla scadenza del token, al logout (solo le connessioni di quella sessione) e al cambio
 password (`06` §5).
+
+### 4.1 Lettura automatica di Spotify e Last.fm (ADR-013)
+
+```text
+server.ts ── start() ──> NowPlayingPoller (ogni istanza, tick 1 s, concorrenza limitata)
+                           │ ZRANGEBYSCORE np:poll:due  → utenti da leggere
+                           │ SET np:poll:lease:<id> NX PX 60s  → una sola istanza per utente
+                           ├─> SpotifySyncService.getValidAccessToken (refresh; 401 → refresh + 1 retry)
+                           │     └─> SpotifyService.fetchCurrentlyPlaying   (RateLimiter + CircuitBreaker)
+                           ├─> LastFmService.getRecentTracks (limit 1, extended; solo se Spotify non suona)
+                           ├─> np:poll:state:<id>  confronto con l'ultima lettura
+                           │     cambiato → NowPlayingThrottle (2 s, condiviso col gateway) → NowPlayingService
+                           │     uguale   → solo rinnovo del TTL della presenza
+                           ├─> ScrobbleRecorder.claim (SET NX EX 180) → BackgroundQueue:
+                           │     catalogo locale (ISRC / id Spotify / titolo) → Deezer → riga minima
+                           ├─> ProviderSyncStore (syncStatus, lastSyncedAt, syncError)
+                           └─> ZADD np:poll:due <prossima lettura>  (25 s / 3 min / stop, ±20 %)
+sweep ogni 60 s (lease np:poll:sweep): PAUSED dopo N giorni senza visite, ripresa, ZADD NX dei collegati
+ListeningActivity: np:online (socket, heartbeat 60 s) e User.lastSeenAt (socket, GET /api/auth/me)
+```
+
+- **Dove:** `apps/api/src/modules/now-playing/` (`now-playing.poller.ts`, `poll-scheduler.ts`,
+  `listening-activity.ts`, `provider-sync.store.ts`, `scrobble-recorder.ts`,
+  `now-playing.throttle.ts`). Il poller è costruito in `buildApp` (i test lo pilotano con
+  `runOnce()`, orologio e `fetch` finti) ma **avviato solo da `server.ts`** se
+  `NOW_PLAYING_POLLER_ENABLED` è vero (default; `false` in test, CI e Playwright).
+- **Intervalli:** veloce se l'utente o un suo follower ha un socket aperto o se ha ascoltato
+  qualcosa negli ultimi 10 min; lento altrimenti; nessuna lettura dopo N giorni senza visite
+  (account `PAUSED`, ripresi alla visita successiva). Collegare o ricollegare un account e aprire
+  l'app anticipano la lettura.
+- **Stato in Redis**, quindi riavvii e più istanze non perdono né duplicano letture; i 429
+  mettono in pausa il provider per tutte le istanze (`np:poll:backoff:<provider>`).
+- **Errori:** token revocato, accesso negato (Spotify 403), profilo Last.fm privato o inesistente
+  → account `ERROR`, nessuna lettura finché non viene ricollegato; errori temporanei → stato
+  `ACTIVE` con `syncError`.
+- **Ghost Mode:** nessuna presenza scritta o trasmessa dal poller; lo scrobble privato sì.
+- **Arresto:** SIGTERM/SIGINT → `poller.stop()` (attende le letture in corso), poi socket, HTTP,
+  Redis, Prisma.
+- `GET /api/now-playing/sync-status` espone lo stato a web e mobile (`06` §4). Variabili: `06` §7.
 
 ## 5. Algoritmi
 
@@ -151,8 +191,9 @@ Android (ongoing notification) e iOS (Lock Screen widget + Live Activity) non es
 
 Schema: `packages/db/prisma/schema.prisma`. Migrazioni: `packages/db/prisma/migrations`.
 
-- **Utenti e social:** `User` (ruolo, `passwordHash`, `sessionVersion`, `isGhostMode`),
-  `ConnectedAccount` (Spotify/Last.fm/Apple Music), `Follows`, `Notification`.
+- **Utenti e social:** `User` (ruolo, `passwordHash`, `sessionVersion`, `isGhostMode`,
+  `lastSeenAt`), `ConnectedAccount` (Spotify/Last.fm/Apple Music, con `syncStatus`,
+  `lastSyncedAt`, `syncError` per la lettura automatica), `Follows`, `Notification`.
 - **Catalogo (ADR-012):** `ReleaseGroup` (l'album come opera: MBID del release group, titolo
   senza marcatori, `primaryType`, `firstReleaseYear`, `editionsSyncedAt`) e `Release` = una
   **edizione** (punteggi pubblico/critica, `dominantColor`, id esterni `deezerId`/`itunesId`/

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Disc, SignOut } from '@phosphor-icons/react';
+import type { NowPlayingSyncStatus } from '@openmusic/shared';
 import { api } from '@/lib/api';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { Badge, Button, Skeleton, useToast } from '@/components/ui';
@@ -28,20 +29,53 @@ const ROLE_LABEL = {
   ADMIN: 'Admin',
 } as const;
 
+const SYNC_STATUS_REFRESH_MS = 30_000;
+
+/**
+ * ADR-013: automatic Spotify / Last.fm sync state, re-read every 30 s while the page is visible
+ * and whenever the linked accounts change. null = not loaded (the cards hide the block).
+ */
+function useSyncStatus(enabled: boolean, accountsKey: string) {
+  const [status, setStatus] = useState<NowPlayingSyncStatus | null>(null);
+  const load = useCallback(() => {
+    api.nowPlaying
+      .syncStatus()
+      .then(setStatus)
+      .catch(() => setStatus(null));
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, SYNC_STATUS_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [enabled, accountsKey, load]);
+
+  return { status, reload: load };
+}
+
 export function SettingsScreen() {
   const { ready, user } = useRequireAuth();
-  const { refresh, logout } = useAuth();
+  const { refresh, logout, connectedAccounts } = useAuth();
   const { notify } = useToast();
   const [loggingOut, setLoggingOut] = useState(false);
+  const accountsKey = connectedAccounts.map((a) => `${a.provider}:${a.id}`).join(',');
+  const sync = useSyncStatus(Boolean(ready && user), accountsKey);
+  const reloadSync = sync.reload;
 
   // Coming back from Spotify/Last.fm consent: pick up the newly linked account.
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh().catch(() => undefined);
+      if (document.visibilityState === 'visible') {
+        refresh().catch(() => undefined);
+        reloadSync();
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [refresh]);
+  }, [refresh, reloadSync]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -118,16 +152,25 @@ export function SettingsScreen() {
               description="OpenMusic funziona anche senza: collegarli aggiunge ascolto live e recensioni verificate."
             >
               <div className="space-y-3">
-                <SpotifyConnectCard />
+                <SpotifyConnectCard
+                  sync={sync.status?.providers.SPOTIFY ?? null}
+                  autoSyncEnabled={sync.status?.autoSyncEnabled ?? true}
+                  onSynced={sync.reload}
+                />
                 <ProviderCard
                   provider="LASTFM"
                   name="Last.fm"
                   icon={<Disc weight="fill" />}
                   description="Importa i tuoi scrobble per l'heavy rotation e gli ascolti verificati."
                   getLoginUrl={() => api.auth.lastFmLoginUrl()}
+                  sync={sync.status?.providers.LASTFM ?? null}
+                  autoSyncEnabled={sync.status?.autoSyncEnabled ?? true}
                 />
                 <p className="text-xs text-ink-muted">
                   Dopo l’autorizzazione tornerai su questa pagina con l’esito del collegamento.
+                  Quando un servizio è collegato, OpenMusic legge da solo cosa stai ascoltando:
+                  spesso mentre tu o i tuoi amici siete online, più di rado quando non ci siete. In
+                  Ghost Mode gli amici non lo vedono.
                 </p>
               </div>
             </SettingsSection>

@@ -569,6 +569,41 @@ export class CatalogService {
     }
   }
 
+  /**
+   * A track a user is listening to (Spotify / Last.fm, ADR-013) -> internal track id, importing
+   * its album from Deezer when needed: by ISRC, else by an exact artist + title match. Returns
+   * null without any outbound call when the external catalog is disabled, and on any failure
+   * (the caller falls back to a minimal local row).
+   */
+  async resolveListenedTrack(listened: {
+    title: string;
+    artist: string;
+    isrc: string | null;
+  }): Promise<string | null> {
+    if (!this.options.externalEnabled) return null;
+    try {
+      let hit = listened.isrc ? await this.providers.deezer.getTrackByIsrc(listened.isrc) : null;
+      if (!hit) {
+        const wanted = catalogMatchKey(listened.title, listened.artist);
+        const page = await this.providers.deezer.searchTracks(
+          `artist:"${listened.artist}" track:"${listened.title}"`,
+          { limit: 5, offset: 0 }
+        );
+        hit = page.items.find((t) => catalogMatchKey(t.title, t.artist.name) === wanted) ?? null;
+      }
+      if (!hit) return null;
+      const resolved = await this.resolve({
+        provider: 'deezer',
+        type: 'track',
+        id: hit.externalId,
+      });
+      return resolved.trackId;
+    } catch (err) {
+      this.logUpstream('Listened track resolution failed', err);
+      return null;
+    }
+  }
+
   /** Synchronous color (one small image) + background MusicBrainz enrichment / CAA cover. */
   private async afterExplicitImport(release: Release, musicbrainzId: string | null): Promise<void> {
     if (musicbrainzId && !release.coverUrl) {

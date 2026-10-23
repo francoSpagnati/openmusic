@@ -33,6 +33,11 @@ export interface AuthRoutesOptions {
   sockets: SessionSockets;
   /** Web app origin: OAuth callbacks redirect the browser back there. */
   webAppUrl: string;
+  /** ADR-013 hooks: last-seen tracking and an immediate first read after (re)linking. */
+  activity?: {
+    seen(userId: string): Promise<void>;
+    providerLinked(userId: string): Promise<void>;
+  };
 }
 
 type OAuthProvider = 'spotify' | 'lastfm';
@@ -59,6 +64,13 @@ export function createAuthRoutes(
       return { ...session, ...(await fastify.issueSession(reply, session.user.id)) };
     }
 
+    /** Linking never fails because the poller could not be woken up. */
+    async function notifyLinked(userId: string): Promise<void> {
+      await options.activity?.providerLinked(userId).catch((err: unknown) => {
+        fastify.log.warn({ err, userId }, 'Failed to schedule the first now-playing read');
+      });
+    }
+
     // -- Local accounts ------------------------------------------------------
 
     fastify.post('/register', rateLimited, async (request, reply) => {
@@ -82,7 +94,12 @@ export function createAuthRoutes(
     });
 
     fastify.get('/me', { preHandler: fastify.authenticate }, async (request) => {
-      return authService.getUserSessionData(requireAuth(request).userId);
+      const { userId } = requireAuth(request);
+      // Every app start calls /me: it marks the user as seen (the poller keeps reading them).
+      options.activity?.seen(userId).catch((err: unknown) => {
+        fastify.log.warn({ err, userId }, 'Failed to record last seen');
+      });
+      return authService.getUserSessionData(userId);
     });
 
     fastify.patch('/me', { preHandler: fastify.authenticate }, async (request) => {
@@ -193,6 +210,7 @@ export function createAuthRoutes(
               request.auth?.userId
             );
             await withSession(reply, session);
+            await notifyLinked(session.user.id);
           }
         );
       }
@@ -217,6 +235,7 @@ export function createAuthRoutes(
             if (!request.auth) throw new UnauthorizedError();
             if (!query.token) throw new BadRequestError('Token Last.fm mancante');
             await authService.handleLastFmCallback(query.token, request.auth.userId);
+            await notifyLinked(request.auth.userId);
           }
         );
       }

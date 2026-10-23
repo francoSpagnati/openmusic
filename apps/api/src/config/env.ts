@@ -29,7 +29,7 @@ const EnvSchema = z
       .positive()
       .default(7 * 24 * 60 * 60),
     /** Comma-separated list of allowed browser origins (HTTP CORS and Socket.io). */
-    CORS_ORIGIN: z.string().default('http://localhost:3000,exp://localhost:8081'),
+    CORS_ORIGIN: z.string().default('http://127.0.0.1:3000,exp://127.0.0.1:8081'),
     /** Defaults to true in production. Set false only for plain-http local setups. */
     COOKIE_SECURE: booleanFromString.optional(),
     /** Optional cookie domain (e.g. `.openmusic.social` when web and api are on subdomains). */
@@ -43,7 +43,7 @@ const EnvSchema = z
      * Public URL of the web app. OAuth callbacks (Spotify, Last.fm) redirect the browser back
      * here (`/settings?oauth=<provider>&status=success|error`) instead of showing raw JSON.
      */
-    WEB_APP_URL: z.string().url().default('http://localhost:3000'),
+    WEB_APP_URL: z.string().url().default('http://127.0.0.1:3000'),
 
     // External catalog (Deezer, iTunes, MusicBrainz, Cover Art Archive)
     /** false = search/open use only the local catalog (no outbound calls). */
@@ -56,15 +56,28 @@ const EnvSchema = z
       .regex(/^[A-Za-z]{2}$/)
       .default('IT'),
 
-    // Spotify OAuth
+    // ADR-013: background reading of Spotify / Last.fm "now playing".
+    /** Defaults to true, except with NODE_ENV=test. CI and Playwright set it to false. */
+    NOW_PLAYING_POLLER_ENABLED: booleanFromString.optional(),
+    /** Interval while the user or a follower is online, or something played recently. */
+    NOW_PLAYING_ACTIVE_INTERVAL_SECONDS: z.coerce.number().int().min(10).max(300).default(25),
+    /** Interval for idle users (nobody watching, nothing played recently). */
+    NOW_PLAYING_IDLE_INTERVAL_SECONDS: z.coerce.number().int().min(30).max(3600).default(180),
+    /** Users not seen in the app for this many days are not polled (accounts set to PAUSED). */
+    NOW_PLAYING_INACTIVE_AFTER_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+    /** Users polled in parallel by one API instance. */
+    NOW_PLAYING_POLL_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(4),
+
+    // Spotify OAuth. Local defaults use 127.0.0.1, never `localhost`: Spotify rejects
+    // `localhost` redirect URIs, and web + API must share one host for the session cookie.
     SPOTIFY_CLIENT_ID: z.string().optional().default(''),
     SPOTIFY_CLIENT_SECRET: z.string().optional().default(''),
-    SPOTIFY_REDIRECT_URI: z.string().default('http://localhost:4000/api/auth/spotify/callback'),
+    SPOTIFY_REDIRECT_URI: z.string().default('http://127.0.0.1:4000/api/auth/spotify/callback'),
 
     // Last.fm Auth
     LASTFM_API_KEY: z.string().optional().default(''),
     LASTFM_SHARED_SECRET: z.string().optional().default(''),
-    LASTFM_CALLBACK_URL: z.string().default('http://localhost:4000/api/auth/lastfm/callback'),
+    LASTFM_CALLBACK_URL: z.string().default('http://127.0.0.1:4000/api/auth/lastfm/callback'),
   })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === 'production' && !e.JWT_SECRET) {
@@ -92,6 +105,7 @@ export const env = {
   ...raw,
   JWT_SECRET: raw.JWT_SECRET ?? randomBytes(48).toString('base64url'),
   COOKIE_SECURE: raw.COOKIE_SECURE ?? raw.NODE_ENV === 'production',
+  NOW_PLAYING_POLLER_ENABLED: raw.NOW_PLAYING_POLLER_ENABLED ?? raw.NODE_ENV !== 'test',
   WEB_APP_URL: raw.WEB_APP_URL.replace(/\/+$/, ''),
   CORS_ORIGINS: raw.CORS_ORIGIN.split(',')
     .map((o) => o.trim())

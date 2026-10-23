@@ -43,6 +43,10 @@ export function testEnv() {
     DATABASE_URL: testDatabaseUrl(),
     REDIS_URL: testRedisUrl(),
     JWT_SECRET: 'openmusic-test-secret-not-for-production-use',
+    // Pinned (not read from .env) so assertions on CORS and OAuth redirects stay stable.
     CORS_ORIGIN: 'http://localhost:3000',
+    WEB_APP_URL: 'http://localhost:3000',
+    // Tests drive the now-playing poller by hand (fake clock + fixture fetch), never in background.
+    NOW_PLAYING_POLLER_ENABLED: 'false',
   };
 }

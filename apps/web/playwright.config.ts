@@ -17,8 +17,15 @@ import { defineConfig, devices } from '@playwright/test';
 // Same single root .env as the apps (DATABASE_URL for the teardown, ports, API URL).
 loadEnvConfig(path.resolve(__dirname, '../..'));
 
-const WEB_URL = process.env.E2E_WEB_URL ?? 'http://localhost:3000';
-const API_URL = process.env.E2E_API_URL ?? 'http://localhost:4000';
+// The browser must open the web app on the same host the build calls the API on
+// (NEXT_PUBLIC_API_URL), otherwise the session cookie is not sent: derive one from the other.
+// Local dev and CI use 127.0.0.1 (Spotify rejects `localhost` redirect URIs).
+const API_URL =
+  process.env.E2E_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:4000';
+const WEB_URL = process.env.E2E_WEB_URL ?? `http://${new URL(API_URL).hostname}:3000`;
+// The specs (run in worker processes) read the same URLs.
+process.env.E2E_API_URL = API_URL;
+process.env.E2E_WEB_URL = WEB_URL;
 
 const SANDBOX_CHROMIUM = '/opt/pw-browsers/chromium';
 const executablePath =
@@ -57,6 +64,9 @@ export default defineConfig({
         // Seeded data only: no Deezer/iTunes/MusicBrainz calls, so runs are deterministic and
         // work offline (CI sets the same). Export CATALOG_EXTERNAL_ENABLED=true to override.
         CATALOG_EXTERNAL_ENABLED: process.env.CATALOG_EXTERNAL_ENABLED ?? 'false',
+        // ADR-013: no background Spotify/Last.fm reads during e2e (the settings test inserts
+        // sync states directly). Export NOW_PLAYING_POLLER_ENABLED=true to override.
+        NOW_PLAYING_POLLER_ENABLED: process.env.NOW_PLAYING_POLLER_ENABLED ?? 'false',
       },
     },
     {

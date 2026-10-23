@@ -34,6 +34,11 @@ export interface CatalogProvidersOptions {
   /** Contact URL or email for the MusicBrainz User-Agent (required by their API policy). */
   musicbrainzContact: string;
   itunesCountry?: string;
+  /**
+   * Batch scripts (`catalog:import`): wait out provider throttling much longer than an
+   * interactive request could (iTunes keeps answering 403 for tens of seconds).
+   */
+  batch?: boolean;
 }
 
 /** `OpenMusic/<version> ( <contact> )`, the format MusicBrainz asks for. */
@@ -58,7 +63,9 @@ export function createCatalogProviders(options: CatalogProvidersOptions): Catalo
     maxQueue: 50,
     detectError: detectDeezerError,
   });
-  // iTunes: ~20 / minute -> bursts of 3 (album + song search), then one every 3 s.
+  // iTunes: ~20 / minute -> bursts of 3 (album + song search), then one every 3 s. When it
+  // throttles it answers 403 (not 429), without Retry-After: back off 3 s, then 6 s (batch
+  // scripts: 5, 10, 20, 40 s).
   const itunes = new UpstreamClient({
     ...common,
     provider: 'itunes',
@@ -66,6 +73,10 @@ export function createCatalogProviders(options: CatalogProvidersOptions): Catalo
     burst: 3,
     maxQueue: 5,
     defaultTtlSeconds: 6 * 3600,
+    throttleStatuses: [403],
+    ...(options.batch
+      ? { maxRetries: 4, baseBackoffMs: 5_000, maxBackoffMs: 60_000 }
+      : { baseBackoffMs: 3_000, maxBackoffMs: 10_000 }),
   });
   // MusicBrainz: 1 / second, mandatory User-Agent.
   const musicbrainz = new UpstreamClient({

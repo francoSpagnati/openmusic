@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ArrowsClockwise, SpotifyLogo } from '@phosphor-icons/react';
-import type { SpotifySyncPlaybackResponse } from '@openmusic/shared';
+import type { ProviderSyncInfo, SpotifySyncPlaybackResponse } from '@openmusic/shared';
 import { api } from '@/lib/api';
 import { Button, useToast } from '@/components/ui';
 import { ProviderCard } from './web-core/settings/ProviderCard';
@@ -10,9 +10,18 @@ import { errorMessage } from './web-core/format';
 
 /**
  * Optional Spotify link: live "now playing" for friends and verified listens. While linked it
- * offers a manual sync of the current playback.
+ * shows the automatic sync state (ADR-013) and keeps a manual sync as a fallback.
  */
-export function SpotifyConnectCard() {
+export function SpotifyConnectCard({
+  sync,
+  autoSyncEnabled,
+  onSynced,
+}: {
+  sync?: ProviderSyncInfo | null;
+  autoSyncEnabled?: boolean;
+  /** Called after a manual sync (the page re-reads the sync status). */
+  onSynced?: () => void;
+}) {
   return (
     <ProviderCard
       provider="SPOTIFY"
@@ -20,13 +29,15 @@ export function SpotifyConnectCard() {
       icon={<SpotifyLogo weight="fill" />}
       description="Mostra agli amici cosa ascolti e rende verificate le tue recensioni."
       getLoginUrl={() => api.auth.spotifyLoginUrl()}
+      sync={sync}
+      autoSyncEnabled={autoSyncEnabled}
     >
-      <SpotifySync />
+      <SpotifySync onSynced={onSynced} />
     </ProviderCard>
   );
 }
 
-function SpotifySync() {
+function SpotifySync({ onSynced }: { onSynced?: () => void }) {
   const { notify } = useToast();
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<SpotifySyncPlaybackResponse | null>(null);
@@ -35,7 +46,9 @@ function SpotifySync() {
     setSyncing(true);
     try {
       setResult(await api.spotify.syncPlayback());
+      onSynced?.();
     } catch (err) {
+      onSynced?.();
       notify({
         tone: 'error',
         title: 'Sincronizzazione non riuscita',
