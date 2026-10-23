@@ -38,7 +38,7 @@ export interface PollerLogger {
 export interface SpotifyTokenSource {
   getValidAccessToken(
     userId: string,
-    options?: { forceRefresh?: boolean }
+    options?: { forceRefresh?: boolean; rejectedToken?: string }
   ): Promise<{ accessToken: string }>;
 }
 
@@ -93,7 +93,7 @@ export interface NowPlayingPollerOptions {
 }
 
 /** Normalized playback from either provider. */
-interface Observation {
+export interface Observation {
   provider: SyncedProvider;
   listened: ListenedTrack;
   isPlaying: boolean;
@@ -101,6 +101,20 @@ interface Observation {
   progressMs: number | null;
   /** Identity of the track for change detection. */
   key: string;
+}
+
+/**
+ * ADR-013 precedence: Spotify playing > Last.fm now playing > Spotify paused > nothing. Last.fm
+ * often mirrors Spotify itself (scrobbling from the Spotify app) with a lag, so a playing
+ * Spotify always wins, even when Last.fm reports a (different) track.
+ */
+export function choosePlayback(
+  spotify: Observation | null,
+  lastfm: Observation | null
+): Observation | null {
+  if (spotify?.isPlaying) return spotify;
+  if (lastfm?.isPlaying) return lastfm;
+  return spotify ?? lastfm;
 }
 
 /** Last thing seen for a user, in Redis so any instance can continue from it. */
@@ -143,6 +157,9 @@ export class NowPlayingPoller {
   private stopping = false;
   private nextSweepAt = 0;
   private lastSweepSummary = '';
+  /** Tick failures (Redis down) are logged once, then at most once a minute. */
+  private tickFailures = 0;
+  private tickFailureLoggedAt = 0;
 
   constructor(
     private readonly deps: NowPlayingPollerDeps,
@@ -218,8 +235,21 @@ export class NowPlayingPoller {
         await this.sweep();
       }
       await this.startDue();
+      if (this.tickFailures > 0) {
+        this.deps.logger.info({ failures: this.tickFailures }, 'Now-playing poller recovered');
+        this.tickFailures = 0;
+      }
     } catch (err) {
-      this.deps.logger.warn({ err }, 'Now-playing poller tick failed');
+      // Redis outage: the loop retries every tick; one warning a minute is enough.
+      this.tickFailures++;
+      const now = Date.now();
+      if (this.tickFailures === 1 || now - this.tickFailureLoggedAt >= 60_000) {
+        this.tickFailureLoggedAt = now;
+        this.deps.logger.warn(
+          { err, failures: this.tickFailures },
+          'Now-playing poller tick failed'
+        );
+      }
     } finally {
       this.ticking = false;
     }
@@ -299,13 +329,15 @@ export class NowPlayingPoller {
     try {
       // The other instance may have finished between our ZRANGE and our lease.
       if (!(await scheduler.isDue(userId))) return;
-      let next: number | null;
+      let next: number | null | undefined;
       try {
-        next = await this.pollUser(userId);
+        next = await this.pollUser(userId, lease);
       } catch (err) {
         this.deps.logger.warn({ err, userId }, 'Now-playing poll failed');
         next = this.clock.now() + this.withJitter(this.options.idleIntervalMs);
       }
+      // Lease lost during a slow read: whoever holds it now owns the user's schedule.
+      if (next === undefined) return;
       if (next === null) await scheduler.unschedule(userId);
       else await scheduler.schedule(userId, next);
     } finally {
@@ -313,8 +345,11 @@ export class NowPlayingPoller {
     }
   }
 
-  /** Reads one user. Returns when to read them next, or null to stop polling them. */
-  async pollUser(userId: string): Promise<number | null> {
+  /**
+   * Reads one user. Returns when to read them next, null to stop polling them, or undefined when
+   * `lease` (the caller's Redis lease) expired during the reads: nothing was written then.
+   */
+  async pollUser(userId: string, lease?: string): Promise<number | null | undefined> {
     const { prisma } = this.deps;
     const now = this.clock.now();
     const user = await prisma.user.findUnique({
@@ -365,8 +400,16 @@ export class NowPlayingPoller {
       if (result.kind === 'skipped') retryAt = Math.max(retryAt, result.retryAt);
     }
 
-    // Precedence: Spotify playing > Last.fm now playing > Spotify paused > nothing.
-    const chosen = spotifyObs?.isPlaying ? spotifyObs : (lastfmObs ?? spotifyObs);
+    const chosen = choosePlayback(spotifyObs, lastfmObs);
+    // Provider reads can be slow (timeouts, rate-limit queue). If our lease expired meanwhile,
+    // another instance may be reading this user right now: publishing too would double-post.
+    if (
+      lease !== undefined &&
+      !(await this.deps.scheduler.extendLease(userId, lease, this.options.leaseMs ?? 60_000))
+    ) {
+      this.deps.logger.warn({ userId }, 'Now-playing lease expired during a read: result dropped');
+      return undefined;
+    }
     const state = await this.apply(userId, user.isGhostMode, chosen, allRead);
 
     // The account may have just been stopped (revoked, forbidden): nothing left to read.
@@ -439,11 +482,20 @@ export class NowPlayingPoller {
       if (await scrobbles.claim(userId, chosen.listened)) {
         const listened = chosen.listened;
         const playedAt = new Date(now);
-        background.enqueue(`scrobble:${userId}:${ScrobbleRecorder.dedupId(listened)}`, () =>
-          scrobbles.record(userId, listened, playedAt).catch((err: unknown) => {
-            logger.warn({ err, userId }, 'Scrobble from poller failed');
-          })
+        const queued = background.enqueue(
+          `scrobble:${userId}:${ScrobbleRecorder.dedupId(listened)}`,
+          () =>
+            scrobbles.record(userId, listened, playedAt).catch((err: unknown) => {
+              logger.warn({ err, userId }, 'Scrobble from poller failed');
+            })
         );
+        if (!queued) {
+          // Queue full (catalog lookups backing up): give the claim back and retry next poll
+          // instead of losing the verified listen.
+          logger.warn({ userId }, 'Scrobble queue full: retrying on the next poll');
+          await scrobbles.release(userId, listened);
+          scrobbled = false;
+        }
       }
     }
 
@@ -498,8 +550,12 @@ export class NowPlayingPoller {
     if (result.kind === 'unauthorized') {
       // Expired early or revoked: one silent refresh, then a single retry.
       try {
-        token = (await spotifyTokens.getValidAccessToken(userId, { forceRefresh: true }))
-          .accessToken;
+        token = (
+          await spotifyTokens.getValidAccessToken(userId, {
+            forceRefresh: true,
+            rejectedToken: token,
+          })
+        ).accessToken;
       } catch (err) {
         return this.spotifyTokenFailure(userId, account, err);
       }

@@ -27,8 +27,13 @@ async function main() {
 
   // ADR-013: background Spotify/Last.fm reading. Never started by buildApp (tests, scripts).
   if (env.NOW_PLAYING_POLLER_ENABLED) {
-    if (redis.status === 'ready') ctx.nowPlayingPoller.start();
-    else app.log.warn('Now-playing poller not started: Redis is not connected');
+    if (redis.status === 'ready') {
+      ctx.nowPlayingPoller.start();
+    } else {
+      // ioredis keeps reconnecting: start as soon as Redis is back instead of never.
+      app.log.warn('Now-playing poller waiting for Redis');
+      redis.once('ready', () => ctx.nowPlayingPoller.start());
+    }
   } else {
     app.log.info('Now-playing poller disabled (NOW_PLAYING_POLLER_ENABLED=false)');
   }

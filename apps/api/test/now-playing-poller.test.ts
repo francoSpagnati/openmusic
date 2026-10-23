@@ -7,7 +7,11 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppContext } from '../src/app';
 import type { FetchLike } from '../src/lib/upstream';
-import { NowPlayingPoller } from '../src/modules/now-playing/now-playing.poller';
+import {
+  NowPlayingPoller,
+  choosePlayback,
+  type Observation,
+} from '../src/modules/now-playing/now-playing.poller';
 import { PollScheduler } from '../src/modules/now-playing/poll-scheduler';
 import { bearer, createRelease, createUser } from './helpers/factories';
 import { createFakeClock, createFixtureFetch, type FixtureRoute } from './helpers/fixture-fetch';
@@ -71,6 +75,45 @@ function lastfmRecent(nowPlaying?: { title: string; artist: string }): string {
     },
   });
 }
+
+function observation(provider: 'SPOTIFY' | 'LASTFM', isPlaying: boolean, key: string): Observation {
+  return {
+    provider,
+    isPlaying,
+    key,
+    progressMs: provider === 'SPOTIFY' ? 1_000 : null,
+    listened: {
+      provider,
+      title: key,
+      artist: 'Radiohead',
+      album: null,
+      coverUrl: null,
+      isrc: null,
+      spotifyId: null,
+      durationMs: 0,
+    },
+  };
+}
+
+describe('choosePlayback (ADR-013 precedence)', () => {
+  const spotifyPlaying = observation('SPOTIFY', true, 'spotify:a');
+  const spotifyPaused = observation('SPOTIFY', false, 'spotify:a');
+  const lastfmPlaying = observation('LASTFM', true, 'lastfm:b');
+
+  it('Spotify playing wins over a Last.fm now-playing track', () => {
+    expect(choosePlayback(spotifyPlaying, lastfmPlaying)).toBe(spotifyPlaying);
+  });
+  it('Last.fm now playing wins over a paused Spotify', () => {
+    expect(choosePlayback(spotifyPaused, lastfmPlaying)).toBe(lastfmPlaying);
+  });
+  it('a paused Spotify is shown when Last.fm has nothing', () => {
+    expect(choosePlayback(spotifyPaused, null)).toBe(spotifyPaused);
+  });
+  it('nothing when neither reports anything', () => {
+    expect(choosePlayback(null, null)).toBeNull();
+    expect(choosePlayback(null, lastfmPlaying)).toBe(lastfmPlaying);
+  });
+});
 
 describe('Now-playing poller (ADR-013)', () => {
   let ctx: AppContext;
@@ -492,6 +535,175 @@ describe('Now-playing poller (ADR-013)', () => {
 
     expect(fixtures.callsTo(SPOTIFY_NOW)).toHaveLength(1);
     expect(await ctx.pollScheduler.nextDueAt(user.id)).toBe(clock.now() + ACTIVE_MS);
+  });
+
+  it('a paused Spotify gives way to Last.fm, and is shown when Last.fm has nothing', async () => {
+    const user = await createUser();
+    await linkSpotify(user.id);
+    await linkLastFm(user.id);
+    route(SPOTIFY_NOW, { body: spotifyTrack('track01', { isPlaying: false }) });
+    route(
+      LASTFM_RECENT,
+      { body: lastfmRecent({ title: 'Reckoner', artist: 'Radiohead' }) },
+      { body: lastfmRecent() }
+    );
+
+    await poll(user.id);
+    expect((await presenceOf(user.id))?.currentlyPlaying).toMatchObject({
+      provider: 'LASTFM',
+      title: 'Reckoner',
+      isPlaying: true,
+    });
+
+    await poll(user.id);
+    expect((await presenceOf(user.id))?.currentlyPlaying).toMatchObject({
+      provider: 'SPOTIFY',
+      title: 'Song track01',
+      isPlaying: false,
+    });
+    expect(fixtures.callsTo(LASTFM_RECENT)).toHaveLength(2);
+  });
+
+  it('a transient error never overwrites a revocation recorded meanwhile', async () => {
+    const user = await createUser();
+    const account = await linkSpotify(user.id);
+    route(SPOTIFY_NOW, { status: 500, body: '' });
+    // The manual sync finds the refresh token revoked while this poll is reading.
+    fetchImpl = async (input, init) => {
+      if (SPOTIFY_NOW.test(input)) {
+        await prisma.connectedAccount.update({
+          where: { id: account.id },
+          data: { syncStatus: 'ERROR', syncError: 'TOKEN_REVOKED' },
+        });
+      }
+      return fixtures.fetch(input, init);
+    };
+
+    await poll(user.id);
+
+    const row = await prisma.connectedAccount.findUniqueOrThrow({ where: { id: account.id } });
+    expect(row).toMatchObject({ syncStatus: 'ERROR', syncError: 'TOKEN_REVOKED' });
+    expect(await ctx.pollScheduler.nextDueAt(user.id)).toBeNull();
+  });
+
+  it('poller and manual sync refreshing at once: one refresh, the account stays ACTIVE', async () => {
+    const user = await createUser();
+    await linkSpotify(user.id, { expired: true });
+    // Spotify rotates the refresh token: a second refresh with the old one is invalid_grant.
+    route(
+      SPOTIFY_TOKEN,
+      {
+        body: JSON.stringify({
+          access_token: 'access-new',
+          refresh_token: 'refresh-2',
+          expires_in: 3600,
+        }),
+      },
+      { status: 400, body: JSON.stringify({ error: 'invalid_grant' }) }
+    );
+    route(SPOTIFY_NOW, { body: spotifyTrack('track01') });
+    fetchImpl = async (input, init) => {
+      // A slow token endpoint keeps both callers inside the refresh window.
+      if (SPOTIFY_TOKEN.test(input)) await new Promise((resolve) => setTimeout(resolve, 150));
+      return fixtures.fetch(input, init);
+    };
+
+    const [manual] = await Promise.all([
+      ctx.app.inject({
+        method: 'POST',
+        url: '/api/spotify/sync-playback',
+        headers: bearer(ctx, user.id),
+      }),
+      poll(user.id),
+    ]);
+
+    expect(manual.statusCode).toBe(200);
+    expect(fixtures.callsTo(SPOTIFY_TOKEN)).toHaveLength(1);
+    expect(
+      fixtures.callsTo(SPOTIFY_NOW).every((c) => c.headers.authorization === 'Bearer access-new')
+    ).toBe(true);
+    const row = await prisma.connectedAccount.findFirstOrThrow({ where: { userId: user.id } });
+    expect(row).toMatchObject({
+      syncStatus: 'ACTIVE',
+      accessToken: 'access-new',
+      refreshToken: 'refresh-2',
+    });
+  });
+
+  it('a 401 on a token another request already replaced does not refresh again', async () => {
+    const user = await createUser();
+    const account = await linkSpotify(user.id);
+    route(SPOTIFY_TOKEN, { status: 400, body: JSON.stringify({ error: 'invalid_grant' }) });
+    route(SPOTIFY_NOW, { status: 401, body: '{}' }, { body: spotifyTrack('track01') });
+    fetchImpl = async (input, init) => {
+      const response = await fixtures.fetch(input, init);
+      // Someone refreshed (and rotated) the tokens while our first read was in flight.
+      if (SPOTIFY_NOW.test(input) && response.status === 401) {
+        await prisma.connectedAccount.update({
+          where: { id: account.id },
+          data: { accessToken: 'access-other', refreshToken: 'refresh-other' },
+        });
+      }
+      return response;
+    };
+
+    await poll(user.id);
+
+    expect(fixtures.callsTo(SPOTIFY_TOKEN)).toHaveLength(0);
+    expect(fixtures.callsTo(SPOTIFY_NOW).map((c) => c.headers.authorization)).toEqual([
+      'Bearer access-old',
+      'Bearer access-other',
+    ]);
+    const row = await prisma.connectedAccount.findUniqueOrThrow({ where: { id: account.id } });
+    expect(row.syncStatus).toBe('ACTIVE');
+  });
+
+  it('a read that outlives its lease is dropped instead of overwriting the newer one', async () => {
+    const user = await createUser();
+    await linkSpotify(user.id);
+    route(
+      SPOTIFY_NOW,
+      { body: spotifyTrack('track01') }, // stale answer of the slow instance
+      { body: spotifyTrack('track02') }
+    );
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let entered: () => void = () => undefined;
+    const reading = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let first = true;
+    fetchImpl = async (input, init) => {
+      const response = await fixtures.fetch(input, init);
+      if (SPOTIFY_NOW.test(input) && first) {
+        first = false;
+        entered();
+        await gate;
+      }
+      return response;
+    };
+    const slow = new NowPlayingPoller(
+      {
+        ...ctx.nowPlayingPollerDeps,
+        scheduler: new PollScheduler(ctx.redis, { clock, instanceId: 'slow' }),
+      },
+      { ...ctx.nowPlayingPollerOptions, leaseMs: 100 }
+    );
+    const spy = spyPresence();
+
+    await ctx.pollScheduler.schedule(user.id, clock.now());
+    const slowRun = slow.runOnce();
+    await reading;
+    await new Promise((resolve) => setTimeout(resolve, 200)); // the 100 ms lease expires
+    await poller.runOnce(); // another instance takes the user over and publishes track02
+    release();
+    await slowRun;
+    await ctx.pollerBackground.idle();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect((await presenceOf(user.id))?.currentlyPlaying?.title).toBe('Song track02');
   });
 
   it('uses the fast interval when a follower is online, the slow one otherwise', async () => {

@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 import type { PrismaClient } from '@openmusic/db';
-import { ConflictError, NotFoundError } from '../../lib/errors';
+import { ConflictError, NotFoundError, UpstreamError } from '../../lib/errors';
 import type Redis from 'ioredis';
 import { SpotifyTokenRevokedError, type SpotifyService } from '../auth/spotify.service';
 import type { NowPlayingService } from '../now-playing/now-playing.service';
@@ -14,6 +16,17 @@ import type {
   SpotifySyncPlaybackResponse,
   NowPlayingTrack,
 } from '@openmusic/shared';
+
+/** One Spotify token refresh per account at a time (ms); longer than the 5 s upstream timeout. */
+const REFRESH_LOCK_MS = 10_000;
+/** How long a concurrent caller waits for that refresh before giving up (transient error). */
+const REFRESH_WAIT_MS = 8_000;
+const REFRESH_POLL_MS = 100;
+const RELEASE_LOCK_SCRIPT = `
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('del', KEYS[1])
+end
+return 0`;
 
 /** Listen long enough to count (ADR-002): more than 30 s, or at least half of the track. */
 export function isScrobbleEligible(progressMs: number, durationMs: number): boolean {
@@ -47,58 +60,107 @@ export class SpotifySyncService {
    * Recupera un token di accesso valido per l'utente, rinnovandolo automaticamente se scaduto
    * (o sempre, con `forceRefresh`, dopo un 401). Un refresh token revocato porta l'account in
    * stato ERROR (ADR-013: il poller smette di leggerlo finché non viene ricollegato).
+   *
+   * Il poller, "Sincronizza ora" e le altre rotte Spotify possono chiedere un refresh nello stesso
+   * momento: un lock Redis per account fa sì che parta un solo refresh; gli altri aspettano e
+   * riusano il token salvato. Se Spotify ruota il refresh token, un secondo refresh con quello
+   * vecchio riceverebbe `invalid_grant` e l'account finirebbe in ERROR per errore.
    */
   async getValidAccessToken(
     userId: string,
-    options: { forceRefresh?: boolean } = {}
+    options: { forceRefresh?: boolean; rejectedToken?: string } = {}
   ): Promise<{ accessToken: string; spotifyUserId: string }> {
-    const account = await this.prisma.connectedAccount.findFirst({
-      where: {
-        userId,
-        provider: 'SPOTIFY',
-      },
-    });
-
-    if (!account) {
-      throw new ConflictError('Nessun account Spotify collegato');
+    let account = await this.loadSpotifyAccount(userId);
+    if (!this.needsRefresh(account, options)) {
+      return { accessToken: account.accessToken, spotifyUserId: account.providerId };
     }
 
-    const now = Date.now();
-    const isExpired = account.expiresAt ? account.expiresAt.getTime() - now < 60000 : false;
+    const lockKey = `spotify:refresh:${account.id}`;
+    const lockToken = randomUUID();
+    const locked = await this.redis
+      .set(lockKey, lockToken, 'PX', REFRESH_LOCK_MS, 'NX')
+      .then((ok) => ok === 'OK')
+      // Redis down: refresh without the lock rather than failing every Spotify call.
+      .catch(() => true);
 
-    if (!isExpired && !options.forceRefresh) {
-      return {
-        accessToken: account.accessToken,
-        spotifyUserId: account.providerId,
-      };
+    if (!locked) {
+      // Another request is refreshing: wait for the token it stores.
+      const seen = account.accessToken;
+      const deadline = Date.now() + REFRESH_WAIT_MS;
+      while (Date.now() < deadline) {
+        await sleep(REFRESH_POLL_MS);
+        account = await this.loadSpotifyAccount(userId);
+        if (account.accessToken !== seen && !this.isExpired(account)) {
+          return { accessToken: account.accessToken, spotifyUserId: account.providerId };
+        }
+        // The other refresh found the refresh token revoked.
+        if (account.syncStatus === 'ERROR' && account.syncError === 'TOKEN_REVOKED') {
+          throw new SpotifyTokenRevokedError();
+        }
+      }
+      throw new UpstreamError('Spotify', 'Spotify token refresh still in progress');
     }
 
     try {
-      if (!account.refreshToken) throw new SpotifyTokenRevokedError();
-
-      // Rinnovo token tramite refresh_token
-      const refreshed = await this.spotifyService.refreshAccessToken(account.refreshToken);
-      const newExpiresAt = new Date(now + refreshed.expiresIn * 1000);
-
-      await this.prisma.connectedAccount.update({
-        where: { id: account.id },
-        data: {
-          accessToken: refreshed.accessToken,
-          refreshToken: refreshed.refreshToken ?? account.refreshToken,
-          expiresAt: newExpiresAt,
-        },
-      });
-
-      return {
-        accessToken: refreshed.accessToken,
-        spotifyUserId: account.providerId,
-      };
-    } catch (err) {
-      if (err instanceof SpotifyTokenRevokedError) {
-        await this.syncStore.markErrorFor(userId, 'SPOTIFY', 'TOKEN_REVOKED');
+      // Re-read under the lock: a refresh may have completed between our read and the lock.
+      account = await this.loadSpotifyAccount(userId);
+      if (!this.needsRefresh(account, options)) {
+        return { accessToken: account.accessToken, spotifyUserId: account.providerId };
       }
-      throw err;
+      const usedRefreshToken = account.refreshToken;
+      try {
+        if (!usedRefreshToken) throw new SpotifyTokenRevokedError();
+        const now = Date.now();
+        const refreshed = await this.spotifyService.refreshAccessToken(usedRefreshToken);
+        await this.prisma.connectedAccount.update({
+          where: { id: account.id },
+          data: {
+            accessToken: refreshed.accessToken,
+            refreshToken: refreshed.refreshToken ?? usedRefreshToken,
+            expiresAt: new Date(now + refreshed.expiresIn * 1000),
+          },
+        });
+        return { accessToken: refreshed.accessToken, spotifyUserId: account.providerId };
+      } catch (err) {
+        if (err instanceof SpotifyTokenRevokedError) {
+          // Lock expired or Redis was down: someone else may have rotated the refresh token
+          // meanwhile. Only a refusal of the CURRENT refresh token means revoked.
+          const latest = await this.loadSpotifyAccount(userId);
+          if (latest.refreshToken && latest.refreshToken !== usedRefreshToken) {
+            return { accessToken: latest.accessToken, spotifyUserId: latest.providerId };
+          }
+          await this.syncStore.markErrorFor(userId, 'SPOTIFY', 'TOKEN_REVOKED');
+        }
+        throw err;
+      }
+    } finally {
+      await this.redis.eval(RELEASE_LOCK_SCRIPT, 1, lockKey, lockToken).catch(() => undefined);
     }
+  }
+
+  private async loadSpotifyAccount(userId: string) {
+    const account = await this.prisma.connectedAccount.findFirst({
+      where: { userId, provider: 'SPOTIFY' },
+    });
+    if (!account) throw new ConflictError('Nessun account Spotify collegato');
+    return account;
+  }
+
+  private isExpired(account: { expiresAt: Date | null }): boolean {
+    return account.expiresAt ? account.expiresAt.getTime() - Date.now() < 60_000 : false;
+  }
+
+  /**
+   * Expired, or a forced refresh after a 401. A 401 on a token that is no longer the stored one
+   * (`rejectedToken`) needs no refresh: someone already replaced it.
+   */
+  private needsRefresh(
+    account: { accessToken: string; expiresAt: Date | null },
+    options: { forceRefresh?: boolean; rejectedToken?: string }
+  ): boolean {
+    if (this.isExpired(account)) return true;
+    if (!options.forceRefresh) return false;
+    return options.rejectedToken === undefined || options.rejectedToken === account.accessToken;
   }
 
   /**

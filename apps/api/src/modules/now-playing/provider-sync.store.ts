@@ -63,8 +63,11 @@ export class ProviderSyncStore {
   ): Promise<void> {
     const status: DbSyncStatus = stop ? 'ERROR' : account.syncStatus;
     if (account.syncError === code && account.syncStatus === status) return;
-    await this.prisma.connectedAccount.update({
-      where: { id: account.id },
+    // Compare-and-set on the status the caller read: a poll that started before the account
+    // was revoked by the manual sync, paused by the sweep or unlinked must not write a stale
+    // status (ERROR/PAUSED -> ACTIVE) or overwrite a more precise code (TOKEN_REVOKED).
+    await this.prisma.connectedAccount.updateMany({
+      where: { id: account.id, syncStatus: account.syncStatus },
       data: { syncError: code, syncStatus: status },
     });
   }

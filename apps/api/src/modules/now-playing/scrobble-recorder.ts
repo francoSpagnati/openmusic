@@ -59,6 +59,11 @@ export class ScrobbleRecorder {
     return ok === 'OK';
   }
 
+  /** Gives a claim back when the scrobble could not be queued, so a later poll retries it. */
+  async release(userId: string, track: ListenedTrack): Promise<void> {
+    await this.redis.del(`scrobble:dedup:${userId}:${ScrobbleRecorder.dedupId(track)}`);
+  }
+
   /** Writes the ScrobbleLog (call after a successful `claim`). Returns the internal track id. */
   async record(userId: string, track: ListenedTrack, playedAt: Date): Promise<string> {
     const dbTrack = await this.findOrCreateTrack(track);

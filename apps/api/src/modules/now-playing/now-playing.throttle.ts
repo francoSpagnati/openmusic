@@ -1,5 +1,7 @@
 import type { NowPlayingTrack } from '@openmusic/shared';
 
+const PRUNE_THRESHOLD = 10_000;
+
 /**
  * Leading + trailing throttle per user: the first update is broadcast at once, later ones within
  * the interval are coalesced and only the latest is sent when the interval ends. Scrubbing a
@@ -9,6 +11,7 @@ import type { NowPlayingTrack } from '@openmusic/shared';
 export class NowPlayingThrottle {
   private readonly lastSent = new Map<string, number>();
   private readonly pending = new Map<string, { track: NowPlayingTrack; timer: NodeJS.Timeout }>();
+  private nextPruneAt = 0;
 
   constructor(
     private readonly intervalMs: number,
@@ -22,6 +25,7 @@ export class NowPlayingThrottle {
     const last = this.lastSent.get(userId) ?? 0;
     const queued = this.pending.get(userId);
     if (!queued && now - last >= this.intervalMs) {
+      this.prune(now);
       this.lastSent.set(userId, now);
       await this.publish(userId, track);
       return true;
@@ -43,6 +47,21 @@ export class NowPlayingThrottle {
     timer.unref();
     this.pending.set(userId, { track, timer });
     return false;
+  }
+
+  /**
+   * `lastSent` only matters inside the interval: with the background poller publishing for
+   * every listening user (not only connected sockets), old entries are dropped so the map stays
+   * proportional to recent activity instead of growing with every user ever seen.
+   */
+  private prune(now: number): void {
+    if (this.lastSent.size < PRUNE_THRESHOLD || now < this.nextPruneAt) return;
+    this.nextPruneAt = now + Math.max(this.intervalMs, 1_000);
+    for (const [userId, sentAt] of this.lastSent) {
+      if (now - sentAt >= this.intervalMs && !this.pending.has(userId)) {
+        this.lastSent.delete(userId);
+      }
+    }
   }
 
   /** Drops a pending update (user went offline / session revoked). */

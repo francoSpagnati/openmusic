@@ -17,6 +17,14 @@ if redis.call('get', KEYS[1]) == ARGV[1] then
 end
 return 0`;
 
+// Extends the lease only while it still holds our token (1), else 0: the lease expired and may
+// now belong to another instance.
+const EXTEND_SCRIPT = `
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('pexpire', KEYS[1], ARGV[2])
+end
+return 0`;
+
 export interface PollSchedulerOptions {
   clock?: Clock;
   /** Identifies this instance in lease values (logs/debugging). */
@@ -91,6 +99,21 @@ export class PollScheduler {
     const token = `${this.instanceId}:${randomUUID()}`;
     const ok = await this.redis.set(`${LEASE_PREFIX}${userId}`, token, 'PX', ttlMs, 'NX');
     return ok === 'OK' ? token : null;
+  }
+
+  /**
+   * Renews the lease before writing anything. False = it expired during a slow read and another
+   * instance may already be polling this user: the caller must drop its result.
+   */
+  async extendLease(userId: string, token: string, ttlMs: number): Promise<boolean> {
+    const result = await this.redis.eval(
+      EXTEND_SCRIPT,
+      1,
+      `${LEASE_PREFIX}${userId}`,
+      token,
+      String(Math.max(1, Math.round(ttlMs)))
+    );
+    return Number(result) === 1;
   }
 
   async releaseLease(userId: string, token: string): Promise<void> {
