@@ -22,20 +22,20 @@ export function GhostModeSwitch({
       <div className="flex min-w-0 items-start gap-2.5">
         <span
           aria-hidden="true"
-          className={cn('mt-0.5', enabled ? 'text-ink-muted' : 'text-fresh')}
+          className={cn('mt-0.5', enabled ? 'text-fg-subtle' : 'text-fresh')}
         >
-          {enabled ? <EyeSlash weight="bold" /> : <Eye weight="bold" />}
+          {enabled ? <EyeSlash /> : <Eye />}
         </span>
         <div className="min-w-0">
           <p
             id={labelId}
-            className={cn('font-semibold text-ink', variant === 'compact' ? 'text-xs' : 'text-sm')}
+            className={cn('font-medium text-fg', variant === 'compact' ? 'text-[13px]' : 'text-sm')}
           >
             Ghost Mode
           </p>
           <p
             id={descId}
-            className={cn('text-ink-muted', variant === 'compact' ? 'text-[11px]' : 'text-sm')}
+            className={cn('text-fg-subtle', variant === 'compact' ? 'text-xs' : 'text-sm')}
           >
             {enabled ? 'I tuoi ascolti sono nascosti' : 'Gli amici vedono cosa ascolti'}
           </p>
@@ -61,7 +61,7 @@ export function GhostModeSwitch({
           aria-hidden="true"
           className={cn(
             'inline-block h-4 w-4 rounded-full transition-transform duration-fast ease-tonearm',
-            enabled ? 'translate-x-6 bg-on-accent' : 'translate-x-1 bg-ink-secondary'
+            enabled ? 'translate-x-6 bg-accent-contrast' : 'translate-x-1 bg-fg-muted'
           )}
         />
       </button>

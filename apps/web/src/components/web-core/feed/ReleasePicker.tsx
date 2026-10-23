@@ -70,13 +70,13 @@ export function ReleasePicker({
   if (value) {
     const year = yearOf(value.releaseDate);
     return (
-      <div className="flex items-center gap-3 rounded-md border border-line bg-sunken p-2 pr-1">
+      <div className="flex items-center gap-3 rounded-md border border-line p-2 pr-1">
         <Cover src={value.coverUrl} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-ink">{value.title}</p>
-          <p className="truncate text-xs text-ink-secondary">
+          <p className="truncate text-sm font-medium text-fg">{value.title}</p>
+          <p className="truncate text-xs text-fg-muted">
             {value.artistName}
-            {year && <span className="font-mono tabular-nums"> · {year}</span>}
+            {year && <span className="font-mono tabular-nums">, {year}</span>}
           </p>
         </div>
         <IconButton
@@ -103,13 +103,13 @@ export function ReleasePicker({
 
   return (
     <div className="space-y-2">
-      <label htmlFor={inputId} className="text-sm font-semibold text-ink">
-        Allega un disco <span className="font-normal text-ink-muted">(facoltativo)</span>
+      <label htmlFor={inputId} className="text-sm font-medium text-fg">
+        Allega un disco <span className="font-normal text-fg-subtle">(facoltativo)</span>
       </label>
       <div className="relative">
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted"
+          className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-fg-subtle"
         >
           {state === 'loading' ? <Spinner size="sm" label={null} /> : <MagnifyingGlass />}
         </span>
@@ -139,7 +139,7 @@ export function ReleasePicker({
         role="status"
         className={cn(
           'text-xs',
-          state === 'error' ? 'text-rotten' : 'text-ink-muted',
+          state === 'error' ? 'text-rotten' : 'text-fg-subtle',
           !statusText && 'sr-only'
         )}
       >
@@ -148,7 +148,7 @@ export function ReleasePicker({
       {results.length > 0 && (
         <ul
           aria-label="Risultati"
-          className="max-h-64 divide-y divide-line overflow-y-auto rounded-md border border-line bg-elevated"
+          className="max-h-64 divide-y divide-line overflow-y-auto rounded-md border border-line bg-surface-raised"
         >
           {results.map((release) => {
             const year = yearOf(release.releaseDate ?? null);
@@ -164,12 +164,12 @@ export function ReleasePicker({
                 >
                   <Cover src={release.coverUrl ?? null} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-ink">
+                    <span className="block truncate text-sm font-medium text-fg">
                       {release.title}
                     </span>
-                    <span className="block truncate text-xs text-ink-secondary">
+                    <span className="block truncate text-xs text-fg-muted">
                       {release.artistName}
-                      {year && <span className="font-mono tabular-nums"> · {year}</span>}
+                      {year && <span className="font-mono tabular-nums">, {year}</span>}
                     </span>
                   </span>
                   <span className="sr-only">Allega</span>
@@ -204,7 +204,7 @@ function Cover({ src }: { src: string | null }) {
   ) : (
     <span
       aria-hidden="true"
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xs bg-surface text-ink-muted ring-1 ring-line"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xs bg-surface text-fg-subtle ring-1 ring-line"
     >
       <Disc />
     </span>

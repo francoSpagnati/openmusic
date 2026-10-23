@@ -48,7 +48,7 @@ export function WhoToFollow({
   }
 
   const users = suggestions.data ?? [];
-  if (users.length === 0) return <p className="text-sm text-ink-muted">{emptyText}</p>;
+  if (users.length === 0) return <p className="text-sm text-fg-subtle">{emptyText}</p>;
 
   return (
     <ul className="space-y-3">

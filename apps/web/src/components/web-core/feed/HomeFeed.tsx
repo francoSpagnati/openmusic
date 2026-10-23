@@ -6,7 +6,7 @@ import { Globe, UsersThree } from '@phosphor-icons/react';
 import type { Post } from '@openmusic/shared';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { Button, Card, EmptyState, ErrorState, Tabs, buttonClasses } from '@/components/ui';
+import { Button, EmptyState, ErrorState, Tabs, buttonClasses } from '@/components/ui';
 import { CreatePostBox } from '@/components/CreatePostBox';
 import { RightSidebar } from '@/components/RightSidebar';
 import { Sidebar } from '@/components/Sidebar';
@@ -56,39 +56,47 @@ export function HomeFeed() {
     <div className="mx-auto flex max-w-7xl justify-center">
       <Sidebar onOpenCreatePost={authenticated ? openComposer : undefined} />
 
-      <div className="min-w-0 flex-1 border-line lg:border-r">
-        <h1 className="sr-only">Il tuo feed</h1>
-        <StoriesListeningBar />
-        {authenticated ? (
-          <>
-            <CreatePostBox ref={composerRef} onPostCreated={addPost} onPostRemoved={removePost} />
-            <Tabs
-              label="Quale feed"
-              value={scope}
-              onValueChange={(id) => setScope(id === 'global' ? 'global' : 'following')}
-              // Keep only the tab strip sticky under the mobile navbar while the feed scrolls.
-              className="[&>[role=tablist]]:sticky [&>[role=tablist]]:top-[3.75rem] [&>[role=tablist]]:z-raised [&>[role=tablist]]:bg-canvas [&>[role=tablist]]:px-4 sm:[&>[role=tablist]]:px-5 lg:[&>[role=tablist]]:top-0"
-              panelClassName="pt-0"
-              items={[
-                {
-                  id: 'following',
-                  label: 'Seguiti',
-                  icon: <UsersThree aria-hidden="true" />,
-                  content: body,
-                },
-                { id: 'global', label: 'Tutti', icon: <Globe aria-hidden="true" />, content: body },
-              ]}
-            />
-          </>
-        ) : (
-          <>
-            {status === 'anonymous' && <WelcomeCard />}
-            <h2 className="om-eyebrow border-b border-line px-4 py-3 sm:px-5">
-              Dal bancone di OpenMusic
-            </h2>
-            {body}
-          </>
-        )}
+      {/* Reading column: one measure (~42rem) however wide the screen gets. */}
+      <div className="min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-[42rem]">
+          <h1 className="sr-only">Il tuo feed</h1>
+          <StoriesListeningBar />
+          {authenticated ? (
+            <>
+              <CreatePostBox ref={composerRef} onPostCreated={addPost} onPostRemoved={removePost} />
+              <Tabs
+                label="Quale feed"
+                value={scope}
+                onValueChange={(id) => setScope(id === 'global' ? 'global' : 'following')}
+                // Keep only the tab strip sticky under the mobile navbar while the feed scrolls.
+                className="[&>[role=tablist]]:sticky [&>[role=tablist]]:top-[3.5rem] [&>[role=tablist]]:z-raised [&>[role=tablist]]:bg-canvas [&>[role=tablist]]:px-4 sm:[&>[role=tablist]]:px-6 lg:[&>[role=tablist]]:top-0"
+                panelClassName="pt-0"
+                items={[
+                  {
+                    id: 'following',
+                    label: 'Seguiti',
+                    icon: <UsersThree aria-hidden="true" />,
+                    content: body,
+                  },
+                  {
+                    id: 'global',
+                    label: 'Tutti',
+                    icon: <Globe aria-hidden="true" />,
+                    content: body,
+                  },
+                ]}
+              />
+            </>
+          ) : (
+            <>
+              {status === 'anonymous' && <WelcomeCard />}
+              <h2 className="border-b border-line px-4 pb-3 pt-6 text-sm font-medium text-fg-muted sm:px-6">
+                Dal bancone di OpenMusic
+              </h2>
+              {body}
+            </>
+          )}
+        </div>
       </div>
 
       <RightSidebar />
@@ -113,7 +121,7 @@ function FeedBody({
 
   if (feed.status === 'error') {
     return (
-      <div className="p-4 sm:p-5">
+      <div className="px-4 py-10 sm:px-6">
         <ErrorState
           title="Il feed non si è caricato"
           description={errorMessage(feed.error, 'La puntina è saltata. Riprova tra un attimo.')}
@@ -125,7 +133,7 @@ function FeedBody({
 
   if (feed.items.length === 0) {
     return scope === 'following' ? (
-      <div className="space-y-6 p-4 sm:p-5">
+      <div className="om-enter space-y-10 px-4 py-10 sm:px-6">
         <EmptyState
           title="Il giradischi è silenzioso"
           description="Qui compaiono i post delle persone che segui e i tuoi. Inizia seguendo qualcuno dal gusto affine."
@@ -139,13 +147,15 @@ function FeedBody({
             </Button>
           }
         />
-        <Card variant="surface">
-          <h3 className="om-eyebrow mb-4">Chi seguire</h3>
+        <section aria-labelledby="feed-follow" className="border-t border-line pt-8">
+          <h3 id="feed-follow" className="om-headline mb-5 text-xl text-fg">
+            Chi seguire
+          </h3>
           <WhoToFollow limit={5} onFollowChange={feed.reload} />
-        </Card>
+        </section>
       </div>
     ) : (
-      <div className="p-4 sm:p-5">
+      <div className="om-enter px-4 py-10 sm:px-6">
         <EmptyState
           title="Nessun post, per ora"
           description="Il negozio ha appena aperto. Sii il primo a raccontare un disco."
@@ -157,6 +167,7 @@ function FeedBody({
   return (
     <div aria-busy={feed.status === 'loading'}>
       <ul
+        className="om-stagger"
         aria-label={
           scope === 'following' ? 'Post delle persone che segui' : 'Post di tutta la community'
         }
@@ -173,7 +184,7 @@ function FeedBody({
         error={feed.moreError}
         onLoadMore={feed.loadMore}
         label="Carica altri post"
-        endLabel="Lato B finito · sei in pari"
+        endLabel="Lato B finito: sei in pari."
       />
     </div>
   );
@@ -181,20 +192,22 @@ function FeedBody({
 
 function WelcomeCard() {
   return (
-    <section aria-labelledby="welcome-title" className="border-b border-line px-4 py-8 sm:px-5">
-      <p className="om-eyebrow">Benvenuto · Ingresso libero</p>
-      <h2 id="welcome-title" className="om-headline mt-2 text-display-sm text-ink">
+    <section
+      aria-labelledby="welcome-title"
+      className="om-enter border-b border-line px-4 pb-10 pt-12 sm:px-6"
+    >
+      <h2 id="welcome-title" className="om-headline text-display-sm text-fg">
         Cosa gira sul piatto dei tuoi amici?
       </h2>
-      <p className="om-deck mt-2 max-w-prose text-ink-secondary">
+      <p className="om-deck mt-3 max-w-narrow text-fg-muted">
         Crea un account per seguire chi ha gusti affini, pubblicare i tuoi ascolti e votare i
         dischi.
       </p>
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         <Link href="/auth?mode=register" className={buttonClasses({ size: 'lg' })}>
           Crea un account
         </Link>
-        <Link href="/auth" className={buttonClasses({ variant: 'outline', size: 'lg' })}>
+        <Link href="/auth" className={buttonClasses({ variant: 'ghost', size: 'lg' })}>
           Accedi
         </Link>
       </div>

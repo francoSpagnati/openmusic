@@ -18,10 +18,10 @@ export function ProfileStats({ stats }: { stats: UserProfileData['stats'] }) {
       {items.map((item, i) => (
         <div
           key={item.label}
-          className={`px-4 py-4 sm:px-6 ${i % 2 === 1 ? 'border-l border-line' : ''} ${i >= 2 ? 'border-t border-line sm:border-t-0' : ''} ${i === 2 ? 'sm:border-l' : ''}`}
+          className={`px-4 py-5 sm:px-6 ${i % 2 === 1 ? 'border-l border-line' : ''} ${i >= 2 ? 'border-t border-line sm:border-t-0' : ''} ${i === 2 ? 'sm:border-l' : ''}`}
         >
-          <dt className="om-eyebrow">{item.label}</dt>
-          <dd className="mt-1 font-mono text-2xl text-ink tabular-nums">{item.value}</dd>
+          <dt className="text-[13px] text-fg-subtle">{item.label}</dt>
+          <dd className="mt-1 font-mono text-xl text-fg tabular-nums">{item.value}</dd>
         </div>
       ))}
     </dl>

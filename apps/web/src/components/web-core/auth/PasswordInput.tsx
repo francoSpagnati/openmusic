@@ -26,7 +26,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           <div className="relative">
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted"
+              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-fg-subtle"
             >
               <LockKey />
             </span>
@@ -48,7 +48,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
               aria-pressed={visible}
               aria-controls={id}
               aria-label={visible ? 'Nascondi password' : 'Mostra password'}
-              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-fg-subtle hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
             >
               {visible ? <EyeSlash aria-hidden="true" /> : <Eye aria-hidden="true" />}
             </button>

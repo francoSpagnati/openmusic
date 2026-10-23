@@ -52,13 +52,13 @@ export function GenrePicker({
 
   return (
     <fieldset className="space-y-2" aria-describedby={hintId} disabled={disabled}>
-      <legend className="text-sm font-semibold text-ink">
+      <legend className="text-sm font-medium text-fg">
         {legend}{' '}
-        <span className="font-mono text-xs font-normal text-ink-muted tabular-nums">
+        <span className="font-mono text-xs font-normal text-fg-subtle tabular-nums">
           {value.length}/{MAX_GENRES}
         </span>
       </legend>
-      <p id={hintId} className="text-sm text-ink-muted">
+      <p id={hintId} className="text-sm text-fg-subtle">
         {hint}
       </p>
       {genres.status === 'loading' ? (
@@ -80,12 +80,12 @@ export function GenrePicker({
                   disabled={!selected && full}
                   onClick={() => toggle(genre)}
                   className={cn(
-                    'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 font-mono text-xs transition-colors duration-fast',
+                    'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors duration-fast',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                     'disabled:cursor-not-allowed disabled:opacity-40',
                     selected
-                      ? 'border-accent bg-accent/15 text-ink'
-                      : 'border-line-strong text-ink-secondary hover:border-ink-secondary hover:text-ink'
+                      ? 'border-accent/60 bg-accent/[0.08] text-fg'
+                      : 'border-line text-fg-muted hover:border-line-strong hover:text-fg'
                   )}
                 >
                   {selected && <Check aria-hidden="true" weight="bold" className="text-accent" />}

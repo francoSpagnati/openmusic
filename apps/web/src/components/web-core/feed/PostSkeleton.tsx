@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui';
 /** Mirrors SocialPostCard's layout so nothing jumps when posts arrive. */
 export function PostSkeleton() {
   return (
-    <div className="border-b border-line px-4 py-5 sm:px-5">
+    <div className="border-b border-line px-4 py-6 sm:px-6">
       <div className="flex items-center gap-3">
         <Skeleton shape="circle" className="h-10 w-10" />
         <div className="w-40">
@@ -13,7 +13,7 @@ export function PostSkeleton() {
       </div>
       <Skeleton shape="text" lines={3} className="mt-4" />
       <div className="mt-4 flex gap-4">
-        <Skeleton shape="rect" className="h-32 w-32 shrink-0" />
+        <Skeleton shape="rect" className="h-24 w-24 shrink-0 sm:h-32 sm:w-32" />
         <Skeleton shape="text" lines={3} className="mt-2" />
       </div>
     </div>

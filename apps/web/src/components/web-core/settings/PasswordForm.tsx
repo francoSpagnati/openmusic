@@ -99,7 +99,7 @@ export function PasswordForm({ hasPassword, email }: { hasPassword: boolean; ema
           variant="secondary"
           loading={saving}
           loadingLabel="Aggiornamento…"
-          leadingIcon={<Key aria-hidden="true" weight="bold" />}
+          leadingIcon={<Key aria-hidden="true" />}
         >
           {hasPassword ? 'Cambia password' : 'Imposta password'}
         </Button>

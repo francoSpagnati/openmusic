@@ -61,14 +61,14 @@ function SpotifySync({ onSynced }: { onSynced?: () => void }) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p role="status" className="min-w-0 text-sm text-ink-secondary">
+      <p role="status" className="min-w-0 text-sm text-fg-muted">
         {result ? (
           result.track ? (
             <>
               {result.isPlaying ? 'In riproduzione: ' : 'In pausa: '}
-              <span className="font-semibold text-ink">{result.track.title}</span> ·{' '}
+              <span className="font-medium text-fg">{result.track.title}</span> di{' '}
               {result.track.artist}
-              {result.loggedScrobble && <span className="text-fresh"> · ascolto registrato</span>}
+              {result.loggedScrobble && <span className="text-fresh">. Ascolto registrato</span>}
             </>
           ) : (
             result.message

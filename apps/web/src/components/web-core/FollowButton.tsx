@@ -16,6 +16,11 @@ export interface FollowButtonProps {
   username: string;
   isFollowing: boolean;
   size?: ButtonSize;
+  /**
+   * `primary` only where following is the view's main action (someone else's profile).
+   * Lists and rails use the quiet `outline` default so they never compete with it.
+   */
+  emphasis?: 'primary' | 'quiet';
   onChange?: (state: FollowState) => void;
 }
 
@@ -28,6 +33,7 @@ export function FollowButton({
   username,
   isFollowing,
   size = 'sm',
+  emphasis = 'quiet',
   onChange,
 }: FollowButtonProps) {
   const { status, user } = useAuth();
@@ -47,7 +53,7 @@ export function FollowButton({
         className={buttonClasses({ variant: 'outline', size })}
         aria-label={`Accedi per seguire @${username}`}
       >
-        <UserPlus aria-hidden="true" weight="bold" />
+        <UserPlus aria-hidden="true" />
         Segui
       </Link>
     );
@@ -78,18 +84,12 @@ export function FollowButton({
   return (
     <Button
       size={size}
-      variant={following ? 'secondary' : 'primary'}
+      variant={following ? 'secondary' : emphasis === 'primary' ? 'primary' : 'outline'}
       aria-pressed={following}
       aria-label={following ? `Segui già @${username}. Smetti di seguire` : `Segui @${username}`}
       disabled={pending}
       onClick={() => void apply(!following, true)}
-      leadingIcon={
-        following ? (
-          <Check aria-hidden="true" weight="bold" />
-        ) : (
-          <UserPlus aria-hidden="true" weight="bold" />
-        )
-      }
+      leadingIcon={following ? <Check aria-hidden="true" /> : <UserPlus aria-hidden="true" />}
     >
       {following ? 'Segui già' : 'Segui'}
     </Button>

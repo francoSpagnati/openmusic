@@ -32,7 +32,7 @@ export function ProviderSyncStatus({
   const lastUpdate = sync.lastSyncedAt ? (
     <>
       Ultimo aggiornamento{' '}
-      <TimeAgo iso={sync.lastSyncedAt} className="font-mono tabular-nums text-ink" />
+      <TimeAgo iso={sync.lastSyncedAt} className="font-mono tabular-nums text-fg" />
     </>
   ) : (
     'Nessuna lettura ancora'
@@ -44,11 +44,11 @@ export function ProviderSyncStatus({
         <Badge tone="rotten" size="sm" icon={<WarningCircle weight="bold" />}>
           Sincronizzazione interrotta
         </Badge>
-        <p className="text-sm text-ink-secondary">
+        <p className="text-sm text-fg-muted">
           {sync.lastError ?? `Non riusciamo più a leggere ${name}.`}
         </p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-ink-muted">{lastUpdate}</p>
+          <p className="text-xs text-fg-subtle">{lastUpdate}</p>
           <Button
             variant="secondary"
             size="sm"
@@ -66,7 +66,7 @@ export function ProviderSyncStatus({
 
   if (!autoSyncEnabled) {
     return (
-      <p role="status" className="text-sm text-ink-secondary">
+      <p role="status" className="text-sm text-fg-muted">
         La sincronizzazione automatica non è attiva su questo server: usa la sincronizzazione
         manuale.
       </p>
@@ -79,7 +79,7 @@ export function ProviderSyncStatus({
         <Badge tone="neutral" size="sm" icon={<PauseCircle weight="bold" />}>
           Sincronizzazione in pausa
         </Badge>
-        <p className="text-sm text-ink-secondary">
+        <p className="text-sm text-fg-muted">
           Riprende da sola ora che sei tornato su OpenMusic. {lastUpdate}
         </p>
       </div>
@@ -91,9 +91,9 @@ export function ProviderSyncStatus({
       <Badge tone="fresh" size="sm" icon={<ArrowsClockwise weight="bold" />}>
         Sincronizzazione automatica attiva
       </Badge>
-      <p className="text-sm text-ink-secondary">
+      <p className="text-sm text-fg-muted">
         {lastUpdate}
-        {sync.lastError ? <span className="text-mixed"> · {sync.lastError}</span> : null}
+        {sync.lastError ? <span className="text-warning"> · {sync.lastError}</span> : null}
       </p>
     </div>
   );

@@ -42,7 +42,7 @@ export function SocialPostCard({ post, onRemoved }: SocialPostCardProps) {
   return (
     <article
       aria-labelledby={`post-${post.id}-author`}
-      className="border-b border-line px-4 py-5 transition-colors duration-fast hover:bg-surface/40 sm:px-5"
+      className="border-b border-line px-4 py-6 sm:px-6"
     >
       <header className="flex items-start justify-between gap-3">
         <div id={`post-${post.id}-author`} className="min-w-0">
@@ -53,14 +53,12 @@ export function SocialPostCard({ post, onRemoved }: SocialPostCardProps) {
         )}
       </header>
 
-      <p className="mt-3 whitespace-pre-line break-words text-[15px] leading-relaxed text-ink">
-        {post.content}
-      </p>
+      <p className="mt-3 whitespace-pre-line break-words text-base text-fg">{post.content}</p>
 
       {post.vibeTags.length > 0 && (
         <ul aria-label="Vibe" className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {post.vibeTags.map((tag) => (
-            <li key={tag} className="font-mono text-xs text-accent">
+            <li key={tag} className="text-sm text-fg-subtle">
               #{tag.replace(/^#+/, '')}
             </li>
           ))}
@@ -93,8 +91,9 @@ function PreviewButton({
   const playing = currentTrack?.id === id && isPlaying;
   return (
     <IconButton
-      variant="solid"
-      size="lg"
+      variant="subtle"
+      shape="round"
+      size="md"
       pressed={playing}
       label={playing ? `Pausa anteprima di ${title}` : `Ascolta 30 secondi di ${title}`}
       icon={playing ? <Pause weight="fill" /> : <Play weight="fill" />}
@@ -111,13 +110,13 @@ function ReleaseSleeve({ post }: { post: Post }) {
   const preview = release.previewTrack?.previewUrl ? release.previewTrack : null;
 
   return (
-    <div className="om-sleeve mt-4 flex flex-col overflow-hidden sm:flex-row">
-      <div className="relative aspect-square w-full shrink-0 bg-sunken sm:w-40">
+    <div className="om-sleeve mt-4 flex overflow-hidden">
+      <div className="relative aspect-square w-24 shrink-0 self-start bg-sunken sm:w-32">
         <CoverArt
           src={release.coverUrl}
           placeholderColor={release.dominantColor}
           alt={`Copertina di ${release.title}`}
-          sizes="(min-width: 640px) 160px, 100vw"
+          sizes="(min-width: 640px) 128px, 96px"
           className="h-full w-full"
         />
         {preview?.previewUrl && (
@@ -127,17 +126,14 @@ function ReleaseSleeve({ post }: { post: Post }) {
             artist={preview.artistName}
             coverUrl={release.coverUrl}
             previewUrl={preview.previewUrl}
-            className="absolute bottom-3 right-3 shadow-om-md"
+            className="absolute bottom-2 right-2"
           />
         )}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 p-4">
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 px-4 py-3 sm:py-4">
         <div className="min-w-0">
-          <p className="om-eyebrow">
-            {post.rating !== null ? 'Recensione lampo' : 'In rotazione'}
-            {year && <span className="tabular-nums"> · {year}</span>}
-          </p>
-          <h3 className="om-headline mt-1 line-clamp-2 text-xl text-ink">
+          <p className="om-eyebrow">{post.rating !== null ? 'Recensione lampo' : 'In rotazione'}</p>
+          <h3 className="om-headline mt-0.5 line-clamp-2 text-lg text-fg sm:text-xl">
             <Link
               href={`/releases/${release.id}`}
               className="hover:underline focus-visible:underline"
@@ -145,9 +141,12 @@ function ReleaseSleeve({ post }: { post: Post }) {
               {release.title}
             </Link>
           </h3>
-          <p className="truncate text-sm text-ink-secondary">{release.artistName}</p>
+          <p className="truncate text-sm text-fg-muted">
+            {release.artistName}
+            {year && <span className="font-mono tabular-nums text-fg-subtle">, {year}</span>}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           {post.rating !== null ? (
             <RatingStars
               value={starsFromRating(post.rating)}
@@ -156,14 +155,17 @@ function ReleaseSleeve({ post }: { post: Post }) {
               label={`Voto di ${displayNameOf(post.author)}`}
             />
           ) : (
-            <span className="font-mono text-xs text-ink-muted">Senza voto</span>
+            <span className="text-xs text-fg-subtle">Senza voto</span>
           )}
           {preview ? (
-            <span className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-muted">
-              <MusicNote aria-hidden="true" /> {preview.title}
+            <span className="hidden min-w-0 items-center gap-1 truncate text-xs text-fg-subtle sm:inline-flex">
+              <MusicNote aria-hidden="true" className="shrink-0" />
+              <span className="truncate">{preview.title}</span>
             </span>
           ) : (
-            <span className="font-mono text-[11px] text-ink-muted">Anteprima non disponibile</span>
+            <span className="hidden text-xs text-fg-subtle sm:inline">
+              Anteprima non disponibile
+            </span>
           )}
         </div>
       </div>
@@ -175,7 +177,7 @@ function TrackChip({ post }: { post: Post }) {
   const track = post.track;
   if (!track) return null;
   return (
-    <div className="mt-4 flex items-center gap-3 rounded-md border border-line bg-sunken p-2.5">
+    <div className="mt-4 flex items-center gap-3 rounded-md border border-line p-2.5">
       {track.previewUrl ? (
         <PreviewButton
           id={`post-${post.id}`}
@@ -188,14 +190,14 @@ function TrackChip({ post }: { post: Post }) {
       ) : (
         <span
           aria-hidden="true"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-muted"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-sunken text-fg-subtle"
         >
           <Disc />
         </span>
       )}
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-ink">{track.title}</p>
-        <p className="truncate text-xs text-ink-secondary">{track.artistName}</p>
+        <p className="truncate text-sm font-medium text-fg">{track.title}</p>
+        <p className="truncate text-xs text-fg-muted">{track.artistName}</p>
       </div>
       {post.rating !== null && (
         <RatingStars
@@ -272,7 +274,7 @@ function PostActions({ post }: { post: Post }) {
   }
 
   return (
-    <div className="mt-4 flex items-center gap-1 text-ink-secondary">
+    <div className="-mx-2.5 mt-3 flex items-center gap-1 text-fg-subtle">
       <button
         type="button"
         onClick={() => void toggleLike()}
@@ -280,7 +282,7 @@ function PostActions({ post }: { post: Post }) {
         aria-label={`Mi piace, ${likeCount} in totale`}
         className={cn(
           'inline-flex h-10 items-center gap-1.5 rounded-md px-2.5 font-mono text-xs transition-colors duration-fast',
-          'hover:bg-rotten/10 hover:text-rotten focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus',
+          'hover:bg-rotten/[0.06] hover:text-rotten focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus',
           liked && 'text-rotten'
         )}
       >
@@ -296,7 +298,7 @@ function PostActions({ post }: { post: Post }) {
         aria-label={saved ? 'Salvato nello scaffale' : 'Salva nello scaffale'}
         className={cn(
           'ml-auto inline-flex h-10 w-10 items-center justify-center rounded-md transition-colors duration-fast',
-          'hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus',
+          'hover:bg-fg/[0.05] hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus',
           saved && 'text-accent'
         )}
       >

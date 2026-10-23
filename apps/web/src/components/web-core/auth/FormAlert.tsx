@@ -6,7 +6,7 @@ export function FormAlert({ children }: { children: React.ReactNode }) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2.5 rounded-md border border-rotten/50 bg-rotten/[0.08] px-3.5 py-3 text-sm text-ink"
+      className="flex items-start gap-2.5 rounded-md border border-rotten/50 bg-rotten/[0.08] px-3.5 py-3 text-sm text-fg"
     >
       <WarningCircle
         aria-hidden="true"

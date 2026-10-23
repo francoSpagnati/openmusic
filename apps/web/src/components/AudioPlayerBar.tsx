@@ -40,22 +40,22 @@ export const AudioPlayerBar: React.FC = () => {
   return (
     <section
       aria-label="Lettore anteprime"
-      className="fixed inset-x-0 bottom-0 z-playerBar border-t border-line bg-elevated shadow-om-lg"
+      className="om-fade fixed inset-x-0 bottom-0 z-playerBar border-t border-line bg-surface-raised"
     >
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6">
+      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
         <CoverArt
           src={currentTrack.coverUrl}
           alt=""
-          className="h-11 w-11 flex-shrink-0 rounded-sm"
+          className="h-11 w-11 flex-shrink-0 rounded-sm ring-1 ring-line"
           sizes="44px"
         />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-ink">
+          <p className="truncate text-sm font-medium text-fg">
             {currentTrack.releaseId ? (
               <Link
                 href={`/releases/${currentTrack.releaseId}`}
-                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                className="hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
               >
                 {currentTrack.title}
               </Link>
@@ -63,16 +63,17 @@ export const AudioPlayerBar: React.FC = () => {
               currentTrack.title
             )}
           </p>
-          <p className="truncate text-xs text-ink-secondary" aria-live="polite">
+          <p className="truncate text-xs text-fg-muted" aria-live="polite">
             {statusText ?? (
               <>
-                {currentTrack.artist} · <span className="font-mono text-accent">Anteprima 30s</span>
+                {currentTrack.artist}
+                <span className="text-fg-subtle">, anteprima di 30 secondi</span>
               </>
             )}
           </p>
 
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="hidden w-9 text-right font-mono text-[11px] tabular-nums text-ink-muted sm:inline">
+            <span className="hidden w-9 text-right font-mono text-[11px] tabular-nums text-fg-subtle sm:inline">
               {formatClock(currentTime)}
             </span>
             <input
@@ -87,7 +88,7 @@ export const AudioPlayerBar: React.FC = () => {
               aria-valuetext={`${formatClock(currentTime)} di ${formatClock(duration)}`}
               className="h-1 w-full cursor-pointer accent-accent disabled:cursor-default disabled:opacity-40"
             />
-            <span className="hidden w-9 font-mono text-[11px] tabular-nums text-ink-muted sm:inline">
+            <span className="hidden w-9 font-mono text-[11px] tabular-nums text-fg-subtle sm:inline">
               {formatClock(duration)}
             </span>
           </div>
@@ -101,7 +102,8 @@ export const AudioPlayerBar: React.FC = () => {
           ) : (
             <IconButton
               label={isPlaying || isLoading ? 'Pausa' : retry ? 'Riprova' : 'Riproduci'}
-              variant="solid"
+              variant="outline"
+              shape="round"
               loading={status === 'loading'}
               disabled={status === 'unavailable'}
               onClick={togglePlay}

@@ -39,7 +39,7 @@ export function ProfilePosts({
     return <FeedSkeleton count={2} label="Caricamento dei post…" />;
   if (posts.status === 'error') {
     return (
-      <div className="p-4">
+      <div className="px-4 py-10 sm:px-6">
         <ErrorState
           title="Post non disponibili"
           description={errorMessage(posts.error)}
@@ -50,7 +50,7 @@ export function ProfilePosts({
   }
   if (posts.items.length === 0) {
     return (
-      <div className="p-4">
+      <div className="px-4 py-10 sm:px-6">
         <EmptyState
           title={isMe ? 'Non hai ancora pubblicato nulla' : `${name} non ha ancora pubblicato`}
           description={
@@ -58,7 +58,7 @@ export function ProfilePosts({
           }
           action={
             isMe ? (
-              <Link href="/#compose" className="font-semibold text-accent hover:underline">
+              <Link href="/#compose" className="om-link font-medium">
                 Scrivi il primo post
               </Link>
             ) : undefined
@@ -69,7 +69,7 @@ export function ProfilePosts({
   }
   return (
     <div>
-      <ul aria-label={`Post di ${name}`}>
+      <ul className="om-stagger" aria-label={`Post di ${name}`}>
         {posts.items.map((post) => (
           <li key={post.id}>
             <SocialPostCard
@@ -100,13 +100,13 @@ export function ProfileReviews({
 }) {
   if (reviews.length === 0) {
     return (
-      <div className="p-4">
+      <div className="px-4 py-10 sm:px-6">
         <EmptyState
           title="Nessuna recensione"
           description={isMe ? 'Apri la pagina di un disco e dai il tuo voto.' : undefined}
           action={
             isMe ? (
-              <Link href="/explore" className="font-semibold text-accent hover:underline">
+              <Link href="/explore" className="om-link font-medium">
                 Esplora le uscite
               </Link>
             ) : undefined
@@ -116,9 +116,9 @@ export function ProfileReviews({
     );
   }
   return (
-    <ol className="divide-y divide-line">
+    <ol className="om-stagger divide-y divide-line">
       {reviews.map((review) => (
-        <li key={review.id} className="space-y-2 px-4 py-5 sm:px-6">
+        <li key={review.id} className="space-y-3 px-4 py-6 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             <RatingStars value={starsFromRating(review.rating)} size="sm" showValue label="Voto" />
             {review.isVerifiedListen && (
@@ -131,22 +131,20 @@ export function ProfileReviews({
                 Critica
               </Badge>
             )}
-            <TimeAgo iso={review.createdAt} className="ml-auto font-mono text-xs text-ink-muted" />
+            <TimeAgo iso={review.createdAt} className="ml-auto font-mono text-xs text-fg-subtle" />
           </div>
           {review.content && (
-            <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink">
-              {review.content}
-            </p>
+            <p className="whitespace-pre-line text-base text-fg">{review.content}</p>
           )}
           {review.vibeTags.length > 0 && (
-            <p className="font-mono text-xs text-accent">
+            <p className="text-sm text-fg-subtle">
               {review.vibeTags.map((t) => `#${t}`).join('  ')}
             </p>
           )}
           {review.releaseId && (
             <Link
               href={`/releases/${review.releaseId}`}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline"
+              className="om-link inline-flex items-center gap-1 text-sm font-medium"
             >
               Vai al disco <ArrowUpRight aria-hidden="true" />
             </Link>
@@ -168,7 +166,7 @@ export function ProfileRotation({
   const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
   if (items.length === 0) {
     return (
-      <div className="p-4">
+      <div className="px-4 py-10 sm:px-6">
         <EmptyState
           title="Niente in heavy rotation"
           description={
@@ -178,10 +176,7 @@ export function ProfileRotation({
           }
           action={
             isMe ? (
-              <Link
-                href="/settings#connessioni"
-                className="font-semibold text-accent hover:underline"
-              >
+              <Link href="/settings#connessioni" className="om-link font-medium">
                 Collega un servizio
               </Link>
             ) : undefined
@@ -191,14 +186,14 @@ export function ProfileRotation({
     );
   }
   return (
-    <ol className="divide-y divide-line">
+    <ol className="om-stagger divide-y divide-line">
       {items.map((item, index) => {
         const { track } = item;
         const id = `rotation-${track.id}`;
         const playing = currentTrack?.id === id && isPlaying;
         return (
           <li key={track.id} className="flex items-center gap-3 px-4 py-3 sm:px-6">
-            <span className="w-6 font-mono text-sm text-ink-muted tabular-nums">
+            <span className="w-6 font-mono text-sm text-fg-subtle tabular-nums">
               {String(index + 1).padStart(2, '0')}
             </span>
             {track.previewUrl ? (
@@ -222,11 +217,11 @@ export function ProfileRotation({
               <span aria-hidden="true" className="h-8 w-8" />
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-ink">{track.title}</p>
-              <p className="truncate text-xs text-ink-secondary">{track.artistName}</p>
+              <p className="truncate text-sm font-medium text-fg">{track.title}</p>
+              <p className="truncate text-xs text-fg-muted">{track.artistName}</p>
             </div>
-            <p className="font-mono text-xs text-ink-secondary tabular-nums">
-              {item.playCount} <span className="text-ink-muted">ascolti</span>
+            <p className="font-mono text-xs text-fg-muted tabular-nums">
+              {item.playCount} <span className="font-sans text-fg-subtle">ascolti</span>
             </p>
           </li>
         );

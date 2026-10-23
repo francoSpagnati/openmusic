@@ -13,7 +13,7 @@ export function FriendsListening({ max = 5 }: { max?: number }) {
 
   if (!connected) {
     return (
-      <p className="text-sm text-ink-muted" role="status">
+      <p className="text-sm text-fg-subtle" role="status">
         {error ? 'Il live degli amici non è raggiungibile ora.' : 'Collegamento al live…'}
       </p>
     );
@@ -21,7 +21,7 @@ export function FriendsListening({ max = 5 }: { max?: number }) {
 
   if (listening.length === 0) {
     return (
-      <p className="text-sm text-ink-muted">
+      <p className="text-sm text-fg-subtle">
         Nessuno dei tuoi amici sta ascoltando in questo momento.
       </p>
     );
@@ -40,12 +40,12 @@ export function FriendsListening({ max = 5 }: { max?: number }) {
             >
               <Avatar name={name} src={friend.avatarUrl} size="sm" status="live" decorative />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-ink group-hover:underline">
+                <span className="block truncate text-sm font-medium text-fg group-hover:underline">
                   {name}
                 </span>
                 {track && (
-                  <span className="block truncate text-xs text-ink-secondary">
-                    {track.title} <span className="text-ink-muted">· {track.artistName}</span>
+                  <span className="block truncate text-xs text-fg-muted">
+                    {track.title} <span className="text-fg-subtle">di {track.artistName}</span>
                   </span>
                 )}
               </span>
