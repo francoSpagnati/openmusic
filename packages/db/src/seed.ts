@@ -1,5 +1,7 @@
 /**
- * OpenMusic development seed.
+ * OpenMusic development seed (`npm run db:seed`), also the optional demo community of an online
+ * deploy (`seedDemoData`, called once by the API when SEED_ON_START=true and DEMO_PASSWORD is set,
+ * see docs/07_DEPLOY.md).
  *
  * Idempotent: every row is keyed by a deterministic UUID (or a natural unique key such as
  * username / ISRC) and written with `upsert`, so running `npm run db:seed` repeatedly converges
@@ -19,7 +21,8 @@ import {
   type Prisma,
 } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Set by `seedDemoData` (the CLI creates its own client, the API passes its shared one).
+let prisma: PrismaClient;
 
 /** Deterministic RFC 4122 v5-style UUID derived from a stable seed key. */
 function seedId(key: string): string {
@@ -595,9 +598,9 @@ const POSTS: Array<
 // ---------------------------------------------------------------------------
 const LEGACY_RELEASE_IDS = ['rel_in_rainbows', 'rel_ram', 'rel_tpab'];
 
-async function seedUsers(): Promise<Map<string, string>> {
+async function seedUsers(password: string): Promise<Map<string, string>> {
   const ids = new Map<string, string>();
-  const passwordHash = hashDevPassword(DEV_PASSWORD);
+  const passwordHash = hashDevPassword(password);
   for (const u of USERS) {
     const data = {
       passwordHash,
@@ -665,11 +668,19 @@ async function seedCatalog(): Promise<void> {
         durationMs: t.durationMs,
         releaseId,
       };
-      await prisma.track.upsert({
-        where: { isrc },
-        update: trackData,
-        create: { id: trackId(r.key, t.title), isrc, ...trackData },
-      });
+      const id = trackId(r.key, t.title);
+      // The catalog import replaces the fictional ISRC with the real one on the same row: match
+      // by id first (keeping that ISRC), by ISRC only for rows of the first seed version.
+      const existing = await prisma.track.findUnique({ where: { id }, select: { id: true } });
+      if (existing) {
+        await prisma.track.update({ where: { id }, data: trackData });
+      } else {
+        await prisma.track.upsert({
+          where: { isrc },
+          update: trackData,
+          create: { id, isrc, ...trackData },
+        });
+      }
     }
   }
 
@@ -909,18 +920,32 @@ async function recomputeReleaseScores(): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Refusing to run the development seed with NODE_ENV=production');
-  }
-  console.log('Seeding OpenMusic database...');
-  const userIds = await seedUsers();
+export type SeedCounts = Record<
+  | 'users'
+  | 'releases'
+  | 'releaseGroups'
+  | 'tracks'
+  | 'reviews'
+  | 'playlists'
+  | 'chatMessages'
+  | 'posts'
+  | 'notifications',
+  number
+>;
+
+/**
+ * Writes the seed (users, catalog, social graph, posts) with `client`. Idempotent. Every seeded
+ * account gets `password`: the CLI uses DEV_PASSWORD, an online deploy its own DEMO_PASSWORD.
+ */
+export async function seedDemoData(client: PrismaClient, password: string): Promise<SeedCounts> {
+  prisma = client;
+  const userIds = await seedUsers(password);
   await seedCatalog();
   await seedSocial(userIds);
   await seedPosts(userIds);
   await recomputeReleaseScores();
 
-  const counts = {
+  return {
     users: await prisma.user.count(),
     releases: await prisma.release.count(),
     releaseGroups: await prisma.releaseGroup.count(),
@@ -931,17 +956,29 @@ async function main(): Promise<void> {
     posts: await prisma.post.count(),
     notifications: await prisma.notification.count(),
   };
-  console.log('Seed complete:', counts);
-  console.log(
-    `Sign in with any seeded email (e.g. francospagnati@openmusic.test, admin@openmusic.test) and password "${DEV_PASSWORD}".`
-  );
 }
 
-main()
-  .catch((e: unknown) => {
+async function main(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to run the development seed with NODE_ENV=production');
+  }
+  console.log('Seeding OpenMusic database...');
+  const client = new PrismaClient();
+  try {
+    const counts = await seedDemoData(client, DEV_PASSWORD);
+    console.log('Seed complete:', counts);
+    console.log(
+      `Sign in with any seeded email (e.g. francospagnati@openmusic.test, admin@openmusic.test) and password "${DEV_PASSWORD}".`
+    );
+  } finally {
+    await client.$disconnect();
+  }
+}
+
+// `prisma db seed` runs this file; the API only imports `seedDemoData`.
+if (require.main === module) {
+  main().catch((e: unknown) => {
     console.error(e);
     process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
+}
