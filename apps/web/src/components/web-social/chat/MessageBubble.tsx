@@ -13,23 +13,31 @@ function Bubble({
   mine,
   content,
   track,
+  pending = false,
   children,
 }: {
   mine: boolean;
+  /** Not yet confirmed: the words fade a little, the status line stays fully legible. */
+  pending?: boolean;
   content: string | null | undefined;
   track: React.ReactNode;
   children?: React.ReactNode;
 }) {
+  // Calm thread: the friend's words sit on the page, mine on a soft stone surface.
   return (
-    <div className={cn('flex flex-col gap-1', mine ? 'items-end' : 'items-start')}>
-      <div className="w-full max-w-[88%] space-y-2 sm:max-w-[75%]">
+    <div className={cn('flex flex-col gap-1.5', mine ? 'items-end' : 'items-start')}>
+      <div
+        className={cn(
+          'w-full space-y-3 transition-opacity duration-base ease-out',
+          pending && 'opacity-60',
+          mine ? 'max-w-[85%] sm:max-w-[75%]' : 'max-w-[92%]'
+        )}
+      >
         {content && (
           <p
             className={cn(
-              'w-fit whitespace-pre-wrap break-words rounded-lg px-3.5 py-2.5 text-sm leading-relaxed',
-              mine
-                ? 'ml-auto rounded-br-xs bg-accent text-on-accent'
-                : 'rounded-bl-xs border border-line bg-surface text-ink'
+              'w-fit whitespace-pre-wrap break-words text-base leading-relaxed text-fg',
+              mine && 'ml-auto rounded-xl bg-surface px-4 py-2.5'
             )}
           >
             {content}
@@ -79,15 +87,19 @@ export function MessageBubble({
         )
       }
     >
-      <p className="flex items-center gap-1.5 px-1 font-mono text-[11px] tabular-nums text-ink-muted">
-        <time dateTime={message.createdAt} title={absoluteTime(message.createdAt)}>
+      <p className={cn('flex items-center gap-2 text-xs text-fg-subtle', mine && 'px-1')}>
+        <time
+          dateTime={message.createdAt}
+          title={absoluteTime(message.createdAt)}
+          className="font-mono tabular-nums"
+        >
           {messageTime(message.createdAt)}
         </time>
         {mine && showReceipt && (
-          <span className="inline-flex items-center gap-0.5">
+          <span className="inline-flex items-center gap-1">
             {message.readAt ? (
               <>
-                <Checks aria-hidden="true" className="h-3.5 w-3.5 text-accent" /> Letto
+                <Checks aria-hidden="true" className="h-3.5 w-3.5" /> Letto
               </>
             ) : (
               <>
@@ -115,9 +127,10 @@ export function OutgoingBubble({
 }) {
   const failed = item.status === 'failed';
   return (
-    <div className={cn(failed ? undefined : 'opacity-75')}>
+    <div>
       <Bubble
         mine
+        pending={!failed}
         content={item.content}
         track={item.track && <PendingTrack track={item.track} peerName={peerName} />}
       >
@@ -135,7 +148,7 @@ export function OutgoingBubble({
             </Button>
           </div>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-1 font-mono text-[11px] text-ink-muted">
+          <span className="inline-flex items-center gap-1.5 px-1 text-xs text-fg-subtle">
             <Spinner size="sm" label={null} /> Invio…
           </span>
         )}

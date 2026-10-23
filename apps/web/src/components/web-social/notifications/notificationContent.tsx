@@ -17,15 +17,15 @@ export const NOTIFICATION_ICON: Record<
   NotificationType,
   { icon: Icon; className: string; label: string }
 > = {
-  FOLLOW: { icon: UserPlus, className: 'text-accent', label: 'Nuovo follower' },
-  POST_LIKE: { icon: Heart, className: 'text-rotten', label: 'Mi piace' },
-  REVIEW_REACTION: { icon: ChatsCircle, className: 'text-mixed', label: 'Reazione' },
-  TRACK_LISTENED: { icon: Headphones, className: 'text-fresh', label: 'Consiglio ascoltato' },
-  CRITIC_APPROVED: { icon: SealCheck, className: 'text-accent', label: 'Accredito' },
+  FOLLOW: { icon: UserPlus, className: 'text-fg-muted', label: 'Nuovo follower' },
+  POST_LIKE: { icon: Heart, className: 'text-fg-muted', label: 'Mi piace' },
+  REVIEW_REACTION: { icon: ChatsCircle, className: 'text-fg-muted', label: 'Reazione' },
+  TRACK_LISTENED: { icon: Headphones, className: 'text-fg-muted', label: 'Consiglio ascoltato' },
+  CRITIC_APPROVED: { icon: SealCheck, className: 'text-fg-muted', label: 'Accredito' },
 };
 
 function Strong({ children }: { children: React.ReactNode }) {
-  return <strong className="font-semibold text-ink">{children}</strong>;
+  return <strong className="font-semibold text-fg">{children}</strong>;
 }
 
 /** Human copy and destination for each notification type. */

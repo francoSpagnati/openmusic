@@ -98,13 +98,10 @@ export function NotificationsScreen() {
     <div className="mx-auto flex max-w-7xl justify-center">
       <Sidebar />
       <div className="min-w-0 flex-1 border-line lg:border-r">
-        <header className="flex flex-wrap items-end justify-between gap-3 px-4 pb-3 pt-6 sm:px-5">
-          <div>
-            <p className="om-eyebrow">Dal bancone</p>
-            <h1 className="om-headline text-display-sm text-ink">Notifiche</h1>
-          </div>
+        <header className="flex flex-wrap items-end justify-between gap-3 px-4 pb-4 pt-8 sm:px-6">
+          <h1 className="om-headline text-display-sm text-fg">Notifiche</h1>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             leadingIcon={<Checks aria-hidden="true" />}
             loading={markingAll}
@@ -123,7 +120,7 @@ export function NotificationsScreen() {
           label="Filtra le notifiche"
           value={filter}
           onValueChange={(id) => setFilter(id === 'unread' ? 'unread' : 'all')}
-          className="[&>[role=tablist]]:px-4 sm:[&>[role=tablist]]:px-5"
+          className="[&>[role=tablist]]:px-4 sm:[&>[role=tablist]]:px-6"
           panelClassName="pt-0"
           items={[
             { id: 'all', label: 'Tutte', content: body },
@@ -152,10 +149,10 @@ function NotificationsBody({
 }) {
   if (list.status === 'idle' || (list.status === 'loading' && list.items.length === 0)) {
     return (
-      <div aria-busy="true" className="divide-y divide-line">
+      <div aria-busy="true" className="px-1 pt-4 sm:px-3">
         <span className="sr-only">Caricamento delle notifiche…</span>
         {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex gap-4 px-4 py-4 sm:px-5">
+          <div key={i} className="flex gap-4 px-3 py-3.5">
             <Skeleton shape="circle" className="h-10 w-10" />
             <Skeleton shape="text" lines={2} />
           </div>
@@ -166,7 +163,7 @@ function NotificationsBody({
 
   if (list.status === 'error') {
     return (
-      <div className="p-4 sm:p-5">
+      <div className="px-4 py-6 sm:px-6">
         <ErrorState
           title="Le notifiche non si sono caricate"
           description={errorMessage(list.error)}
@@ -178,7 +175,7 @@ function NotificationsBody({
 
   if (list.items.length === 0) {
     return (
-      <div className="p-4 sm:p-5">
+      <div className="px-4 py-6 sm:px-6">
         {filter === 'unread' ? (
           <EmptyState
             title="Sei in pari"
@@ -208,16 +205,17 @@ function NotificationsBody({
   }
 
   return (
-    <div aria-busy={list.status === 'loading'}>
+    <div aria-busy={list.status === 'loading'} className="px-1 pb-6 sm:px-3">
       {groups.map((group) => (
-        <section key={group.key} aria-labelledby={`notif-day-${group.key}`}>
-          <h2
-            id={`notif-day-${group.key}`}
-            className="om-eyebrow border-b border-line bg-canvas px-4 py-2 sm:px-5"
-          >
+        <section
+          key={group.key}
+          aria-labelledby={`notif-day-${group.key}`}
+          className="pt-6 first:pt-4"
+        >
+          <h2 id={`notif-day-${group.key}`} className="om-eyebrow px-3 pb-1">
             {group.label}
           </h2>
-          <ul className="divide-y divide-line border-b border-line">
+          <ul className="om-stagger">
             {group.items.map((n) => (
               <li key={n.id}>
                 <NotificationRow notification={n} onOpen={onOpen} />
@@ -232,7 +230,7 @@ function NotificationsBody({
         error={list.moreError}
         onLoadMore={list.loadMore}
         label="Notifiche precedenti"
-        endLabel="Fine del solco · niente di più vecchio"
+        endLabel="Niente di più vecchio"
       />
     </div>
   );

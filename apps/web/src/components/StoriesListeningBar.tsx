@@ -32,11 +32,11 @@ export const StoriesListeningBar: React.FC = () => {
   const openFriend = openId ? (friends.find((f) => f.userId === openId) ?? null) : null;
 
   return (
-    <section aria-labelledby="stories-title" className="border-b border-line px-4 py-3 sm:px-5">
+    <section aria-labelledby="stories-title" className="border-b border-line px-4 py-4 sm:px-5">
       <h2 id="stories-title" className="sr-only">
         Cosa ascoltano i tuoi amici adesso
       </h2>
-      <ul className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 pt-1.5 [scrollbar-width:thin]">
+      <ul className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1 pt-1.5 [scrollbar-width:thin]">
         <li className="shrink-0">
           <MyBubble />
         </li>
@@ -52,22 +52,22 @@ export const StoriesListeningBar: React.FC = () => {
               </li>
             ))
           : sorted.map((friend) => (
-              <li key={friend.userId} className="shrink-0">
+              <li key={friend.userId} className="om-fade shrink-0">
                 <FriendBubble friend={friend} onOpen={() => setOpenId(friend.userId)} />
               </li>
             ))}
         {connected && sorted.length === 0 && (
-          <li className="flex min-w-[12rem] items-center text-xs text-ink-muted">
+          <li className="flex min-w-[12rem] items-center text-sm text-fg-subtle">
             <p>
               Nessun amico online.{' '}
-              <Link href="/explore" className="text-accent underline-offset-2 hover:underline">
+              <Link href="/explore" className="om-link">
                 Trova chi seguire
               </Link>
             </p>
           </li>
         )}
         {error && !connected && (
-          <li className="flex items-center text-xs text-ink-muted" role="status">
+          <li className="flex items-center text-sm text-fg-subtle" role="status">
             Il live degli amici non è raggiungibile ora.
           </li>
         )}
@@ -84,11 +84,12 @@ export const StoriesListeningBar: React.FC = () => {
 function BubbleLabel({ name, sub, tone }: { name: string; sub: string; tone: 'live' | 'muted' }) {
   return (
     <span className="flex w-16 flex-col items-center">
-      <span className="w-full truncate text-center text-[11px] font-medium text-ink">{name}</span>
+      <span className="w-full truncate text-center text-xs font-medium text-fg">{name}</span>
       <span
+        key={sub}
         className={cn(
-          'w-full truncate text-center font-mono text-[10px] leading-tight',
-          tone === 'live' ? 'text-fresh' : 'text-ink-muted'
+          'om-fade w-full truncate text-center text-[11px] leading-tight',
+          tone === 'live' ? 'text-fresh' : 'text-fg-subtle'
         )}
       >
         {sub}
@@ -121,10 +122,10 @@ function MyBubble() {
           onClick={() => void ghost.set(!ghost.enabled)}
           title={ghost.enabled ? 'Disattiva Ghost Mode' : 'Attiva Ghost Mode'}
           className={cn(
-            'absolute -bottom-1 -left-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-canvas transition-colors duration-fast',
+            'absolute -bottom-1 -left-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-canvas transition-colors duration-fast ease-out',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus',
             'disabled:cursor-progress',
-            ghost.enabled ? 'bg-elevated text-ink' : 'bg-accent text-on-accent'
+            ghost.enabled ? 'bg-fg text-canvas' : 'bg-surface-raised text-fg shadow-hairline'
           )}
         >
           {ghost.enabled ? (
@@ -161,11 +162,11 @@ function FriendBubble({ friend, onOpen }: { friend: FriendPresence; onOpen: () =
       type="button"
       onClick={onOpen}
       aria-label={label}
-      className="group flex flex-col items-center gap-1.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
+      className="om-press group flex flex-col items-center gap-1.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
     >
       <span
         className={cn(
-          'relative rounded-full transition-transform duration-fast ease-tonearm group-hover:scale-105',
+          'relative rounded-full',
           friend.isGhostMode && 'outline-dashed outline-1 outline-offset-2 outline-line-strong'
         )}
       >
@@ -178,10 +179,11 @@ function FriendBubble({ friend, onOpen }: { friend: FriendPresence; onOpen: () =
         />
         {track && (
           <CoverArt
+            key={track.coverUrl ?? track.title}
             src={track.coverUrl}
             alt=""
             sizes="24px"
-            className="absolute -bottom-1 -left-1 h-6 w-6 rounded-xs ring-2 ring-canvas"
+            className="om-fade absolute -bottom-1 -left-1 h-6 w-6 rounded-sm ring-2 ring-canvas"
           />
         )}
       </span>

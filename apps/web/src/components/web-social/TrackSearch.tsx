@@ -94,13 +94,13 @@ export function TrackSearch({
           <div aria-hidden="true" className="space-y-2 p-1.5">
             {[0, 1, 2].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <Skeleton shape="rect" className="h-10 w-10 rounded-xs" />
+                <Skeleton shape="rect" className="h-10 w-10 rounded-md" />
                 <Skeleton shape="text" lines={2} />
               </div>
             ))}
           </div>
         ) : (
-          <p className="px-3 py-6 text-center text-sm text-ink-muted">
+          <p className="px-3 py-6 text-center text-sm text-fg-subtle">
             {ready
               ? `Nessun brano per “${debounced}”. Prova con l’artista.`
               : 'Scrivi almeno due lettere: cerchiamo nel catalogo e su Deezer.'}
@@ -130,7 +130,7 @@ function TrackOption({
     <li
       className={cn(
         'flex items-center gap-2 rounded-sm pr-1.5 transition-colors duration-fast',
-        checked ? 'bg-accent/15 ring-1 ring-accent/60' : 'hover:bg-elevated'
+        checked ? 'bg-accent/[0.08] ring-1 ring-accent/60' : 'hover:bg-surface-raised'
       )}
     >
       <input
@@ -149,17 +149,15 @@ function TrackOption({
           src={track.coverUrl}
           alt=""
           sizes="40px"
-          className="h-10 w-10 shrink-0 rounded-xs"
+          className="h-10 w-10 shrink-0 rounded-md"
         />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-ink">{track.title}</span>
-          <span className="block truncate text-xs text-ink-secondary">
-            {track.artistName}
-            <span className="font-mono tabular-nums text-ink-muted">
-              {' '}
-              · {formatTrackDuration(track.durationMs)}
-            </span>
-          </span>
+          <span className="block truncate text-sm font-medium text-fg">{track.title}</span>
+          <span className="block truncate text-xs text-fg-muted">{track.artistName}</span>
+        </span>
+        <span className="shrink-0 font-mono text-xs tabular-nums text-fg-muted">
+          <span className="sr-only">Durata </span>
+          {formatTrackDuration(track.durationMs)}
         </span>
         {checked && (
           <CheckCircle aria-hidden="true" weight="fill" className="h-5 w-5 shrink-0 text-accent" />

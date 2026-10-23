@@ -56,29 +56,35 @@ export function SharedTrackCard({
   }, [isPlayingThis, mine, isListened, onListened]);
 
   return (
-    <div className="om-sleeve overflow-hidden p-3 text-ink">
+    <div
+      className={cn(
+        'w-full max-w-md rounded-lg border border-line bg-canvas p-3 text-fg',
+        mine && 'ml-auto'
+      )}
+    >
       <div className="flex items-center gap-3">
         <CoverArt
           src={track.coverUrl}
           alt=""
-          sizes="56px"
-          className={cn('h-14 w-14 shrink-0 rounded-xs', isPlayingThis && 'ring-2 ring-accent')}
+          sizes="48px"
+          className={cn(
+            'h-12 w-12 shrink-0 rounded-md transition-shadow duration-base ease-out',
+            isPlayingThis && 'ring-2 ring-accent ring-offset-2 ring-offset-canvas'
+          )}
         />
         <div className="min-w-0 flex-1">
-          <p className="om-headline truncate text-base text-ink">{track.title}</p>
-          <p className="truncate text-xs text-ink-secondary">
-            {track.artistName}
-            <span className="font-mono tabular-nums text-ink-muted">
-              {' '}
-              · {formatTrackDuration(track.durationMs)}
-            </span>
-          </p>
+          <p className="truncate font-editorial text-base leading-snug text-fg">{track.title}</p>
+          <p className="truncate text-sm text-fg-muted">{track.artistName}</p>
         </div>
+        <span className="shrink-0 font-mono text-xs tabular-nums text-fg-subtle">
+          <span className="sr-only">Durata </span>
+          {formatTrackDuration(track.durationMs)}
+        </span>
         <PreviewPlayButton track={playing} />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-2.5 text-xs">
-        <span className="om-eyebrow">Ascolta su</span>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-2.5 text-xs">
+        <span className="text-fg-subtle">Ascolta su</span>
         {EXTERNAL_LINKS.map(({ key, label }) => {
           const href = links?.[key];
           return href ? (
@@ -87,7 +93,7 @@ export function SharedTrackCard({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+              className="inline-flex items-center gap-1 text-fg-muted underline-offset-2 transition-colors duration-fast hover:text-fg hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
               {label}
               <ArrowSquareOut aria-hidden="true" className="h-3 w-3" />
@@ -109,7 +115,7 @@ export function SharedTrackCard({
         <SenderFeedback isListened={isListened} reaction={reaction} peerName={peerName} />
       ) : (
         onReact && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <div role="group" aria-label="Reagisci al consiglio" className="flex gap-1">
               {REACTIONS.map((r) => {
                 const active = reaction === r.type;
@@ -121,11 +127,11 @@ export function SharedTrackCard({
                     title={r.label}
                     onClick={() => onReact(active ? null : r.type)}
                     className={cn(
-                      'inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-2 text-base transition-colors duration-fast',
+                      'inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-2 text-base transition-colors duration-fast ease-out',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                       active
-                        ? 'border-accent bg-accent/15'
-                        : 'border-line bg-sunken hover:border-line-strong'
+                        ? 'border-accent bg-accent/[0.08]'
+                        : 'border-line hover:border-line-strong hover:bg-fg/[0.04]'
                     )}
                   >
                     <span aria-hidden="true">{r.emoji}</span>
@@ -167,11 +173,11 @@ function SenderFeedback({
   peerName: string;
 }) {
   if (!isListened && !reaction) {
-    return <p className="mt-2 text-xs text-ink-muted">{peerName} non l’ha ancora ascoltato.</p>;
+    return <p className="mt-2.5 text-xs text-fg-subtle">{peerName} non l’ha ancora ascoltato.</p>;
   }
   const meta = reaction ? reactionMeta(reaction) : null;
   return (
-    <div className="mt-2.5 flex flex-wrap gap-1.5">
+    <div className="mt-3 flex flex-wrap gap-1.5">
       {isListened && (
         <Badge tone="fresh" size="sm" icon={<CheckCircle weight="fill" />}>
           {peerName} l’ha ascoltato

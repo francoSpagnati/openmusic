@@ -73,13 +73,13 @@ export function NewChatDialog({
               ))}
             </div>
           ) : people.data.length === 0 ? (
-            <p className="py-6 text-center text-sm text-ink-muted">
+            <p className="py-6 text-center text-sm text-fg-subtle">
               {q
                 ? `Nessuno corrisponde a “${q}”.`
                 : 'Non segui ancora nessuno: cerca qualcuno per nome.'}
             </p>
           ) : (
-            <ul className="space-y-0.5">
+            <ul className="om-stagger space-y-0.5">
               {people.data.map((user) => {
                 const name = displayNameOf(user);
                 return (
@@ -87,14 +87,12 @@ export function NewChatDialog({
                     <button
                       type="button"
                       onClick={() => choose(user)}
-                      className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                      className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors duration-fast ease-out hover:bg-fg/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                     >
                       <Avatar name={name} src={user.avatarUrl} size="sm" decorative />
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-ink">
-                          {name}
-                        </span>
-                        <span className="block truncate font-mono text-xs text-ink-muted">
+                        <span className="block truncate text-sm font-medium text-fg">{name}</span>
+                        <span className="block truncate text-xs text-fg-subtle">
                           @{user.username}
                         </span>
                       </span>

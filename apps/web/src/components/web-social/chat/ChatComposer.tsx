@@ -2,7 +2,7 @@
 
 import React, { useId, useRef, useState } from 'react';
 import { MusicNotesPlus, PaperPlaneTilt } from '@phosphor-icons/react';
-import { IconButton, controlClasses, cn } from '@/components/ui';
+import { IconButton, cn } from '@/components/ui';
 import { ShareSongModal, type ShareSongPayload } from '@/components/ShareSongModal';
 
 const MAX_LENGTH = 1000;
@@ -35,55 +35,61 @@ export function ChatComposer({
 
   return (
     <>
-      <form
-        onSubmit={submit}
-        className="flex items-end gap-2 border-t border-line bg-surface px-3 py-3 sm:px-4"
-      >
-        <IconButton
-          label={`Consiglia un brano a ${peerName}`}
-          icon={<MusicNotesPlus />}
-          variant="subtle"
-          onClick={() => setSharing(true)}
-        />
-        <label htmlFor={inputId} className="sr-only">
-          Messaggio per {peerName}
-        </label>
-        <textarea
-          ref={inputRef}
-          id={inputId}
-          rows={1}
-          value={text}
-          maxLength={MAX_LENGTH}
-          placeholder="Scrivi un consiglio musicale…"
-          aria-describedby={nearLimit ? counterId : undefined}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              submit();
-            }
-          }}
+      <div className="bg-canvas px-3 pb-4 pt-2 sm:px-6">
+        <form
+          onSubmit={submit}
           className={cn(
-            controlClasses,
-            'max-h-40 min-h-10 flex-1 resize-none py-2 text-base leading-snug [field-sizing:content] sm:text-sm'
+            'mx-auto w-full max-w-2xl rounded-xl border border-line-strong bg-surface-raised',
+            'transition-[border-color,box-shadow] duration-fast ease-out',
+            'has-[textarea:focus-visible]:border-focus has-[textarea:focus-visible]:ring-1 has-[textarea:focus-visible]:ring-focus'
           )}
-        />
-        <IconButton
-          type="submit"
-          label="Invia messaggio"
-          icon={<PaperPlaneTilt weight="bold" />}
-          variant="solid"
-          disabled={!trimmed}
-        />
-      </form>
-      {nearLimit && (
-        <p
-          id={counterId}
-          className="bg-surface px-4 pb-2 text-right font-mono text-xs tabular-nums text-ink-muted"
         >
-          {text.length}/{MAX_LENGTH}
-        </p>
-      )}
+          <label htmlFor={inputId} className="sr-only">
+            Messaggio per {peerName}
+          </label>
+          <textarea
+            ref={inputRef}
+            id={inputId}
+            rows={1}
+            value={text}
+            maxLength={MAX_LENGTH}
+            placeholder="Scrivi un consiglio musicale…"
+            aria-describedby={nearLimit ? counterId : undefined}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            className={cn(
+              'block max-h-40 min-h-[3rem] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-base leading-relaxed text-fg [field-sizing:content]',
+              'placeholder:text-fg-subtle focus:outline-none'
+            )}
+          />
+          <div className="flex items-center gap-2 px-2 pb-2">
+            <IconButton
+              label={`Consiglia un brano a ${peerName}`}
+              icon={<MusicNotesPlus />}
+              variant="ghost"
+              onClick={() => setSharing(true)}
+            />
+            <span className="flex-1" />
+            {nearLimit && (
+              <span id={counterId} className="font-mono text-xs tabular-nums text-fg-subtle">
+                {text.length}/{MAX_LENGTH}
+              </span>
+            )}
+            <IconButton
+              type="submit"
+              label="Invia messaggio"
+              icon={<PaperPlaneTilt weight="bold" />}
+              variant="solid"
+              disabled={!trimmed}
+            />
+          </div>
+        </form>
+      </div>
       <ShareSongModal
         open={sharing}
         onClose={() => setSharing(false)}

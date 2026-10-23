@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown } from '@phosphor-icons/react';
 import type { ChatMessage, ChatReactionType } from '@openmusic/shared';
-import { Button } from '@/components/ui';
+import { Button, cn } from '@/components/ui';
 import { MessageBubble, OutgoingBubble } from './MessageBubble';
 import { dayKey, dayLabel } from './chatFormat';
 import type { OutgoingMessage } from './useConversation';
@@ -79,16 +79,14 @@ export function MessageList({
     if (key !== currentDay) {
       currentDay = key;
       rows.push(
-        <li key={`day-${key}`} className="flex items-center gap-3 py-2">
-          <span aria-hidden="true" className="h-px flex-1 bg-line" />
+        <li key={`day-${key}`} className="flex justify-center pt-2 first:pt-0">
           <h3 className="om-eyebrow">{dayLabel(message.createdAt)}</h3>
-          <span aria-hidden="true" className="h-px flex-1 bg-line" />
         </li>
       );
     }
     const isLast = index === messages.length - 1 && outbox.length === 0;
     rows.push(
-      <li key={message.id} className={isLast ? '[scroll-initial-target:nearest]' : undefined}>
+      <li key={message.id} className={cn('om-fade', isLast && '[scroll-initial-target:nearest]')}>
         <MessageBubble
           message={message}
           mine={message.senderId === viewerId}
@@ -102,7 +100,7 @@ export function MessageList({
   });
   outbox.forEach((item) =>
     rows.push(
-      <li key={item.tempId}>
+      <li key={item.tempId} className="om-fade">
         <OutgoingBubble item={item} peerName={peerName} onRetry={onRetry} onDiscard={onDiscard} />
       </li>
     )
@@ -116,16 +114,16 @@ export function MessageList({
         role="log"
         aria-label={`Messaggi con ${peerName}`}
         tabIndex={0}
-        className="h-full overflow-y-auto overscroll-contain px-3 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5"
+        className="h-full overflow-y-auto overscroll-contain focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
       >
-        <ol className="flex flex-col gap-4">{rows}</ol>
+        <ol className="mx-auto flex w-full max-w-2xl flex-col gap-7 px-4 py-8 sm:px-6">{rows}</ol>
       </div>
       {unseen > 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
           <Button
             size="sm"
             variant="secondary"
-            className="pointer-events-auto shadow-om-md"
+            className="om-fade pointer-events-auto bg-surface-raised"
             leadingIcon={<ArrowDown aria-hidden="true" weight="bold" />}
             onClick={() => scrollToBottom('smooth')}
           >

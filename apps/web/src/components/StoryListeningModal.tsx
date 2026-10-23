@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ChatCircleText, EyeSlash, UserCircle } from '@phosphor-icons/react';
 import type { FriendPresence, NowPlayingTrack } from '@openmusic/shared';
-import { Avatar, Badge, Dialog, buttonClasses } from '@/components/ui';
+import { Avatar, Dialog, buttonClasses } from '@/components/ui';
 import { CoverArt } from '@/components/discovery/CoverArt';
 import { PreviewPlayButton } from '@/components/discovery/PreviewPlayButton';
 import { formatTrackDuration } from '@/components/discovery/format';
@@ -53,7 +53,7 @@ export const StoryListeningModal: React.FC<StoryListeningModalProps> = ({ friend
           <span className="min-w-0">
             <span className="block truncate">{name}</span>
             {shown && (
-              <span className="block truncate font-mono text-xs font-normal text-ink-muted">
+              <span className="block truncate font-sans text-sm font-normal text-fg-subtle">
                 @{shown.username}
               </span>
             )}
@@ -82,12 +82,12 @@ export const StoryListeningModal: React.FC<StoryListeningModalProps> = ({ friend
       {shown && listening && shown.currentlyPlaying ? (
         <NowPlayingSleeve track={shown.currentlyPlaying} friendName={name} />
       ) : shown?.isGhostMode ? (
-        <p className="flex items-start gap-2 rounded-md bg-sunken p-4 text-sm text-ink-secondary">
+        <p className="om-fade flex items-start gap-2 rounded-lg bg-sunken p-4 text-sm leading-relaxed text-fg-muted">
           <EyeSlash aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
           {name} ascolta in privato. Rispettiamo la sua Ghost Mode: niente titoli, niente orari.
         </p>
       ) : (
-        <p className="rounded-md bg-sunken p-4 text-sm text-ink-secondary">
+        <p className="om-fade rounded-lg bg-sunken p-4 text-sm leading-relaxed text-fg-muted">
           Il piatto di {name} è fermo. Perché non gli consigli qualcosa da mettere su?
         </p>
       )}
@@ -108,28 +108,24 @@ function NowPlayingSleeve({ track, friendName }: { track: NowPlayingTrack; frien
   const percent = track.durationMs > 0 ? (progress / track.durationMs) * 100 : 0;
 
   return (
-    <div className="space-y-5">
-      <div className="relative mx-auto w-full max-w-[16rem] pr-8">
-        {/* The record slides out of the sleeve, like on the shop counter. */}
-        <span
-          aria-hidden="true"
-          className="om-grooves om-spin-record absolute inset-y-[6%] right-0 aspect-square rounded-full"
-        />
-        <CoverArt
-          src={track.coverUrl}
-          alt=""
-          sizes="256px"
-          className="relative aspect-square w-full rounded-sleeve shadow-sleeve"
-        />
-      </div>
+    <div className="om-fade space-y-5">
+      <CoverArt
+        key={track.coverUrl ?? track.title}
+        src={track.coverUrl}
+        alt=""
+        sizes="224px"
+        className="om-fade mx-auto aspect-square w-full max-w-[14rem] rounded-lg border border-line"
+      />
 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="om-headline truncate text-2xl text-ink">{track.title}</p>
-          <p className="truncate text-sm text-ink-secondary">
-            {track.artistName}
-            {track.albumTitle ? <span className="italic"> · {track.albumTitle}</span> : null}
-          </p>
+          <p className="om-headline truncate text-2xl text-fg">{track.title}</p>
+          <p className="truncate text-sm text-fg-muted">{track.artistName}</p>
+          {track.albumTitle ? (
+            <p className="truncate font-editorial text-sm italic text-fg-subtle">
+              {track.albumTitle}
+            </p>
+          ) : null}
         </div>
         <PreviewPlayButton
           track={presenceToPlayingTrack(track)}
@@ -148,23 +144,23 @@ function NowPlayingSleeve({ track, friendName }: { track: NowPlayingTrack; frien
             aria-valuemax={Math.round(track.durationMs / 1000)}
             aria-valuenow={Math.round(progress / 1000)}
             aria-valuetext={`${formatTrackDuration(progress)} di ${formatTrackDuration(track.durationMs)}`}
-            className="h-1.5 w-full overflow-hidden rounded-full bg-sunken"
+            className="h-1 w-full overflow-hidden rounded-full bg-sunken"
           >
             <span
-              className="block h-full rounded-full bg-accent"
+              className="block h-full rounded-full bg-fg-muted transition-[width] duration-slow ease-out motion-reduce:transition-none"
               style={{ width: `${percent}%` }}
             />
           </div>
-          <div className="mt-1.5 flex justify-between font-mono text-xs tabular-nums text-ink-muted">
+          <div className="mt-1.5 flex justify-between font-mono text-xs tabular-nums text-fg-subtle">
             <span>{formatTrackDuration(progress)}</span>
             <span>{formatTrackDuration(track.durationMs)}</span>
           </div>
         </div>
       ) : null}
 
-      <Badge tone="live" size="sm" mono>
-        Anteprima 30s · il brano intero resta su {PROVIDER_LABEL[track.provider]}
-      </Badge>
+      <p className="text-xs leading-relaxed text-fg-subtle">
+        Anteprima di 30 secondi. Il brano intero resta su {PROVIDER_LABEL[track.provider]}.
+      </p>
     </div>
   );
 }
