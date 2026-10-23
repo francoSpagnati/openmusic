@@ -10,6 +10,7 @@ import { prisma } from '@openmusic/db';
 import { SESSION_COOKIE_NAME } from '@openmusic/shared';
 import { env } from './config/env';
 import { registerAuth } from './lib/auth';
+import { clientIpResolver } from './lib/client-ip';
 import { BackgroundQueue } from './lib/background';
 import { RedisResponseCache, systemClock, type Clock, type FetchLike } from './lib/upstream';
 import { createCatalogProviders, type CatalogProviders } from './modules/catalog/providers';
@@ -104,6 +105,10 @@ export interface AppContext {
 export interface BuildAppOptions {
   /** Overrides AUTH_RATE_LIMIT_MAX (tests use a high value except in the rate-limit test). */
   authRateLimitMax?: number;
+  /** Overrides TRUST_PROXY (tests). */
+  trustProxy?: boolean;
+  /** Overrides PROXY_SECRET (tests). */
+  proxySecret?: string;
   /**
    * `fetch` used for external catalogs. Tests inject a fixture-backed fake; when omitted in
    * NODE_ENV=test every outbound catalog call fails immediately (tests never hit the network).
@@ -138,10 +143,8 @@ const offlineProviderFetch: FetchLike = () =>
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<AppContext> {
   const app = Fastify({
-    logger: {
-      level: env.NODE_ENV === 'development' ? 'info' : 'warn',
-    },
-    trustProxy: env.TRUST_PROXY,
+    logger: { level: env.LOG_LEVEL },
+    trustProxy: options.trustProxy ?? env.TRUST_PROXY,
   });
 
   // 1. Security & platform plugins
@@ -164,8 +167,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     verify: { algorithms: ['HS256'] },
   });
   // Opt-in per route (auth endpoints). In-memory store: fine for a single API instance;
-  // switch to the Redis store when scaling horizontally.
-  await app.register(rateLimit, { global: false });
+  // switch to the Redis store when scaling horizontally. Keyed by the real client IP, also for
+  // requests relayed by the web app's same-origin proxy (ADR-014).
+  await app.register(rateLimit, {
+    global: false,
+    keyGenerator: clientIpResolver(options.proxySecret ?? env.PROXY_SECRET),
+  });
 
   registerErrorHandling(app);
   registerAuth(app, prisma, env);
@@ -310,7 +317,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
   });
 
   // 4. Routes
-  app.get('/health', async () => ({
+  // Platform health checks hit this every few seconds: keep them out of the info-level logs.
+  app.get('/health', { logLevel: 'warn' }, async () => ({
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -323,6 +331,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
       presence: nowPlayingService,
       sockets: sessionSockets,
       webAppUrl: env.WEB_APP_URL,
+      publicApiUrl: env.PUBLIC_API_URL,
       activity: {
         seen: (userId) => listeningActivity.touch(userId),
         providerLinked: async (userId) => {

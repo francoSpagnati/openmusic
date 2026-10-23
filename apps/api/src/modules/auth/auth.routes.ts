@@ -13,8 +13,9 @@ import {
   type ChangePasswordResponse,
   type MeResponse,
   type OAuthUrlResponse,
+  type SocketTokenResponse,
 } from '@openmusic/shared';
-import { requireAuth, requestSessionToken } from '../../lib/auth';
+import { issueSocketToken, requireAuth, requestSessionToken } from '../../lib/auth';
 import { toApiError } from '../../lib/error-handler';
 import { BadRequestError, ForbiddenError, UnauthorizedError } from '../../lib/errors';
 import type { SessionSockets } from '../now-playing/now-playing.gateway';
@@ -33,6 +34,8 @@ export interface AuthRoutesOptions {
   sockets: SessionSockets;
   /** Web app origin: OAuth callbacks redirect the browser back there. */
   webAppUrl: string;
+  /** Public API origin the web app opens Socket.io on (`GET /socket-token`). */
+  publicApiUrl: string;
   /** ADR-013 hooks: last-seen tracking and an immediate first read after (re)linking. */
   activity?: {
     seen(userId: string): Promise<void>;
@@ -100,6 +103,21 @@ export function createAuthRoutes(
         fastify.log.warn({ err, userId }, 'Failed to record last seen');
       });
       return authService.getUserSessionData(userId);
+    });
+
+    /**
+     * ADR-014: the web app talks to the API through its same-origin proxy, so the session cookie
+     * belongs to the web origin and is not sent to the API's own origin, where Socket.io lives.
+     * This returns a 60 s handshake token for the current session (`auth.token`).
+     */
+    fastify.get('/socket-token', { preHandler: fastify.authenticate }, async (request, reply) => {
+      const sessionToken = requestSessionToken(request);
+      if (!sessionToken) throw new UnauthorizedError();
+      const body: SocketTokenResponse = {
+        ...issueSocketToken(fastify, sessionToken),
+        url: options.publicApiUrl,
+      };
+      return reply.header('cache-control', 'no-store').send(body);
     });
 
     fastify.patch('/me', { preHandler: fastify.authenticate }, async (request) => {

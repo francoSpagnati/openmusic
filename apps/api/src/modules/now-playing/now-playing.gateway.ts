@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@openmusic/db';
 import {
@@ -11,7 +10,7 @@ import {
   type WsAck,
   type WsAckCallback,
 } from '@openmusic/shared';
-import { isSessionVersionCurrent, verifySessionToken } from '../../lib/auth';
+import { hashSessionToken, isSessionVersionCurrent, verifySessionToken } from '../../lib/auth';
 import { toApiError } from '../../lib/error-handler';
 import { UnauthorizedError } from '../../lib/errors';
 import { userRoom, type OpenMusicIo } from '../../lib/realtime';
@@ -49,11 +48,10 @@ export interface SessionSockets {
   revoke(userId: string, reason: SessionRevoked['reason'], token?: string): Promise<number>;
 }
 
-export function hashSessionToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
-
-/** Bearer token from `auth.token` (native apps) or the httpOnly session cookie (browsers). */
+/**
+ * `auth.token`: a session token (native apps) or a short-lived socket token (web app, ADR-014);
+ * otherwise the httpOnly session cookie (browser on the API's own site, e.g. local dev).
+ */
 function extractToken(
   app: FastifyInstance,
   handshake: { auth: unknown; headers: { cookie?: string } }
@@ -126,7 +124,7 @@ export function registerNowPlayingGateway(
         const data: SocketData = {
           userId: session.auth.userId,
           sessionVersion: session.sessionVersion,
-          tokenHash: hashSessionToken(token),
+          tokenHash: session.sessionHash,
           expiresAt: session.expiresAt,
           validatedAt: Date.now(),
         };

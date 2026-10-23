@@ -111,6 +111,18 @@ export const LastFmAuthCallbackQuerySchema = z.object({
 
 export const OAuthUrlResponseSchema = z.object({ url: z.string().url() });
 
+/**
+ * `GET /api/auth/socket-token` (ADR-014). The web app reaches the API through its same-origin
+ * `/api` proxy, but Socket.io connects straight to the API (`url`): the browser passes this
+ * short-lived `token` as `auth.token` in the handshake instead of the session cookie.
+ */
+export const SocketTokenResponseSchema = z.object({
+  token: z.string().min(1),
+  expiresAt: z.string().datetime(),
+  /** Origin to open the Socket.io connection on (the API's public URL). */
+  url: z.string().url(),
+});
+
 /** `PATCH /api/auth/me` (settings page). */
 export const UpdateProfileSchema = z
   .object({
@@ -150,6 +162,7 @@ export type AuthSessionResponse = z.infer<typeof AuthSessionResponseSchema>;
 export type SpotifyAuthCallbackQuery = z.infer<typeof SpotifyAuthCallbackQuerySchema>;
 export type LastFmAuthCallbackQuery = z.infer<typeof LastFmAuthCallbackQuerySchema>;
 export type OAuthUrlResponse = z.infer<typeof OAuthUrlResponseSchema>;
+export type SocketTokenResponse = z.infer<typeof SocketTokenResponseSchema>;
 export type UpdateProfileInput = z.input<typeof UpdateProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof ChangePasswordInputSchema>;
 export type ChangePasswordResponse = z.infer<typeof ChangePasswordResponseSchema>;

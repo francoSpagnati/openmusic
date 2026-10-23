@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   FastifyInstance,
   FastifyReply,
@@ -19,6 +20,22 @@ export interface SessionTokenPayload {
   sub: string;
   /** `User.sessionVersion` at issue time; a password change bumps it and revokes older tokens. */
   sv?: number;
+  /**
+   * Token kind. Absent = session token (cookie / Bearer). `socket` = short-lived Socket.io
+   * handshake token (`GET /api/auth/socket-token`), never accepted by HTTP routes.
+   */
+  typ?: 'socket';
+  /** Socket tokens: sha256 of the session token they were derived from (logout closes them). */
+  sid?: string;
+  /** Socket tokens: expiry (seconds since epoch) of that session; the socket closes then. */
+  sexp?: number;
+}
+
+/** Lifetime of a Socket.io handshake token: long enough to connect, useless once leaked. */
+export const SOCKET_TOKEN_TTL_SECONDS = 60;
+
+export function hashSessionToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 declare module '@fastify/jwt' {
@@ -79,11 +96,17 @@ export interface VerifiedSession {
   auth: AuthContext;
   /** `sv` claim: compared with `User.sessionVersion` when the session is re-checked. */
   sessionVersion: number;
-  /** Token expiry (ms since epoch), null when the token has no `exp`. */
+  /** Session expiry (ms since epoch), null when the token has no `exp`. */
   expiresAt: number | null;
+  /** sha256 of the SESSION token (for a socket token: of the session it was issued for). */
+  sessionHash: string;
 }
 
-/** Like `resolveSessionToken`, keeping the claims long-lived connections need to re-check. */
+/**
+ * Verifies a token presented on a long-lived connection (Socket.io handshake): a session token
+ * (native apps, cookie) or a socket token issued by `GET /api/auth/socket-token` (browsers whose
+ * session cookie lives on the web origin). Keeps the claims needed to re-check it later.
+ */
 export async function verifySessionToken(
   app: FastifyInstance,
   prisma: PrismaClient,
@@ -95,13 +118,47 @@ export async function verifySessionToken(
   } catch {
     return null;
   }
-  const auth = await loadPrincipal(prisma, payload);
+  const isSocketToken = payload.typ === 'socket';
+  if (isSocketToken && typeof payload.sid !== 'string') return null;
+  const auth = await loadPrincipal(prisma, payload, { allowSocketToken: isSocketToken });
   if (!auth) return null;
+  const exp = isSocketToken ? payload.sexp : payload.exp;
   return {
     auth,
     sessionVersion: payload.sv ?? 0,
-    expiresAt: typeof payload.exp === 'number' ? payload.exp * 1000 : null,
+    expiresAt: typeof exp === 'number' ? exp * 1000 : null,
+    sessionHash: isSocketToken ? (payload.sid as string) : hashSessionToken(token),
   };
+}
+
+/**
+ * Short-lived Socket.io handshake token for the session `sessionToken` (already verified by
+ * `authenticate`). Browsers cannot send the session cookie to the API's own origin when the web
+ * app proxies `/api/*` (ADR-014), so they fetch this through the proxy and pass it as
+ * `auth.token`. It carries the session's version, hash and expiry: logout, password change and
+ * expiry close the socket exactly as for a cookie-authenticated one.
+ */
+export function issueSocketToken(
+  app: FastifyInstance,
+  sessionToken: string
+): { token: string; expiresAt: string } {
+  const session = app.jwt.decode<SessionTokenPayload & { exp?: number }>(sessionToken);
+  if (!session || typeof session.sub !== 'string' || session.typ === 'socket') {
+    throw new UnauthorizedError();
+  }
+  const ttl =
+    typeof session.exp === 'number'
+      ? Math.max(1, Math.min(SOCKET_TOKEN_TTL_SECONDS, session.exp - Math.floor(Date.now() / 1000)))
+      : SOCKET_TOKEN_TTL_SECONDS;
+  const payload: SessionTokenPayload = {
+    sub: session.sub,
+    sv: session.sv ?? 0,
+    typ: 'socket',
+    sid: hashSessionToken(sessionToken),
+    ...(typeof session.exp === 'number' ? { sexp: session.exp } : {}),
+  };
+  const token = app.jwt.sign(payload, { expiresIn: ttl });
+  return { token, expiresAt: new Date(Date.now() + ttl * 1000).toISOString() };
 }
 
 /** True while the user exists and still has the session version the token was issued with. */
@@ -126,9 +183,14 @@ export function requestSessionToken(request: FastifyRequest): string | null {
 
 async function loadPrincipal(
   prisma: PrismaClient,
-  payload: SessionTokenPayload
+  payload: SessionTokenPayload,
+  options: { allowSocketToken?: boolean } = {}
 ): Promise<AuthContext | null> {
   if (typeof payload.sub !== 'string') return null;
+  // A socket token only opens a socket: never a session for HTTP routes.
+  if (payload.typ !== undefined && !(payload.typ === 'socket' && options.allowSocketToken)) {
+    return null;
+  }
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
     select: { id: true, role: true, sessionVersion: true },
