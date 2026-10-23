@@ -121,6 +121,8 @@ export const ReleaseTracklistClient: React.FC<ReleaseTracklistProps> = ({
                   size="sm"
                   variant={playing ? 'subtle' : 'ghost'}
                   shape="round"
+                  // 32px visual, 44px hit area (WCAG 2.5.5) without growing the row.
+                  className="relative before:absolute before:-inset-1.5 before:content-['']"
                 />
                 <span
                   className={cn(
