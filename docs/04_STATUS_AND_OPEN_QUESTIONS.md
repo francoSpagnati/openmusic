@@ -1,7 +1,9 @@
 # 04 · Stato del progetto e questioni aperte
 
-> **Ultimo aggiornamento:** 2026-10-22, branch `ccr-8d035389-g64pel` (modifiche non ancora
-> committate: Next.js 16, edizioni ADR-012, UI delle edizioni, correzioni della review).
+> **Ultimo aggiornamento:** 2026-10-23, branch `ccr-8d035389-g64pel` (round: Fastify 5, fallback
+> del catalogo su query semplice e throttling dei 403 di iTunes, default locali su `127.0.0.1`,
+> lettura automatica di Spotify/Last.fm, ADR-013, più le correzioni della review avversariale
+> di questo round, §3 "Review avversariale del poller").
 > Questo documento dice cosa **funziona davvero**, cosa è parziale e cosa manca. Le versioni
 > precedenti segnavano come "completate" milestone che erano solo componenti su dati mock: qui
 > una voce è "reale" solo se è collegata all'API, persiste su database ed è coperta da test o
@@ -14,21 +16,25 @@
 | `npm ci` (copia pulita dei manifest + lockfile)       | passa, lockfile allineato                                     |
 | `npm run lint`                                        | passa (api, db, shared, web + e2e)                            |
 | `npm run typecheck`                                   | passa su 5/5 pacchetti, mobile incluso                        |
-| `npm test` (dopo `db:test:prepare`)                   | shared 54/54, api 149/149 (catalogo su fixture), mobile 66/66 |
+| `npm test` (dopo `db:test:prepare`)                   | shared 58/58, api 186/186 (catalogo su fixture), mobile 67/67 |
+| api con `CATALOG_EXTERNAL_ENABLED=false` esportata    | 186/186 (prima 23 test del catalogo fallivano)                |
 | Build web (`next build`, Next 16.4.2)                 | passa                                                         |
-| `npm run e2e` (Playwright, 12 test, DB + seed)        | passa in locale                                               |
+| `npm run e2e` (Playwright, 13 test)                   | passa sul DB di sviluppo e su un DB nuovo con seed offline    |
 | `expo export` iOS + Android (`EXPO_OFFLINE=1`)        | passa (bundle Hermes ~5 MB per piattaforma)                   |
 | CI GitHub (`ci.yml`, job `verify` + `mobile` + `e2e`) | round 1 verde su GitHub; questo round non ancora eseguito     |
 
 ### 1.1 Verificato dal vivo o solo con fixture?
 
-L'ambiente in cui è stato sviluppato questo round blocca la rete verso i servizi musicali (il
-proxy risponde 403 a `CONNECT`). Quindi:
+Nei round precedenti l'ambiente bloccava la rete verso i servizi musicali (il proxy rispondeva
+403 a `CONNECT`). In questo round l'import curato è stato eseguito **dal vivo** contro
+Deezer/iTunes/MusicBrainz: **45 album su 46** importati (da qui il fallback su query semplice
+di Deezer e il throttling dei 403 di iTunes). Spotify e Last.fm invece non sono mai stati
+chiamati dal vivo: mancano credenziali e account reali. Quindi:
 
 | Area                                                       | Come è verificato                                                      | Live?                                |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------ |
 | Parsing delle risposte Deezer/iTunes/MusicBrainz/CAA       | test su fixture JSON scritte sulla forma **documentata** delle API     | **no**                               |
-| Import, deduplica, import concorrenti, `resolve`           | test di integrazione su Postgres reale + fixture                       | **no** (DB sì, provider no)          |
+| Import, deduplica, import concorrenti, `resolve`           | test di integrazione su Postgres reale + fixture                       | in parte: import curato 45/46 live   |
 | Cache, rate limiter, retry/`Retry-After`, circuit breaker  | test unitari con orologio e `fetch` finti                              | **no**                               |
 | `CATALOG_EXTERNAL_ENABLED=false` = zero chiamate in uscita | test che conta le chiamate                                             | n/a                                  |
 | Colore dominante                                           | test su immagini PNG/JPEG locali (`test/fixtures/images`)              | **no** (mai su cover reali dei CDN)  |
@@ -37,7 +43,7 @@ proxy risponde 403 a `CONNECT`). Quindi:
 | Durata dei token delle anteprime Deezer (`hdnea=exp=…`)    | nessuno                                                                | **no**                               |
 | App mobile                                                 | typecheck, Jest (66), `expo export` iOS/Android                        | **no** (mai su device/simulatore/Go) |
 | OAuth Spotify/Last.fm, Google Fonts nella build via turbo  | nessuno                                                                | **no**                               |
-| Poller Spotify/Last.fm (ADR-013)                           | test di integrazione con `fetch` e orologio finti, Redis e DB reali    | **no** (servono account reali)       |
+| Poller Spotify/Last.fm (ADR-013)                           | test di integrazione con `fetch` e orologio finti, Redis e DB reali    | **no** (mai avviato con credenziali) |
 
 Le fixture sono plausibili ma non registrate da risposte reali: se un servizio restituisce un
 campo con forma diversa dalla documentazione, lo schema Zod del provider scarta la risposta e la
@@ -48,7 +54,12 @@ ricerca ricade sui risultati locali. Il primo passo con la rete è `npm run cata
 
 ### Piattaforma e API
 
-- Monorepo Turborepo, Docker Compose (Postgres 16 + Redis 7), `.env.example` unico.
+- Monorepo Turborepo, Docker Compose (Postgres 16 + Redis 7), `.env.example` unico. API su
+  **Fastify 5** (plugin `@fastify/*` alle major compatibili; CORS con i metodi di scrittura
+  elencati esplicitamente, perché `@fastify/cors` 10+ ammette solo GET/HEAD/POST di default).
+- Default locali su `127.0.0.1` (CORS, `WEB_APP_URL`, redirect OAuth): Spotify rifiuta i redirect
+  `localhost` e web e API devono condividere l'host per il cookie. In produzione vanno comunque
+  impostati `CORS_ORIGIN`, `WEB_APP_URL` e i redirect; `COOKIE_SECURE` resta `true` di default.
 - Prisma con **migrazioni versionate** (3) e seed con utenti, release, recensioni e post.
 - **Account locali** email + password (scrypt), JWT in cookie httpOnly o Bearer, revoca delle
   sessioni al cambio password, ruoli `USER`/`CRITIC`/`MODERATOR`/`ADMIN` riletti dal DB.
@@ -102,10 +113,11 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - ESLint + Prettier configurati; CI (Node 22 da `.nvmrc`) con job `verify` (lint, typecheck,
   test con `CATALOG_EXTERNAL_ENABLED=false`, build), `mobile` (typecheck, Jest, export iOS/Android
   offline) ed `e2e`.
-- Vitest: 54 test in `packages/shared`, 149 in `apps/api` (integrazione su Postgres/Redis reali,
-  catalogo su fixture). Jest: 66 test in `apps/mobile`.
-- Playwright (12 test): registrazione, login, feed, apertura release, recensione, messaggio in
-  chat, ricerca che raggruppa le edizioni, pagina album, 404 reali di release e album.
+- Vitest: 58 test in `packages/shared`, 186 in `apps/api` (integrazione su Postgres/Redis reali,
+  catalogo e poller su fixture). Jest: 67 test in `apps/mobile`.
+- Playwright (13 test): registrazione, login, feed, apertura release, recensione, messaggio in
+  chat, ricerca che raggruppa le edizioni, pagina album, 404 reali di release e album, stato della
+  sincronizzazione in Impostazioni.
 
 ## 3. Cosa è parziale o manca
 
@@ -176,6 +188,55 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
     `catalog:import` lanciato insieme al server, lo stesso IP li supera;
   - i termini d'uso di Deezer e Apple (salvataggio permanente dei metadati, attribuzione e link
     allo store per le anteprime) vanno verificati prima della produzione.
+
+- [ ] **Review avversariale del poller e di Fastify 5 (2026-10-23).** Corretto, con test:
+  - [x] ~~Due refresh del token Spotify in parallelo~~ (poller + "Sincronizza ora" o un'altra
+        rotta Spotify): se Spotify ruota il refresh token, il secondo riceveva `invalid_grant` e
+        l'account finiva in `ERROR / TOKEN_REVOKED` senza motivo. Ora un lock Redis per account
+        fa partire un solo refresh, gli altri aspettano il token salvato; un `invalid_grant` su un
+        refresh token già sostituito non è una revoca; un 401 su un token già sostituito non
+        provoca un altro refresh;
+  - [x] ~~Un errore temporaneo poteva riportare in `ACTIVE` un account appena messo in `ERROR`
+        (revoca dalla sync manuale) o `PAUSED` (sweep)~~: `markError` è un compare-and-set sullo
+        stato letto all'inizio della lettura;
+  - [x] ~~Lease scaduto durante una lettura lenta~~: un'altra istanza poteva leggere lo stesso
+        utente e la prima pubblicava poi un brano vecchio sopra quello nuovo. Il lease si rinnova
+        (compare-and-`PEXPIRE`) prima di scrivere; se è perso il risultato viene scartato;
+  - [x] ~~Nessun test falliva se la precedenza Spotify > Last.fm si rompeva~~: `choosePlayback`
+        esportata e testata su tutte le combinazioni, più un test di integrazione con Spotify in
+        pausa;
+  - [x] ~~Con Redis giù all'avvio il poller non partiva più~~: parte all'evento `ready`; durante
+        un'interruzione il ciclo logga un avviso al minuto invece di uno al secondo;
+  - [x] ~~Coda degli scrobble piena = ascolto verificato perso in silenzio~~: la claim viene
+        restituita e la lettura successiva riprova;
+  - [x] ~~La mappa del throttle cresceva con ogni utente pubblicato~~: potatura delle voci
+        scadute oltre 10 000 utenti;
+  - [x] ~~`linkRecordings` faceva scattare l'indice unique di `Track.musicbrainzId`~~ (e
+        `Release.musicbrainzId`) a ogni import di un'edizione sorella: la stessa registrazione
+        MusicBrainz è su più edizioni (ADR-012). L'errore era gestito, ma Prisma lo stampava
+        (`prisma:error … Unique constraint failed`). Ora i proprietari sono cercati prima;
+  - [x] ~~I test del catalogo dipendevano dalla shell~~ (`CATALOG_EXTERNAL_ENABLED=false`
+        esportata li faceva fallire): l'helper dei test forza il valore voluto;
+  - [x] ~~e2e "search folds editions" ambiguo su un DB con dati importati dal vivo~~
+        (`getByText('Columbia')`): ora controlla il campo "Etichetta" dell'intestazione.
+  - Verificato e **senza problemi**: `GET /api/now-playing/sync-status` richiede la sessione e
+    legge solo l'utente autenticato; `lastError` è un messaggio fisso per codice (nessun testo dei
+    provider, nessun token); i token non finiscono nei log; Ghost Mode è ricontrollata da
+    `updateUserNowPlaying` anche per un aggiornamento differito; chiavi Redis del poller con TTL
+    o rimosse (`np:poll:state` 24 h, lease e backoff in `PX`); spegnimento ordinato.
+  - **Ancora aperti:**
+    - il poller **non è mai stato eseguito con credenziali reali** Spotify/Last.fm: forma delle
+      risposte, `Retry-After` reale e rotazione dei refresh token restano da verificare dal vivo
+      (Development Mode: massimo 5 utenti in allowlist);
+    - per scelta (ADR-013) i follower vedono l'ascolto anche quando l'utente non ha l'app aperta
+      (`isOnline: true`); con il follow senza approvazione è una questione di privacy da
+      decidere (§5.4);
+    - un 403 di Spotify ferma l'account (`ACCESS_DENIED`) senza distinguere allowlist e scope
+      mancanti; i rate limiter e i circuit breaker sono per processo;
+    - `writeDroppingConflicts` (import) usa ancora l'errore unique per scartare gli id in
+      conflitto: nei test con import concorrenti Prisma stampa ancora `Unique constraint failed`
+      (atteso, ma rumoroso nei log);
+    - l'import live ha lasciato 1 album curato su 46 non importato.
 
 ### Realtime
 
