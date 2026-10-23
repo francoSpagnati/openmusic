@@ -92,21 +92,21 @@ export function Dialog({
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       className={cn(
-        'm-auto w-[calc(100%-2rem)] rounded-sleeve border border-line p-0 text-ink shadow-om-lg open:animate-dialog-in',
-        'max-h-[calc(100dvh-2rem)] bg-elevated',
+        'm-auto w-[calc(100%-2rem)] rounded-xl border border-line p-0 text-fg shadow-om-lg open:animate-dialog-in',
+        'max-h-[calc(100dvh-2rem)] bg-surface-raised',
         sizes[size],
         className
       )}
     >
       {open && (
         <div className="flex max-h-[calc(100dvh-2rem)] flex-col">
-          <header className="flex items-start justify-between gap-4 border-b border-line px-5 pb-4 pt-5">
+          <header className="flex items-start justify-between gap-4 px-6 pb-2 pt-6">
             <div className="min-w-0">
-              <h2 id={titleId} className="om-headline text-2xl text-ink">
+              <h2 id={titleId} className="om-headline text-2xl text-fg">
                 {title}
               </h2>
               {description && (
-                <p id={descriptionId} className="mt-1 text-sm text-ink-secondary">
+                <p id={descriptionId} className="mt-1.5 text-sm text-fg-muted">
                   {description}
                 </p>
               )}
@@ -118,9 +118,9 @@ export function Dialog({
               onClick={() => ref.current?.close()}
             />
           </header>
-          {children && <div className="overflow-y-auto px-5 py-4">{children}</div>}
+          {children && <div className="overflow-y-auto px-6 py-4">{children}</div>}
           {footer && (
-            <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface/60 px-5 py-3">
+            <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-6 py-4">
               {footer}
             </footer>
           )}

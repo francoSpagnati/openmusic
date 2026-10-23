@@ -4,6 +4,7 @@ import { Spinner } from './Spinner';
 
 export type IconButtonVariant = 'solid' | 'subtle' | 'ghost' | 'outline';
 export type IconButtonSize = 'sm' | 'md' | 'lg';
+export type IconButtonShape = 'round' | 'square';
 
 export interface IconButtonProps extends Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -17,16 +18,18 @@ export interface IconButtonProps extends Omit<
   loading?: boolean;
   /** For toggle buttons (play/pause, like, ghost mode). */
   pressed?: boolean;
+  /** `round` for play/pause and avatars-adjacent actions; default: round for solid, else square. */
+  shape?: IconButtonShape;
 }
 
 const variants: Record<IconButtonVariant, string> = {
-  solid: 'bg-accent text-on-accent hover:bg-accent-strong shadow-om-sm',
-  subtle: 'bg-elevated text-ink border border-line hover:border-line-strong',
-  ghost: 'text-ink-secondary hover:bg-ink/5 hover:text-ink',
-  outline: 'border border-line-strong text-ink hover:border-ink',
+  solid: 'bg-accent text-accent-contrast hover:bg-accent-hover',
+  subtle: 'border border-line bg-surface-raised text-fg hover:border-line-strong',
+  ghost: 'text-fg-muted hover:bg-fg/[0.05] hover:text-fg',
+  outline: 'border border-line-strong text-fg hover:bg-fg/[0.04]',
 };
 
-/* Minimum 32px; md/lg meet the 44px touch-target recommendation with padding */
+/* sm is 32px (dense rows only); md 40px and lg 48px meet the touch-target guidance. */
 const sizes: Record<IconButtonSize, string> = {
   sm: 'h-8 w-8 text-base',
   md: 'h-10 w-10 text-lg',
@@ -41,6 +44,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
     size = 'md',
     loading = false,
     pressed,
+    shape,
     className,
     type = 'button',
     title,
@@ -57,11 +61,14 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
       aria-pressed={pressed}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full',
-        'transition-[background-color,border-color,color] duration-fast ease-standard',
+        'om-press inline-flex shrink-0 items-center justify-center',
+        (shape ?? (variant === 'solid' ? 'round' : 'square')) === 'round'
+          ? 'rounded-full'
+          : 'rounded-md',
+        'transition-[background-color,border-color,color] duration-fast ease-out',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
-        'disabled:cursor-not-allowed disabled:opacity-50 active:translate-y-px',
-        'aria-pressed:text-accent',
+        'disabled:cursor-not-allowed disabled:opacity-50 forced-colors:border forced-colors:border-solid',
+        variant !== 'solid' && 'aria-pressed:bg-accent/[0.08] aria-pressed:text-accent',
         variants[variant],
         sizes[size],
         className

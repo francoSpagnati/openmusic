@@ -80,7 +80,7 @@ export function Tabs({
         onKeyDown={onKeyDown}
         className={cn(
           'flex gap-1 overflow-x-auto',
-          variant === 'underline' ? 'border-b border-line' : 'rounded-lg bg-sunken p-1'
+          variant === 'underline' ? 'gap-4 border-b border-line' : 'rounded-lg bg-sunken p-1'
         )}
       >
         {items.map((item) => {
@@ -101,22 +101,22 @@ export function Tabs({
               disabled={item.disabled}
               onClick={() => select(item.id)}
               className={cn(
-                'inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-semibold',
-                'transition-[color,background-color,border-color] duration-fast ease-standard',
+                'inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium',
+                'transition-[color,background-color,border-color] duration-fast ease-out',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                 'disabled:cursor-not-allowed disabled:opacity-40',
                 variant === 'underline'
                   ? cn(
-                      '-mb-px h-11 border-b-2 px-3',
+                      '-mb-px h-11 border-b-2 px-1',
                       selected
-                        ? 'border-accent text-ink'
-                        : 'border-transparent text-ink-muted hover:text-ink'
+                        ? 'border-accent text-fg'
+                        : 'border-transparent text-fg-muted hover:border-line-strong hover:text-fg'
                     )
                   : cn(
                       'h-9 rounded-md px-3',
                       selected
-                        ? 'bg-elevated text-ink shadow-om-sm'
-                        : 'text-ink-muted hover:text-ink'
+                        ? 'bg-surface-raised text-fg shadow-hairline forced-colors:border forced-colors:border-[Highlight]'
+                        : 'text-fg-muted hover:text-fg'
                     )
               )}
             >
@@ -127,7 +127,7 @@ export function Tabs({
               )}
               {item.label}
               {item.count !== undefined && (
-                <span className="font-mono text-xs tabular-nums text-ink-muted">{item.count}</span>
+                <span className="font-mono text-xs tabular-nums text-fg-subtle">{item.count}</span>
               )}
             </button>
           );
@@ -135,11 +135,12 @@ export function Tabs({
       </div>
       {activeItem && (
         <div
+          key={activeItem.id}
           role="tabpanel"
           id={`${baseId}-panel-${activeItem.id}`}
           aria-labelledby={`${baseId}-tab-${activeItem.id}`}
           tabIndex={0}
-          className={cn('pt-4 focus-visible:outline-none', panelClassName)}
+          className={cn('om-fade rounded-sm pt-5', panelClassName)}
         >
           {activeItem.content}
         </div>

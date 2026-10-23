@@ -2,7 +2,12 @@ export { cn } from './cn';
 export { Button, buttonClasses } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize, ButtonStyleOptions } from './Button';
 export { IconButton } from './IconButton';
-export type { IconButtonProps, IconButtonVariant, IconButtonSize } from './IconButton';
+export type {
+  IconButtonProps,
+  IconButtonVariant,
+  IconButtonSize,
+  IconButtonShape,
+} from './IconButton';
 export { Card, CardHeader } from './Card';
 export type { CardProps, CardHeaderProps, CardVariant, CardPadding } from './Card';
 export { Avatar } from './Avatar';
@@ -29,3 +34,5 @@ export { ScoreBadge, scoreStatus, FRESH_THRESHOLD } from './ScoreBadge';
 export type { ScoreBadgeProps, ScoreKind, ScoreStatus, ScoreBadgeSize } from './ScoreBadge';
 export { Spinner } from './Spinner';
 export type { SpinnerProps, SpinnerSize } from './Spinner';
+export { ThemeToggle } from './ThemeToggle';
+export type { ThemeToggleProps, ThemeToggleVariant } from './ThemeToggle';

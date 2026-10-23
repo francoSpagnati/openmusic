@@ -28,8 +28,8 @@ const kindLabel: Record<ScoreKind, string> = { critic: 'Critica', audience: 'Pub
 
 const sizes: Record<ScoreBadgeSize, { box: string; value: string; icon: string }> = {
   sm: { box: 'gap-1.5 px-2 py-1', value: 'text-sm', icon: 'h-3.5 w-3.5' },
-  md: { box: 'gap-2 px-2.5 py-1.5', value: 'text-lg', icon: 'h-4 w-4' },
-  lg: { box: 'gap-3 px-3.5 py-2.5', value: 'text-3xl', icon: 'h-5 w-5' },
+  md: { box: 'gap-2 px-3 py-2', value: 'text-lg', icon: 'h-4 w-4' },
+  lg: { box: 'gap-3 px-4 py-3', value: 'text-3xl', icon: 'h-5 w-5' },
 };
 
 /**
@@ -51,14 +51,14 @@ export function ScoreBadge({
     return (
       <span
         className={cn(
-          'inline-flex items-center rounded-sleeve border border-dashed border-line-strong text-ink-muted',
+          'inline-flex items-center rounded-lg border border-dashed border-line-strong text-fg-subtle',
           s.box,
           className
         )}
       >
-        <KindIcon aria-hidden="true" weight="duotone" className={s.icon} />
+        <KindIcon aria-hidden="true" weight="regular" className={s.icon} />
         <span className="flex flex-col leading-none">
-          <span className={cn('font-mono font-bold tabular-nums', s.value)}>—</span>
+          <span className={cn('font-mono font-medium tabular-nums', s.value)}>—</span>
           <span className="mt-0.5 text-[11px]">{kindLabel[kind]}: pochi voti</span>
         </span>
       </span>
@@ -76,22 +76,22 @@ export function ScoreBadge({
       role="img"
       aria-label={`Voto ${kindLabel[kind].toLowerCase()}: ${percentage}%${reviewsText}, ${verdict}`}
       className={cn(
-        'inline-flex items-center rounded-sleeve border',
+        'inline-flex items-center rounded-lg border',
         fresh
-          ? 'border-fresh/40 bg-fresh/[0.1] text-fresh'
-          : 'border-rotten/40 bg-rotten/[0.1] text-rotten',
+          ? 'border-fresh/30 bg-fresh/[0.08] text-fresh'
+          : 'border-rotten/30 bg-rotten/[0.08] text-rotten',
         s.box,
         className
       )}
     >
       <span aria-hidden="true" className="flex items-center gap-0.5">
-        <KindIcon weight="duotone" className={s.icon} />
+        <KindIcon weight="regular" className={s.icon} />
         <Thumb weight="fill" className={s.icon} />
       </span>
       <span aria-hidden="true" className="flex flex-col leading-none">
-        <span className={cn('font-mono font-bold tabular-nums', s.value)}>{percentage}%</span>
+        <span className={cn('font-mono font-medium tabular-nums', s.value)}>{percentage}%</span>
         {size !== 'sm' && (
-          <span className="mt-0.5 font-mono text-[11px] tabular-nums text-ink-secondary">
+          <span className="mt-1 text-[11px] tabular-nums text-fg-muted">
             {kindLabel[kind]}
             {totalReviews !== undefined && ` · ${totalReviews}`}
           </span>

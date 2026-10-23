@@ -49,15 +49,15 @@ export function Field({
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <div className={cn('flex items-baseline justify-between gap-2', hideLabel && 'sr-only')}>
-        <label htmlFor={controlId} className="text-sm font-semibold text-ink">
+        <label htmlFor={controlId} className="text-sm font-medium text-fg">
           {label}
           {required && (
-            <span className="ml-0.5 text-accent" aria-hidden="true">
+            <span className="ml-0.5 text-fg-subtle" aria-hidden="true">
               *
             </span>
           )}
         </label>
-        {aside && <span className="font-mono text-xs tabular-nums text-ink-muted">{aside}</span>}
+        {aside && <span className="font-mono text-xs tabular-nums text-fg-subtle">{aside}</span>}
       </div>
       {children({
         id: controlId,
@@ -72,7 +72,7 @@ export function Field({
         </p>
       )}
       {hint && (
-        <p id={hintId} className="text-sm text-ink-muted">
+        <p id={hintId} className="text-sm text-fg-subtle">
           {hint}
         </p>
       )}
@@ -80,13 +80,17 @@ export function Field({
   );
 }
 
-/** Shared look for text-like controls; exported for selects or custom inputs. */
+/**
+ * Shared look for text-like controls; exported for selects or custom inputs.
+ * Paper field, 3:1 boundary, and on focus a 2px clay edge (border + 1px ring) instead of an
+ * offset outline, so the ring hugs the field.
+ */
 export const controlClasses =
-  'w-full rounded-md border border-line-strong bg-sunken px-3 text-ink placeholder:text-ink-muted ' +
-  'transition-[border-color,box-shadow] duration-fast ease-standard ' +
-  'hover:border-ink-secondary focus:border-accent focus:outline-none focus-visible:outline-none ' +
-  'focus:shadow-[0_0_0_3px_rgb(var(--om-focus)/0.35)] ' +
-  'aria-[invalid=true]:border-rotten disabled:cursor-not-allowed disabled:opacity-60';
+  'w-full rounded-md border border-line-strong bg-surface-raised px-3 text-fg placeholder:text-fg-subtle ' +
+  'transition-[border-color,box-shadow] duration-fast ease-out ' +
+  'hover:border-fg-subtle focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus ' +
+  'aria-[invalid=true]:border-rotten aria-[invalid=true]:focus:ring-rotten ' +
+  'disabled:cursor-not-allowed disabled:opacity-60';
 
 type FieldOwnProps = Omit<FieldProps, 'children' | 'className'> & { fieldClassName?: string };
 
@@ -127,7 +131,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
           {leadingIcon && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted"
+              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-fg-subtle"
             >
               {leadingIcon}
             </span>

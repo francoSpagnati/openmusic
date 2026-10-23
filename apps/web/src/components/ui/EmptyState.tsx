@@ -26,27 +26,27 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center rounded-lg border border-dashed border-line text-center',
-        compact ? 'gap-2 px-4 py-6' : 'gap-3 px-6 py-12',
+        'flex flex-col items-center rounded-xl border border-dashed border-line-strong/60 text-center',
+        compact ? 'gap-2 px-4 py-6' : 'gap-3 px-6 py-14',
         className
       )}
     >
       {icon ? (
         <span
           aria-hidden="true"
-          className={cn('text-ink-muted', compact ? 'text-2xl' : 'text-4xl')}
+          className={cn('text-fg-subtle', compact ? 'text-2xl' : 'text-3xl')}
         >
           {icon}
         </span>
       ) : (
         <span
           aria-hidden="true"
-          className={cn('om-grooves block', compact ? 'h-10 w-10' : 'h-16 w-16')}
+          className={cn('om-grooves block', compact ? 'h-10 w-10' : 'h-14 w-14')}
         />
       )}
-      <h3 className={cn('om-headline text-ink', compact ? 'text-lg' : 'text-2xl')}>{title}</h3>
-      {description && <p className="max-w-prose text-sm text-ink-secondary">{description}</p>}
-      {action && <div className="mt-1">{action}</div>}
+      <h3 className={cn('om-headline text-fg', compact ? 'text-lg' : 'text-2xl')}>{title}</h3>
+      {description && <p className="max-w-narrow text-sm text-fg-muted">{description}</p>}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   );
 }
