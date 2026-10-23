@@ -309,7 +309,8 @@ Mancano / da decidere:
 3. **Media bayesiana:** attivarla ora (con `m` e `C` dell'ADR-001) o quando il catalogo ha abbastanza
    recensioni?
 4. **Chi può scrivere in chat e vedere l'ascolto live:** solo mutual? follow con approvazione?
-5. **Hosting (ADR-005):** confermare Vercel (web) + Railway/Fly (API con WebSocket) +
-   Neon/Supabase e Upstash; richiede web e API sullo stesso dominio registrabile per il cookie
-   (`COOKIE_DOMAIN`, vedi `06` §1).
+5. ~~**Hosting (ADR-005)**~~: primo hosting su Render free con un Blueprint (`render.yaml`,
+   ADR-014, `07_DEPLOY.md`). Il vincolo del dominio comune è caduto: il web fa da proxy per
+   `/api/*`. Mai provato davvero su Render; da rivalutare se il piano free non basta (sleep,
+   Postgres che scade dopo 30 giorni).
 6. **Licenza:** aggiungere `LICENSE` MIT con il titolare corretto.

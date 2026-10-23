@@ -19,21 +19,33 @@ account _collegati_ opzionali.
 | Rate limit      | `register`, `login`, `password`: `AUTH_RATE_LIMIT_MAX` richieste/minuto per IP (default 10); `catalog/search` e `catalog/preview`: 60/minuto      |
 | Link utente     | Avatar, portfolio, link articolo e video: solo `http(s)` (`HttpUrlSchema`), mai `javascript:`/`data:`                                             |
 
-### Browser: cookie httpOnly
+### Browser: cookie httpOnly sull'origine del web (same-origin proxy, ADR-014)
 
 Il web usa **solo il cookie** `om_session` (`HttpOnly`, `SameSite=Lax`, `Secure` in produzione).
-Il JavaScript della pagina non vede mai il token: `apiRequest` usa `credentials: 'include'` e il
-socket usa `withCredentials: true`.
+Il JavaScript della pagina non vede mai il token di sessione.
 
-- In sviluppo web (`127.0.0.1:3000`) e API (`127.0.0.1:4000`) sono sullo stesso host, quindi il
-  cookie viaggia. Si usa `127.0.0.1` e **mai `localhost`**: Spotify accetta come redirect URI solo
-  IP di loopback, il callback arriva quindi su `127.0.0.1:4000`, e il cookie `om_oauth_state`
-  (impostato dalla pagina web) deve essere sullo stesso host. Mischiare `localhost` e `127.0.0.1`
-  fa sparire i cookie (host diversi, _site_ diversi).
-- In produzione web e API devono stare su sottodomini dello stesso dominio
-  (`app.openmusic.social` / `api.openmusic.social`) con `COOKIE_DOMAIN=.openmusic.social`.
-- CSRF: `SameSite=Lax` blocca il cookie sulle richieste cross-site non-GET; CORS accetta solo
-  `CORS_ORIGIN`; le mutazioni usano JSON (preflight obbligatorio).
+- **Il browser parla solo con l'origine del web.** `apiRequest` chiama `/api/...` sullo stesso
+  origin; la route handler `apps/web/src/app/api/[...path]/route.ts` inoltra la richiesta lato
+  server all'API (`API_ORIGIN`, variabile solo server letta a runtime; fallback
+  `NEXT_PUBLIC_API_URL`, poi `http://127.0.0.1:4000`). Il proxy:
+  - copia header e corpo (tranne gli hop-by-hop e `accept-encoding`), copia indietro **tutti** i
+    `Set-Cookie` e lo status, e **non segue i redirect** (i callback OAuth restano 302 verso il
+    web);
+  - inoltra `X-Forwarded-For` e, se `PROXY_SECRET` è impostato su web e API, aggiunge
+    `X-OpenMusic-Client-IP` (primo IP di `X-Forwarded-For`) + `X-OpenMusic-Proxy-Secret`: l'API
+    usa quell'IP per il rate limit solo se il segreto coincide (`apps/api/src/lib/client-ip.ts`);
+  - API irraggiungibile o in avvio oltre 90 s → `502 UPSTREAM_ERROR`.
+- Così sessione e cookie di stato OAuth sono cookie _first-party_ dell'origine del web anche
+  quando l'API è su un **altro sito**: su Render `openmusic-web.onrender.com` e
+  `openmusic-api.onrender.com` sono siti diversi perché `onrender.com` è nella Public Suffix List.
+  `COOKIE_DOMAIN` non serve (e non va impostato: il browser scarterebbe il cookie inoltrato).
+- In sviluppo si apre il web su `http://127.0.0.1:3000` e **mai su `localhost`**: Spotify accetta
+  come redirect URI solo IP di loopback, e con i callback locali su `127.0.0.1:4000` il cookie di
+  stato (impostato dal proxy su `127.0.0.1`) deve arrivare all'API sullo stesso host.
+- CSRF: `SameSite=Lax` blocca il cookie sulle richieste cross-site non-GET; le mutazioni usano JSON
+  (il proxy è same-origin, quindi una pagina estranea non può leggere le risposte). L'API accetta
+  CORS solo da `CORS_ORIGIN` (l'origine del web), che ormai serve solo a client che la chiamano
+  direttamente da un browser.
 
 ### App native e script: Bearer
 
@@ -43,7 +55,10 @@ Le stesse rotte accettano `Authorization: Bearer <token>`; il token è nel body 
 ### OAuth collegati
 
 `GET /api/auth/spotify/login` imposta un cookie `om_oauth_state` (10 minuti) e restituisce l'URL di
-consenso; il callback rifiuta (403) uno `state` diverso. Un account Spotify nuovo **non** viene mai
+consenso; il callback rifiuta (403) uno `state` diverso. Il redirect URI è `SPOTIFY_REDIRECT_URI`,
+di default `<WEB_APP_URL>/api/auth/spotify/callback`: il callback passa dal proxy del web, quindi
+legge il cookie di stato e imposta la sessione sull'origine del web (quello da registrare su
+Spotify in produzione, vedi `07_DEPLOY.md`). Last.fm uguale con `LASTFM_CALLBACK_URL`. Un account Spotify nuovo **non** viene mai
 collegato in automatico a un account locale con la stessa email (409: accedi e collega dalle
 impostazioni).
 
@@ -123,6 +138,7 @@ sessione obbligatoria · **ROLE** ruolo richiesto.
 | GET        | `/api/auth/me`                                        | auth                            | `MeResponse`                                                                                              |
 | PATCH      | `/api/auth/me`                                        | auth                            | `UpdateProfileSchema` (strict) → `MeResponse`                                                             |
 | POST       | `/api/auth/password`                                  | auth (rate limit)               | 200 `{ token, expiresAt }` + cookie nuovo; revoca le altre sessioni (il client nativo usa il nuovo token) |
+| GET        | `/api/auth/socket-token`                              | auth                            | `SocketTokenResponse` `{ token, expiresAt, url }`: handshake Socket.io del web (60 s, `no-store`)         |
 | GET        | `/api/auth/spotify/login`                             | —                               | `{ url }` + cookie di stato                                                                               |
 | GET        | `/api/auth/spotify/callback`                          | opt                             | 302 verso il web (vedi §1 "OAuth collegati")                                                              |
 | GET        | `/api/auth/lastfm/login`                              | —                               | `{ url }` + cookie di stato                                                                               |
@@ -190,10 +206,19 @@ Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCur
 
 ## 5. Socket.io
 
-- Handshake: cookie `om_session` (browser, `withCredentials: true`) o `auth: { token }` (nativo).
-  Senza sessione valida la connessione è rifiutata con `connect_error` `UNAUTHORIZED`.
-  **L'id utente arriva solo dal token**: un `userId` nel payload viene ignorato.
-- CORS limitato a `CORS_ORIGIN`.
+- Handshake: `auth: { token }` oppure il cookie `om_session` se il browser lo invia.
+  - **Nativo:** il token di sessione (Bearer) direttamente sull'URL pubblico dell'API.
+  - **Web (ADR-014):** HTTP passa dal proxy del web, ma il socket si connette **direttamente**
+    all'API (i proxy non inoltrano bene gli upgrade websocket). Il cookie appartiene all'origine
+    del web, quindi a ogni connessione e riconnessione il client chiede
+    `GET /api/auth/socket-token` e passa `token` come `auth.token`, all'`url` indicato
+    (`PUBLIC_API_URL`, di default `RENDER_EXTERNAL_URL` dell'API o `http://127.0.0.1:<PORT>`).
+    Il token di socket (`typ: 'socket'`) scade in 60 s ma porta `sv`, l'hash e la scadenza della
+    sessione da cui nasce: il socket resta aperto fino alla scadenza della **sessione**, e logout e
+    cambio password lo chiudono come gli altri. Nessuna rotta HTTP lo accetta.
+  - Senza sessione valida la connessione è rifiutata con `connect_error` `UNAUTHORIZED`.
+    **L'id utente arriva solo dal token**: un `userId` nel payload viene ignorato.
+- CORS limitato a `CORS_ORIGIN` (vale per il trasporto polling; il client usa solo websocket).
 - Ogni socket entra nella stanza `user:<id>`. La presenza (`now_playing:friend_presence_changed`)
   viene inviata **solo ai follower** dell'utente; all'ultima disconnessione parte uno stato
   `isOnline: false`.
@@ -219,6 +244,10 @@ Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCur
   aggiornamento in sospeso.
 
 ## 6. Client web (`apps/web/src/lib`)
+
+Nel browser ogni chiamata va a `/api/...` dello stesso origin (proxy, §1); lato server (Server
+Components, il proxy stesso) a `API_ORIGIN`. Il socket condiviso (`useSocket`) nasce solo dopo il
+primo `GET /api/auth/socket-token`, che dice anche a quale URL connettersi (§5).
 
 `api.catalog.search(q | { q, type, page, limit, external })` e `api.catalog.resolve({ provider,
 type, id })` rispecchiano il §8. La pagina `/releases/external/[provider]/[id]` chiama `resolve`

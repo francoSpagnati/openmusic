@@ -10,12 +10,15 @@ chat pensata per consigliarsi brani.
 > registrate**: le chiamate live non sono mai state eseguite (vedi [Catalogo musicale](#catalogo-musicale-esterno)).
 > L'app mobile (Expo SDK 58) usa l'API reale, ma non è mai stata provata su dispositivo o in
 > Expo Go. Dettagli in [`docs/04_STATUS_AND_OPEN_QUESTIONS.md`](./docs/04_STATUS_AND_OPEN_QUESTIONS.md).
+> Si può mettere online gratis su Render con un Blueprint: [Deploy su Render](#deploy-su-render-gratis).
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/francoSpagnati/openmusic)
 
 ## Monorepo
 
 | Percorso          | Contenuto                                                                 |
 | ----------------- | ------------------------------------------------------------------------- |
-| `apps/api`        | Backend Fastify 4 + Socket.io + Redis (REST `/api/*`, WebSocket presenza) |
+| `apps/api`        | Backend Fastify 5 + Socket.io + Redis (REST `/api/*`, WebSocket presenza) |
 | `apps/web`        | Next.js 16.4 (App Router, React 19.3) + Tailwind, client API tipizzato    |
 | `apps/mobile`     | Expo SDK 58 + expo-router, client API con Bearer (mai provato su device)  |
 | `packages/db`     | Schema Prisma, migrazioni SQL, seed                                       |
@@ -53,10 +56,13 @@ cp .env.example packages/db/.env   # la CLI Prisma legge DATABASE_URL da qui
   quegli account non è disponibile. Per attivarli segui
   [Collegare Spotify e Last.fm](#collegare-spotify-e-lastfm-facoltativo).
 - In locale tutti gli URL usano **`127.0.0.1`, mai `localhost`** (web `http://127.0.0.1:3000`, API
-  `http://127.0.0.1:4000`): Spotify accetta come redirect solo IP di loopback, e web e API devono
-  stare sullo stesso host perché il cookie di sessione e quello di stato OAuth viaggino. Se hai un
-  `.env` creato prima di questa modifica, aggiorna `CORS_ORIGIN`, `NEXT_PUBLIC_API_URL`,
+  `http://127.0.0.1:4000`): Spotify accetta come redirect solo IP di loopback, e il callback locale
+  su `127.0.0.1:4000` deve ricevere il cookie di stato OAuth, che il web imposta su `127.0.0.1`.
+  Se hai un `.env` creato prima di questa modifica, aggiorna `CORS_ORIGIN`, `NEXT_PUBLIC_API_URL`,
   `WEB_APP_URL`, `SPOTIFY_REDIRECT_URI` e `LASTFM_CALLBACK_URL` come in `.env.example`.
+- Il browser parla **solo con il web**: `/api/*` è inoltrato lato server all'API (`API_ORIGIN`,
+  fallback `NEXT_PUBLIC_API_URL`), e Socket.io si connette all'API con un token di 60 s (ADR-014,
+  [`docs/06`](./docs/06_API_AND_AUTH.md) §1 e §5). Un `.env` vecchio funziona senza modifiche.
 
 ### 3. Database
 
@@ -86,8 +92,8 @@ npm run dev:web              # solo web
 npm run dev:mobile           # Expo (vedi "App mobile" sotto)
 ```
 
-Apri il web su **http://127.0.0.1:3000** (non `localhost:3000`: il cookie di sessione è legato
-all'host dell'API, `127.0.0.1:4000`). `next.config.mjs` include `allowedDevOrigins: ['127.0.0.1']`,
+Apri il web su **http://127.0.0.1:3000** (non `localhost:3000`: i redirect URI di Spotify/Last.fm
+locali puntano a `127.0.0.1`, e il cookie di stato OAuth deve stare su quell'host). `next.config.mjs` include `allowedDevOrigins: ['127.0.0.1']`,
 senza il quale Next 16 blocca l'HMR e le risorse `/_next/*` aperte da quell'indirizzo.
 
 ### 5. Qualità e test
@@ -114,10 +120,36 @@ npm run e2e
 ```
 
 Playwright avvia da solo API (`:4000`) e `next start` (`:3000`), oppure riusa server già attivi.
-Il browser apre il web sullo stesso host di `NEXT_PUBLIC_API_URL` (di default `127.0.0.1`);
-`E2E_WEB_URL`/`E2E_API_URL` li sovrascrivono.
+Il web è su `http://127.0.0.1:3000`; `E2E_WEB_URL`/`E2E_API_URL` sovrascrivono gli URL.
+
+**Profilo di produzione cross-site** (come su Render, ADR-014): web su `http://127.0.0.1:3000` e
+API su `http://localhost:4000`, che per il browser sono **siti diversi**, entrambi con
+`NODE_ENV=production` e avviati con gli stessi comandi di `render.yaml` (`npm run start:api`,
+`npm run start:web`); solo `COOKIE_SECURE=false` perché è http. Prova login, feed, chat, presenza
+live sul socket e il giro dello stato OAuth attraverso il proxy:
+
+```bash
+E2E_PROFILE=cross-site npm run e2e   # dopo la build del web; gira anche in CI
+```
+
 Il test registra un account `e2e-*@openmusic.test` che viene cancellato alla fine
 (`E2E_KEEP_DATA=1` per conservarlo).
+
+## Deploy su Render (gratis)
+
+`render.yaml` è un **Blueprint** Render: con un account gratuito crea in un colpo il database
+PostgreSQL, il Key Value (Redis), l'API e il web, tutti sul piano free a Francoforte. Al primo avvio
+l'API applica le migrazioni e importa i dischi reali curati; poi ti registri dal sito.
+
+1. Premi il pulsante **Deploy to Render** qui sopra (repository pubblico) oppure, dalla dashboard
+   Render, **New → Blueprint** e scegli questo repository.
+2. Lascia vuoti i campi facoltativi (Spotify, Last.fm, `DEMO_PASSWORD`) e premi **Deploy
+   Blueprint**.
+3. Apri `https://openmusic-web.onrender.com` (l'URL esatto è nella dashboard) e crea il tuo account.
+
+Guida passo passo in italiano, limiti del piano gratuito, Spotify/Last.fm in produzione, Expo Go
+contro l'API online e problemi frequenti: [`docs/07_DEPLOY.md`](./docs/07_DEPLOY.md).
+Ogni merge su `main` ripubblica in automatico.
 
 ## Collegare Spotify e Last.fm (facoltativo)
 

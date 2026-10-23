@@ -13,7 +13,7 @@
 | 002 | Moderazione "safe space" e Ascolto Verificato       | Accettata                      | Sì                   |
 | 003 | Anteprime audio 30 s universali                     | Accettata, emendata da ADR-010 | Sì (Deezer → iTunes) |
 | 004 | Rilevamento musicale universale e notifica OS       | Accettata                      | Solo cloud (Spotify) |
-| 005 | Infrastruttura open source e hosting a costo zero   | Accettata                      | Solo locale          |
+| 005 | Infrastruttura open source e hosting a costo zero   | Accettata, emendata da ADR-014 | Render (Blueprint)   |
 | 006 | Account locali e modello di sessione                | Accettata                      | Sì                   |
 | 007 | Gestione centralizzata degli errori API             | Accettata                      | Sì                   |
 | 008 | Tipografia e token di design                        | Accettata                      | Sì (web e mobile)    |
@@ -22,6 +22,7 @@
 | 011 | App mobile: Expo SDK 58 ed expo-router              | Accettata                      | Mai su device        |
 | 012 | Edizioni e release group (modello MusicBrainz)      | Accettata                      | Sì, solo su fixture  |
 | 013 | Lettura automatica di Spotify e Last.fm (polling)   | Accettata                      | Sì, solo su fixture  |
+| 014 | Deploy su Render e same-origin proxy                | Accettata                      | Sì, mai su Render    |
 
 ---
 
@@ -82,6 +83,9 @@
   su Expo EAS.
 - **Stato:** solo l'ambiente locale e la CI esistono. Vincolo emerso dall'ADR-006: web e API devono
   condividere il dominio registrabile per il cookie di sessione.
+- **Emendamento (2026-10, ADR-014):** il primo hosting online è **Render** (piano free, un solo
+  Blueprint `render.yaml` con web, API, Postgres e Key Value). Il vincolo sul dominio cade: il
+  browser parla solo con l'origine del web, che inoltra `/api/*` all'API.
 
 ### ADR-006: Account locali email + password e modello di sessione
 
@@ -96,7 +100,8 @@
      password incrementa `sessionVersion` e revoca le altre sessioni. Il ruolo non sta nel token:
      si rilegge dal DB a ogni richiesta.
   3. Browser: solo cookie `om_session` httpOnly, `SameSite=Lax`, `Secure` in produzione. App native
-     e script: `Authorization: Bearer`.
+     e script: `Authorization: Bearer`. (ADR-014: il cookie appartiene all'origine del web, che fa
+     da proxy per `/api/*`; il socket del browser usa un token di 60 s.)
   4. Socket.io: identità solo dal token dell'handshake; presenza solo ai follower; CORS ristretto.
   5. Spotify e Last.fm sono **account collegati** facoltativi, con cookie di stato OAuth; mai
      collegamento automatico per email, mai spostamento di un collegamento da un altro utente (409).
@@ -415,6 +420,81 @@
     chiamata reale a Spotify o Last.fm (servono credenziali e account reali).
 - **Dettagli:** `03` §4.1, `06` §4 e §7.
 
+### ADR-014: Deploy su Render e same-origin proxy
+
+- **Data:** 2026-10.
+- **Contesto:** il proprietario vuole provare l'app online, gratis e con pochi clic. Render offre
+  web service, Postgres e Key Value (compatibile Redis) gratuiti e un Blueprint (`render.yaml`)
+  che li crea insieme. Ma i servizi Render hanno indirizzi `*.onrender.com`, e `onrender.com` è
+  nella Public Suffix List: `openmusic-web.onrender.com` e `openmusic-api.onrender.com` sono **siti
+  diversi**. Il cookie di sessione `SameSite=Lax` (ADR-006) non viaggerebbe sulle `fetch` dal web
+  all'API, né il cookie di stato OAuth; `COOKIE_DOMAIN` non può essere `.onrender.com`. I web
+  service free inoltre **non ricevono** traffico dalla rete privata di Render (possono solo
+  avviarlo) e **non eseguono** `preDeployCommand`; il Key Value free non persiste su disco; il
+  Postgres free scade dopo 30 giorni.
+- **Decisione:**
+  1. **Il browser parla solo con l'origine del web.** Una route handler Next.js
+     (`apps/web/src/app/api/[...path]/route.ts`) inoltra lato server `/api/*` all'API
+     (`API_ORIGIN`, letto a runtime, mai esposto al browser), con `redirect: 'manual'` (i callback
+     OAuth restano 302 verso il web) e tutti i `Set-Cookie`. Sessione e stato OAuth diventano cookie
+     _first-party_ del web, qualunque sia il sito dell'API. Scelta una route handler e non i
+     `rewrites` di `next.config`: questi sono fissati al build, non controllano gli header e non
+     inoltrano gli upgrade websocket in modo affidabile.
+  2. **Socket.io si connette direttamente all'API** (websocket nativo su Render), autenticato da un
+     **token di 60 s** chiesto al proxy: `GET /api/auth/socket-token` → `{ token, expiresAt, url }`.
+     Il token (`typ: 'socket'`) porta `sv`, l'hash della sessione da cui nasce e la sua scadenza:
+     logout, cambio password e scadenza chiudono il socket come prima; nessuna rotta HTTP lo accetta
+     come sessione. Ogni riconnessione chiede un token nuovo. `url` è `PUBLIC_API_URL`, di default
+     il `RENDER_EXTERNAL_URL` dell'API. L'app mobile non cambia (Bearer diretto sull'API).
+  3. **Redirect URI OAuth sul web:** `SPOTIFY_REDIRECT_URI` e `LASTFM_CALLBACK_URL` valgono di
+     default `<WEB_APP_URL>/api/auth/{spotify,lastfm}/callback`, cioè passano dal proxy; in locale
+     restano quelli espliciti su `127.0.0.1:4000` (stesso host, funzionano invariati).
+  4. **IP reale per il rate limit:** l'API dietro il proxy di Render usa `TRUST_PROXY=true`; le
+     richieste che arrivano dal proxy del web portano `X-OpenMusic-Client-IP` firmato da un segreto
+     condiviso (`PROXY_SECRET`, generato dal Blueprint) e solo allora l'API lo usa come chiave.
+  5. **Render Blueprint free** (`render.yaml`, regione Frankfurt): Postgres 16, Key Value
+     (`volatile-lru`, nessun accesso esterno), API (`npm run start:api` = `prisma migrate deploy` +
+     `node --import tsx`; le migrazioni stanno nell'avvio perché il free non ha `preDeployCommand`),
+     web (`next build` + `next start` su `$PORT`). URL tra servizi con `fromService.envVarKey:
+RENDER_EXTERNAL_URL`; segreti con `generateValue`; Spotify/Last.fm e `DEMO_PASSWORD` sono
+     `sync: false` facoltativi. Deploy automatico a ogni commit su `main`.
+  6. **`tsx` a runtime:** i pacchetti del monorepo sono sorgenti TypeScript con
+     `moduleResolution: bundler` (import senza estensione), che `tsc` non trasforma in JS
+     eseguibile da Node. Compilarli tutti o fare un bundle costava più del beneficio: `tsx` passa
+     tra le `dependencies` dell'API (e `prisma` tra quelle di `@openmusic/db`), il build usa
+     `npm ci --include=dev` perché con `NODE_ENV=production` npm salterebbe le devDependencies.
+  7. **Dati del primo deploy senza shell:** con `SEED_ON_START=true` l'API importa una volta i dischi
+     reali curati (`curated-albums.json`) e, solo se è impostata `DEMO_PASSWORD`, crea la comunità
+     demo del seed con **quella** password. Ogni compito è registrato nella tabella `SystemMarker`
+     (con lease, così due istanze non lo eseguono insieme) e non si ripete ai cold start; cambiare
+     il file curato lo fa ripartire. Senza `DEMO_PASSWORD` non esiste nessun account con password
+     nota: il proprietario si registra.
+- **Alternative scartate:**
+  - **Cookie `SameSite=None`:** funziona cross-site oggi, ma i browser bloccano sempre più i cookie
+    di terze parti (Safari ITP, modalità anti-tracciamento) e servirebbe una protezione CSRF
+    esplicita su ogni mutazione.
+  - **Dominio proprio con sottodomini** (`COOKIE_DOMAIN`): resta possibile, ma costa e non è "pochi
+    clic".
+  - **Socket.io attraverso il proxy** (long-polling via route handler): niente websocket, latenza e
+    carico doppi sul web free (0,1 CPU), e un hop in più che si addormenta.
+  - **Rete privata** tra web e API: i web service free non ricevono traffico privato.
+- **Conseguenze:**
+  - Ogni chiamata HTTP del browser fa un hop in più (web → API sull'URL pubblico); sul piano free
+    i due servizi si addormentano dopo 15 minuti e il primo accesso può richiedere circa un minuto
+    (il proxy attende fino a 90 s).
+  - Il proxy inoltra `X-Forwarded-For`; il proxy di Render lo **accoda** e non lo ripulisce
+    (segnalazioni nel forum Render): l'IP usato dal rate limit resta falsificabile da chi lo
+    invia apposta, come per qualunque app dietro quel proxy.
+  - Key Value free senza disco: un riavvio perde cache, presenza e calendario del poller (il
+    poller lo ricostruisce). Postgres free: scade dopo 30 giorni (poi 14 di grazia), nessun backup.
+  - **Stato di verifica:** mai eseguito su Render (nessun account, `render.com` irraggiungibile dalla
+    sandbox). Verificato in locale con lo stesso avvio del Blueprint, `NODE_ENV=production` e web e
+    API su **siti diversi** (`127.0.0.1:3000` / `localhost:4000`): login, feed, recensione, chat,
+    presenza e chat live sul socket, round-trip dello stato OAuth (`E2E_PROFILE=cross-site npm run
+e2e`, anche in CI). `render.yaml` validato come YAML e contro i campi documentati, non contro
+    lo schema JSON ufficiale (non scaricabile dalla sandbox).
+- **Dettagli:** [`07_DEPLOY.md`](./07_DEPLOY.md), `06` §1 e §5.
+
 ---
 
 ## Roadmap
@@ -481,4 +561,6 @@ Legenda: **[x]** reale (API + web, su DB, testato) · **[~]** parziale · **[ ]*
 
 ### Milestone 7: Beta pubblica
 
-- [ ] File `LICENSE`, hosting (ADR-005), reset password, moderazione e limiti anti-abuso.
+- [~] Hosting (ADR-005, ADR-014): Blueprint Render free pronto (`render.yaml`, `07_DEPLOY.md`),
+  verificato in locale in modalità cross-site, mai eseguito su Render.
+- [ ] File `LICENSE`, reset password, moderazione e limiti anti-abuso.

@@ -35,7 +35,9 @@ Python/C ed è in fase di ramp-up su React Native: quando introduci pattern spec
 - Accesso principale: **account locali email + password** (`scrypt` di `node:crypto`).
 - Sessione: **JWT HS256** con `sub` = id utente e `sv` = `User.sessionVersion` (il cambio password
   revoca le altre sessioni). Il ruolo **non** è nel token: si rilegge dal DB.
-- Browser: solo cookie `om_session` httpOnly. Nativo/script: `Authorization: Bearer`.
+- Browser: solo cookie `om_session` httpOnly, sull'origine del **web**: il browser chiama solo
+  `/api/*` del web (proxy verso l'API) e apre Socket.io sull'API con un token di 60 s
+  (`GET /api/auth/socket-token`, ADR-014). Nativo/script: `Authorization: Bearer`.
 - Socket.io: l'identità arriva **solo** dal token dell'handshake; la presenza va **solo ai follower**.
 - Spotify e Last.fm sono account _collegati_ opzionali (OAuth con cookie di stato), mai login
   automatico per email.
