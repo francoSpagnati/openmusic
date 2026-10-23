@@ -186,7 +186,7 @@ export function SettingsScreen() {
                   </div>
                   <div>
                     <dt className="text-[13px] text-fg-subtle">Username</dt>
-                    <dd className="mt-1 font-mono text-sm text-fg">@{user.username}</dd>
+                    <dd className="mt-1 text-sm text-fg">@{user.username}</dd>
                   </div>
                   <div>
                     <dt className="text-[13px] text-fg-subtle">Ruolo</dt>

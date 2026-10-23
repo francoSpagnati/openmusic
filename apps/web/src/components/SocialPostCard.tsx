@@ -143,7 +143,11 @@ function ReleaseSleeve({ post }: { post: Post }) {
           </h3>
           <p className="truncate text-sm text-fg-muted">
             {release.artistName}
-            {year && <span className="font-mono tabular-nums text-fg-subtle">, {year}</span>}
+            {year && (
+              <>
+                , <span className="font-mono tabular-nums text-fg-subtle">{year}</span>
+              </>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">

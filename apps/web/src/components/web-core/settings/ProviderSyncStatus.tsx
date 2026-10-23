@@ -31,8 +31,7 @@ export function ProviderSyncStatus({
 
   const lastUpdate = sync.lastSyncedAt ? (
     <>
-      Ultimo aggiornamento{' '}
-      <TimeAgo iso={sync.lastSyncedAt} className="font-mono tabular-nums text-fg" />
+      Ultimo aggiornamento <TimeAgo iso={sync.lastSyncedAt} className="tabular-nums text-fg" />
     </>
   ) : (
     'Nessuna lettura ancora'

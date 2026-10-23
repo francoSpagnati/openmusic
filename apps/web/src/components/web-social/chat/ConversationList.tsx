@@ -48,7 +48,7 @@ export function ConversationList({
                   <time
                     dateTime={lastMessage.createdAt}
                     title={absoluteTime(lastMessage.createdAt)}
-                    className="shrink-0 font-mono text-xs tabular-nums text-fg-subtle"
+                    className="shrink-0 text-xs tabular-nums text-fg-subtle"
                   >
                     {inboxTime(lastMessage.createdAt)}
                   </time>

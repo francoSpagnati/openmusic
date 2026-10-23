@@ -92,8 +92,7 @@ export function ProfileForm({ user }: { user: AuthUser }) {
           decorative
         />
         <p className="text-sm text-fg-muted">
-          Anteprima di come ti vedono gli altri, <span className="font-mono">@{user.username}</span>
-          .
+          Anteprima di come ti vedono gli altri, <span className="text-fg">@{user.username}</span>.
         </p>
       </div>
       <Input
