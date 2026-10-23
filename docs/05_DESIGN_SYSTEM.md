@@ -136,6 +136,20 @@ Caricati con `next/font/google` in `apps/web/src/app/layout.tsx` come variabili
 
 I `text-*` di Tailwind ora leggono questa scala (interlinee più ampie dei default).
 
+### Tinta ambientale della copertina
+
+`ambientTint(dominantColor, alpha)` (`apps/web/src/components/discovery/ambientTint.ts`) porta il
+colore dominante della copertina nella testata di uscita (`ReleaseHero`), album (`/albums/[id]`)
+e reel (`ReelSlide`). Regole:
+
+- **Solo tema scuro**, applicata con la variante `dark:` (rispetta `data-theme`); nel tema chiaro
+  la carta resta neutra.
+- **Opacità 25%** (`alpha = 0.25`), su un colore già limitato a luminosità HSL 18–25% e
+  saturazione ≤ 45%: è un'ombra calda, non un fondo colorato, e il testo sopra resta AA.
+- Sfuma verso `transparent` entro il 70% dell'altezza (gradiente lineare per uscita/album, radiale
+  per i reel): niente bordi netti, niente gradienti fangosi.
+- La copertina resta l'unico elemento "colorato" della pagina; non usare la tinta su card o bottoni.
+
 ---
 
 ## 4. Token di colore
@@ -416,8 +430,8 @@ import {
    raggi più morbidi.
 2. Sostituire `ink*` con `fg*` facendo attenzione allo slittamento (`ink-muted` → `fg-subtle`).
 3. Rimuovere `hover:-translate-y-*`, `shadow-om-md` su card statiche, `uppercase tracking-*`
-   sulle etichette, gradienti ambientali scuri pensati per il vecchio tema solo-scuro (es. la
-   tinta della copertina in `ReleaseHero`: va limitata al tema scuro o resa tenue).
+   sulle etichette, gradienti ambientali scuri pensati per il vecchio tema solo-scuro (la tinta
+   della copertina ora è solo scura e al 25%: vedi §3 "Tinta ambientale della copertina").
 4. Montare `<ThemeToggle variant="icon" />` nella Navbar e `<ThemeToggle />` in Impostazioni.
 5. Mobile: `THEME.light`/`THEME.dark` sono pronti; i font Newsreader / Instrument Sans /
    Spline Sans Mono vanno aggiunti con `@expo-google-fonts/*` in `apps/mobile/src/theme/fonts.ts`.

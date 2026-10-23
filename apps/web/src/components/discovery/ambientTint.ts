@@ -1,5 +1,5 @@
 /**
- * Design-system rule (docs/05 §3 "Ambient album tint"): a surface tinted with a cover's dominant
+ * Design-system rule (docs/05 §3 "Tinta ambientale della copertina"): a surface tinted with a cover's dominant
  * colour is clamped to HSL lightness 18–25% and saturation ≤ 45%, so text on it keeps contrast.
  * Returns an `hsl()` string, or null for an invalid hex. `alpha` (0–1) makes the tint
  * translucent: the restyle (ADR-015) keeps it faint and dark-theme only, so the cover itself
