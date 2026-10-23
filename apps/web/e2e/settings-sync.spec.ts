@@ -8,11 +8,9 @@ import { newTestAccount } from './account';
  * overwrites them). The account is removed by the global teardown with the others.
  */
 
-const API_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:4000';
-
 test('settings show the sync state, the relink action and the manual sync', async ({ page }) => {
   const account = newTestAccount();
-  const register = await page.request.post(`${API_URL}/api/auth/register`, {
+  const register = await page.request.post(`/api/auth/register`, {
     data: { email: account.email, username: account.username, password: account.password },
   });
   expect(register.status()).toBe(201);
@@ -48,7 +46,7 @@ test('settings show the sync state, the relink action and the manual sync', asyn
     await prisma.$disconnect();
   }
 
-  const status = await page.request.get(`${API_URL}/api/now-playing/sync-status`);
+  const status = await page.request.get(`/api/now-playing/sync-status`);
   expect(status.ok()).toBe(true);
   expect(await status.json()).toMatchObject({
     autoSyncEnabled: false,
