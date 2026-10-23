@@ -5,7 +5,7 @@ import {
   CatalogResolveResultSchema,
   SearchResultSchema,
 } from '@openmusic/shared';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppContext } from '../src/app';
 import { CatalogImportService } from '../src/modules/catalog/catalog-import.service';
 import { CuratedAlbumSchema, importCuratedAlbums } from '../src/modules/catalog/curated-import';
@@ -194,6 +194,57 @@ describe('Catalog import from external databases', () => {
     expect(row.tracks.filter((t) => t.musicbrainzId).length).toBe(10);
     for (const call of fixtures.callsTo(/musicbrainz\.org/)) {
       expect(call.headers['user-agent']).toMatch(/^OpenMusic\/0\.1\.0 \( .+ \)$/);
+    }
+  });
+
+  it('enrichment never hits the unique MBID index for a recording another edition owns', async () => {
+    // Another edition (ADR-012) already holds one recording MBID of In Rainbows (15 Step) and the
+    // MusicBrainz release id itself (duplicate edition row).
+    const other = await prisma.release.create({
+      data: {
+        title: 'Live Bootlegs',
+        artistName: 'Radiohead Tribute Band',
+        deezerId: '999000111',
+        musicbrainzId: '0a5d4e66-3a5e-4a69-8ad5-1b0f4d1e1a01',
+        tracks: {
+          create: {
+            title: '15 Step',
+            artistName: 'Radiohead',
+            durationMs: 237_000,
+            musicbrainzId: '9e2d0000-0000-4000-8000-000000000000',
+          },
+        },
+      },
+    });
+    // Prisma prints every query error (`prisma:error`, P2002 included) even when the caller
+    // catches it: that is the noise live imports showed.
+    const log = vi.spyOn(console, 'log');
+    const error = vi.spyOn(console, 'error');
+    try {
+      const { releases } = await search('q=in%20rainbows&type=releases');
+      const id = releases[0]?.id ?? '';
+      expect(id).not.toBe(other.id);
+      await ctx.app.inject({ method: 'GET', url: `/api/catalog/releases/${id}` });
+      await ctx.catalogBackground.idle();
+
+      const prismaErrors = [...log.mock.calls, ...error.mock.calls]
+        .map((args) => args.map(String).join(' '))
+        .filter((line) => /prisma:error|Unique constraint/.test(line));
+      expect(prismaErrors).toEqual([]);
+
+      const row = await prisma.release.findUniqueOrThrow({
+        where: { id },
+        include: { tracks: true },
+      });
+      expect(row.enrichedAt).not.toBeNull();
+      expect(row.musicbrainzId).toBeNull(); // owned by the other row
+      expect(row.musicbrainzReleaseGroupId).toBe('6e335887-60ba-38f0-95af-fae7774336bf');
+      // The other nine recordings are linked; 15 Step stays with the edition that had it.
+      expect(row.tracks.filter((t) => t.musicbrainzId).length).toBe(9);
+      expect(row.tracks.find((t) => t.title === '15 Step')?.musicbrainzId).toBeNull();
+    } finally {
+      log.mockRestore();
+      error.mockRestore();
     }
   });
 
