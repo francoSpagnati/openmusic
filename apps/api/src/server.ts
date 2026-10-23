@@ -1,6 +1,39 @@
 import { prisma } from '@openmusic/db';
-import { buildApp } from './app';
+import { seedDemoData } from '@openmusic/db/src/seed';
+import { buildApp, type AppContext } from './app';
 import { env } from './config/env';
+import { runFirstDeployTasks } from './modules/bootstrap/first-deploy';
+import { importCuratedAlbums } from './modules/catalog/curated-import';
+
+/** SEED_ON_START: first-deploy data, once per database (docs/07_DEPLOY.md). Never blocks start. */
+function startFirstDeployTasks(ctx: AppContext): void {
+  const { app } = ctx;
+  runFirstDeployTasks(
+    {
+      prisma,
+      logger: app.log,
+      seedDemo: (password) => seedDemoData(prisma, password),
+      probeCatalog: async () => {
+        await ctx.catalogProviders.deezer.searchArtists('Radiohead', 1);
+      },
+      importAlbums: (albums) =>
+        importCuratedAlbums(
+          {
+            prisma,
+            providers: ctx.catalogProviders,
+            importer: ctx.catalogImportService,
+            enrichment: ctx.catalogEnrichmentService,
+          },
+          albums,
+          // MusicBrainz enrichment (1 req/s) runs later, when a release page is opened.
+          { dryRun: false, enrich: false, onlyLocal: false }
+        ),
+    },
+    { demoPassword: env.DEMO_PASSWORD, catalogExternalEnabled: env.CATALOG_EXTERNAL_ENABLED }
+  )
+    .then((report) => app.log.info({ report }, '[first-deploy] finished'))
+    .catch((err: unknown) => app.log.error({ err }, '[first-deploy] failed'));
+}
 
 async function main() {
   const ctx = await buildApp();
@@ -24,6 +57,8 @@ async function main() {
     app.log.error(err);
     process.exit(1);
   }
+
+  if (env.SEED_ON_START) startFirstDeployTasks(ctx);
 
   // ADR-013: background Spotify/Last.fm reading. Never started by buildApp (tests, scripts).
   if (env.NOW_PLAYING_POLLER_ENABLED) {

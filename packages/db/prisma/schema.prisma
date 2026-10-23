@@ -452,3 +452,13 @@ model Notification {
   @@index([recipientId, createdAt(sort: Desc)])
   @@index([recipientId, readAt])
 }
+
+/// One-off startup tasks already run on this database, e.g. the first-deploy data import
+/// (SEED_ON_START, docs/07_DEPLOY.md). `leaseUntil` lets one instance claim a running task.
+model SystemMarker {
+  key         String    @id
+  leaseUntil  DateTime?
+  completedAt DateTime?
+  details     Json?
+  updatedAt   DateTime  @updatedAt
+}
