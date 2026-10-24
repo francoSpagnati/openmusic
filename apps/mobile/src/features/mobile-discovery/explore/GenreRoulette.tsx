@@ -4,13 +4,14 @@ import Animated, {
   Easing,
   cancelAnimation,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 import type { GenreRouletteResult } from '@openmusic/shared';
 import { api } from '../../../lib/api';
-import { useTheme, withAlpha } from '../../../theme';
+import { useTheme } from '../../../theme';
 import { Button, Card, ErrorState, Text } from '../../../components/ui';
 import { Disc } from '../../../components/icons';
 import { MagnifyingGlass, Shuffle } from '../icons';
@@ -42,6 +43,8 @@ export function GenreRoulette({
   const { colors, space, radii } = useTheme();
   const [state, setState] = useState<RouletteState>({ status: 'idle' });
   const rotation = useSharedValue(0);
+  // Under reduced motion the disc stays still: the button's spinner already says "working".
+  const reduceMotion = useReducedMotion();
   const mounted = useRef(true);
   useEffect(
     () => () => {
@@ -57,18 +60,22 @@ export function GenreRoulette({
   const onSpin = useCallback(async () => {
     haptics.tap();
     setState({ status: 'spinning', previous: current });
-    rotation.value = withRepeat(
-      withTiming(rotation.value + 360, { duration: 700, easing: Easing.linear }),
-      -1
-    );
+    if (!reduceMotion) {
+      rotation.value = withRepeat(
+        withTiming(rotation.value + 360, { duration: 700, easing: Easing.linear }),
+        -1
+      );
+    }
     try {
       const result = await spin();
       if (!mounted.current) return;
       cancelAnimation(rotation);
-      rotation.value = withTiming(Math.ceil(rotation.value / 360) * 360 + 540, {
-        duration: 900,
-        easing: Easing.out(Easing.cubic),
-      });
+      if (!reduceMotion) {
+        rotation.value = withTiming(Math.ceil(rotation.value / 360) * 360 + 540, {
+          duration: 900,
+          easing: Easing.out(Easing.cubic),
+        });
+      }
       haptics.thud();
       setState({ status: 'done', result });
     } catch (error) {
@@ -77,27 +84,27 @@ export function GenreRoulette({
       haptics.error();
       setState({ status: 'error', error, previous: current });
     }
-  }, [current, rotation, spin]);
+  }, [current, reduceMotion, rotation, spin]);
 
   const spinning = state.status === 'spinning';
 
   return (
-    <Card variant="sleeve" padding="md" style={{ gap: space[3] }}>
+    <Card variant="sleeve" padding="md" style={{ gap: space[4] }}>
       <View style={[styles.head, { gap: space[3] }]}>
         <Animated.View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           style={[
             styles.disc,
-            { backgroundColor: withAlpha(colors.accent, 0.12), borderRadius: radii.pill },
+            { backgroundColor: colors.sunken, borderRadius: radii.pill },
             discStyle,
           ]}
         >
-          <Disc size={40} color={colors.accent} weight="duotone" />
+          <Disc size={36} color={colors.textMuted} weight="light" />
         </Animated.View>
         <View style={styles.flex}>
           <Text variant="eyebrow">Roulette dei generi</Text>
-          <Text variant="title" accessibilityRole="header">
+          <Text variant="title" size="xl" accessibilityRole="header">
             {current ? current.genre : 'Esci dalla tua bolla'}
           </Text>
           <Text size="sm" tone="secondary">
@@ -134,7 +141,7 @@ export function GenreRoulette({
                 }}
                 style={styles.searchBtn}
               >
-                <MagnifyingGlass size={20} color={colors.textSecondary} />
+                <MagnifyingGlass size={20} color={colors.textMuted} />
               </Pressable>
             </View>
           ))
@@ -152,7 +159,7 @@ export function GenreRoulette({
       <Button
         label={spinning ? 'Gira…' : current ? 'Gira ancora' : 'Gira la roulette'}
         loading={spinning}
-        leadingIcon={<Shuffle size={18} color={colors.onAccent} weight="bold" />}
+        leadingIcon={<Shuffle size={18} color={colors.accentContrast} weight="regular" />}
         onPress={() => void onSpin()}
         fullWidth
       />

@@ -119,7 +119,7 @@ export const CreatePostBox = React.forwardRef<HTMLTextAreaElement, CreatePostBox
       <section
         id="compose"
         aria-label="Nuovo post"
-        className="scroll-mt-20 border-b border-line bg-surface/60 p-4 sm:p-5"
+        className="scroll-mt-20 border-b border-line px-4 py-6 sm:px-6"
       >
         <form
           noValidate
@@ -198,7 +198,7 @@ export const CreatePostBox = React.forwardRef<HTMLTextAreaElement, CreatePostBox
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="hidden font-mono text-xs text-ink-muted sm:block">
+              <p className="hidden text-xs text-fg-subtle sm:block">
                 {expanded ? 'Ctrl/⌘ + Invio per pubblicare' : 'Visibile a chi ti segue'}
               </p>
               <div className="ml-auto flex items-center gap-2">
@@ -209,11 +209,10 @@ export const CreatePostBox = React.forwardRef<HTMLTextAreaElement, CreatePostBox
                 )}
                 <Button
                   type="submit"
-                  size="sm"
                   disabled={trimmedLength === 0}
                   loading={submitting}
                   loadingLabel="Pubblicazione…"
-                  leadingIcon={<PaperPlaneTilt aria-hidden="true" weight="bold" />}
+                  leadingIcon={<PaperPlaneTilt aria-hidden="true" />}
                 >
                   Pubblica
                 </Button>

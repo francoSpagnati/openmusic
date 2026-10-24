@@ -10,7 +10,7 @@
 | Livello        | Tecnologia (versione nel repo)                                                            | Note                                                   |
 | -------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Monorepo       | Turborepo 2 + npm workspaces, TypeScript 5 strict                                         | `tsconfig.base.json`, ESLint 8 flat config, Prettier 3 |
-| API            | Fastify 4, Socket.io 4, ioredis, `@fastify/jwt`, `cookie`, `cors`, `helmet`, `rate-limit` | `apps/api`, avvio con `tsx`                            |
+| API            | Fastify 5, Socket.io 4, ioredis, `@fastify/jwt`, `cookie`, `cors`, `helmet`, `rate-limit` | `apps/api`, avvio con `node --import tsx`              |
 | Database       | PostgreSQL 16 + Prisma 5 (migrazioni versionate)                                          | `packages/db`                                          |
 | Cache/presenza | Redis 7                                                                                   | Stato "Now Playing" con TTL, cache heavy rotation      |
 | Web            | Next.js 16 App Router (Turbopack), React 19.3, Tailwind, Phosphor                         | `apps/web`                                             |

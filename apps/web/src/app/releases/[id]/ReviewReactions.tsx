@@ -14,7 +14,9 @@ export const REACTIONS: Array<{ type: ReactionType; label: string; icon: Icon }>
 ];
 
 const pill =
-  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors duration-fast ' +
+  'relative inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors duration-fast ' +
+  // 32px pill, 44px tall hit area.
+  "before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] " +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 interface ReviewReactionsProps {
@@ -57,7 +59,7 @@ export function ReviewReactions({
           pill,
           active
             ? 'border-accent/60 bg-accent/10 text-accent'
-            : 'border-line text-ink-secondary hover:border-line-strong hover:text-ink'
+            : 'border-line text-fg-muted hover:border-line-strong hover:text-fg'
         );
         return (
           <li key={type}>

@@ -29,7 +29,7 @@ export function EditionsSyncNotice() {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-sunken px-3 py-2 text-sm text-ink-secondary"
+      className="flex flex-wrap items-center gap-3 border-y border-line py-2 text-sm text-fg-muted"
     >
       <Spinner size="sm" label={null} />
       <span className="min-w-0 flex-1">

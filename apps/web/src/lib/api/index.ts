@@ -1,4 +1,4 @@
-export { API_URL } from './config';
+export { apiUrl, serverApiOrigin } from './config';
 export { apiRequest, type RequestOptions } from './client';
 export { ApiError, isApiError, type ClientErrorCode } from './errors';
 export { authApi } from './auth';

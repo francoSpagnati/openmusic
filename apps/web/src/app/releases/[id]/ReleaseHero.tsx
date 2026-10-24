@@ -2,7 +2,6 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ArrowSquareOut } from '@phosphor-icons/react/dist/ssr';
 import type { CatalogRelease } from '@openmusic/shared';
-import { Badge } from '../../../components/ui';
 import { CoverArt } from '../../../components/discovery/CoverArt';
 import { ReleasePreviewButton } from '../../../components/discovery/ReleasePreviewButton';
 import { ambientTint } from '../../../components/discovery/ambientTint';
@@ -37,9 +36,12 @@ function externalLinks(release: CatalogRelease): Array<{ label: string; href: st
   return links;
 }
 
-/** Cover, title block and the dual score; tinted with the sleeve's dominant colour. */
+/**
+ * Editorial header: the sleeve is the colour of the page. A faint tint of its dominant colour
+ * survives only in the dark theme (ADR-015); in light the paper stays plain.
+ */
 export function ReleaseHero({ release }: { release: CatalogRelease }) {
-  const tint = ambientTint(release.dominantColor);
+  const tint = ambientTint(release.dominantColor, 0.25);
   const year = releaseYear(release.releaseDate);
   const style = tint ? ({ '--release-tint': tint } as React.CSSProperties) : undefined;
   const tracks = release.tracks ?? [];
@@ -50,6 +52,12 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
   const hasEditions = editionCount > 1;
   const title = workTitle(release);
   const facts: Array<{ term: string; detail: React.ReactNode }> = [];
+  if (release.releaseDate) {
+    facts.push({
+      term: 'Uscita',
+      detail: <time dateTime={release.releaseDate}>{formatDate(release.releaseDate)}</time>,
+    });
+  }
   if (release.label) facts.push({ term: 'Etichetta', detail: release.label });
   const format = formatName(release.format);
   if (format) facts.push({ term: 'Formato', detail: format });
@@ -59,61 +67,71 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
     facts.push({
       term: 'Durata',
       detail: (
-        <span className="tabular-nums">
+        <>
           {plural(trackCount, 'brano', 'brani')}
-          {totalSeconds > 0 ? ` · ${formatClock(totalSeconds)}` : ''}
-        </span>
+          {totalSeconds > 0 && (
+            <>
+              , <span className="font-mono tabular-nums">{formatClock(totalSeconds)}</span>
+            </>
+          )}
+        </>
       ),
     });
   }
-  if (release.upc) facts.push({ term: 'Codice a barre', detail: release.upc });
+  if (release.upc) {
+    facts.push({
+      term: 'Codice a barre',
+      detail: <span className="font-mono tabular-nums">{release.upc}</span>,
+    });
+  }
 
   return (
     <header
       style={style}
-      className="relative -mx-4 overflow-hidden px-4 pb-8 pt-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-[linear-gradient(180deg,var(--release-tint,transparent),transparent_85%)] [[data-theme=light]_&]:bg-none"
+      className="relative -mx-4 px-4 pb-4 pt-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 dark:bg-[linear-gradient(180deg,var(--release-tint,transparent),transparent_70%)]"
     >
       <Link
         href="/explore"
-        className="mb-6 inline-flex items-center gap-1.5 rounded-sm text-sm text-ink-secondary hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+        className="mb-8 inline-flex items-center gap-1.5 rounded-sm text-sm text-fg-muted transition-colors duration-fast hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
       >
         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         Torna al catalogo
       </Link>
 
-      <div className="grid gap-6 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] md:gap-10 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-        <div className="relative mx-auto w-full max-w-[18rem] self-start md:mx-0">
+      <div className="grid gap-8 md:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] md:gap-12 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <div className="relative mx-auto w-full max-w-[20rem] self-start md:mx-0">
           <CoverArt
             src={release.coverUrl}
             placeholderColor={release.dominantColor}
             alt={`Copertina di ${release.title} di ${release.artistName}`}
-            sizes="(min-width: 1024px) 288px, (min-width: 768px) 240px, 80vw"
+            sizes="(min-width: 1024px) 320px, (min-width: 768px) 256px, 80vw"
             priority
-            className="aspect-square w-full rounded-sleeve shadow-om-lg"
+            framed
+            className="aspect-square w-full rounded-md"
           />
           <ReleasePreviewButton
             release={release}
             size="lg"
-            className="absolute -bottom-4 right-4 z-raised"
+            className="absolute bottom-3 right-3 z-raised"
           />
         </div>
 
-        <div className="min-w-0 space-y-5">
-          <div className="space-y-2">
+        <div className="min-w-0 space-y-7">
+          <div className="space-y-3">
             <p className="om-eyebrow">
               {RELEASE_TYPE_LABEL[release.releaseType]}
               {year && (
                 <>
-                  {' '}
-                  · <span className="tabular-nums">{year}</span>
+                  {' del '}
+                  <span className="font-mono tabular-nums">{year}</span>
                 </>
               )}
             </p>
-            <h1 className="om-headline text-display-md text-ink lg:text-display-lg">
+            <h1 className="om-headline text-balance text-display-md text-fg lg:text-display-lg">
               {title}
               {title !== release.title && <span className="sr-only">, {release.editionLabel}</span>}
             </h1>
-            <p className="om-deck text-xl">{release.artistName}</p>
+            <p className="om-deck text-xl sm:text-2xl">{release.artistName}</p>
           </div>
 
           {(release.editionLabel || hasEditions) && (
@@ -122,7 +140,7 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
               {release.group && hasEditions && (
                 <Link
                   href={`/albums/${release.group.id}`}
-                  className="inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-ink-secondary underline-offset-4 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                  className="om-link inline-flex items-center gap-1 rounded-sm text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   Tutte le {editionCount} edizioni e il voto complessivo
                   <ArrowRight aria-hidden="true" className="h-4 w-4" />
@@ -131,42 +149,34 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
             </div>
           )}
 
-          {(release.genres.length > 0 || release.releaseDate) && (
-            <div className="flex flex-wrap items-center gap-2">
+          {release.genres.length > 0 && (
+            <ul aria-label="Generi" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {release.genres.map((genre) => (
-                <Link
-                  key={genre}
-                  href={`/explore?genre=${encodeURIComponent(genre)}`}
-                  className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-                >
-                  <Badge tone="neutral" variant="outline" mono>
+                <li key={genre}>
+                  <Link
+                    href={`/explore?genre=${encodeURIComponent(genre)}`}
+                    className="rounded-sm text-fg-muted underline decoration-line-strong/60 underline-offset-4 transition-colors duration-fast hover:text-fg hover:decoration-current focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                  >
                     {genre}
-                  </Badge>
-                </Link>
+                  </Link>
+                </li>
               ))}
-              {release.releaseDate && (
-                <span className="font-mono text-xs text-ink-muted">
-                  Uscito il{' '}
-                  <time dateTime={release.releaseDate}>{formatDate(release.releaseDate)}</time>
-                </span>
-              )}
-            </div>
+            </ul>
           )}
 
           {facts.length > 0 && (
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-4 border-y border-line py-5 sm:grid-cols-3">
               {facts.map((fact) => (
                 <div key={fact.term} className="min-w-0">
                   <dt className="om-eyebrow">{fact.term}</dt>
-                  <dd className="mt-0.5 truncate font-mono text-xs text-ink">{fact.detail}</dd>
+                  <dd className="mt-0.5 truncate text-sm text-fg">{fact.detail}</dd>
                 </div>
               ))}
             </dl>
           )}
 
-          <hr className="om-rule" />
           {hasEditions && (
-            <p className="text-xs text-ink-muted">
+            <p className="max-w-prose text-sm text-fg-subtle">
               Voti di questa edizione. Le altre edizioni hanno i loro voti; quello complessivo è
               nella pagina dell’album.
             </p>
@@ -174,9 +184,9 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
           <LiveDualScore />
 
           {(links.length > 0 || release.coverSource) && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+            <div className="flex flex-col gap-1 text-xs text-fg-subtle">
               {links.length > 0 && (
-                <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>Ascolta o verifica su</span>
                   {links.map((link) => (
                     <a
@@ -184,17 +194,17 @@ export function ReleaseHero({ release }: { release: CatalogRelease }) {
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 rounded-sm font-semibold text-ink-secondary underline-offset-4 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                      className="inline-flex items-center gap-1 rounded-sm font-medium text-fg-muted underline-offset-4 hover:text-fg hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                     >
                       {link.label}
                       <ArrowSquareOut aria-hidden="true" className="h-3 w-3" />
                       <span className="sr-only"> (si apre in una nuova scheda)</span>
                     </a>
                   ))}
-                </span>
+                </p>
               )}
               {release.coverSource && release.coverSource !== 'LOCAL' && (
-                <span>Copertina: {CATALOG_SOURCE_LABEL[release.coverSource]}</span>
+                <p>Copertina: {CATALOG_SOURCE_LABEL[release.coverSource]}</p>
               )}
             </div>
           )}

@@ -9,8 +9,6 @@ import { newTestAccount } from './account';
  * Each run registers a fresh account, so it can run repeatedly against the same database.
  */
 
-// Set by playwright.config.ts (same host as the web app, so the session cookie applies).
-const API_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:4000';
 const SEEDED_PEER = 'francospagnati';
 
 const account = newTestAccount();
@@ -38,7 +36,7 @@ test('log in with email and password', async ({ page }) => {
   await page.locator('#current-password').fill(account.password);
   await page.getByRole('button', { name: 'Accedi', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
-  const me = await page.request.get(`${API_URL}/api/auth/me`);
+  const me = await page.request.get(`/api/auth/me`);
   expect(me.ok()).toBe(true);
   expect(await me.json()).toMatchObject({ user: { username: account.username } });
   await page.context().storageState({ path: SESSION_STATE });
@@ -77,7 +75,7 @@ test.describe('signed in', () => {
   });
 
   test('send a chat message to a seeded user', async ({ page }) => {
-    const search = await page.request.get(`${API_URL}/api/users/search?q=${SEEDED_PEER}`);
+    const search = await page.request.get(`/api/users/search?q=${SEEDED_PEER}`);
     const { items } = (await search.json()) as { items: { id: string; username: string }[] };
     const peer = items.find((u) => u.username === SEEDED_PEER);
     expect(peer, `seeded user ${SEEDED_PEER} missing: run npm run db:seed`).toBeDefined();
@@ -93,7 +91,7 @@ test.describe('signed in', () => {
     // Persisted server side, not just optimistic.
     await expect
       .poll(async () => {
-        const res = await page.request.get(`${API_URL}/api/chat/conversation/${peer!.id}`);
+        const res = await page.request.get(`/api/chat/conversation/${peer!.id}`);
         return res.ok() ? JSON.stringify(await res.json()) : '';
       })
       .toContain(message);

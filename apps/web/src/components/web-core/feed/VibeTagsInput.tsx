@@ -35,9 +35,9 @@ export function VibeTagsInput({
 
   return (
     <div className="space-y-2">
-      <label htmlFor={inputId} className="text-sm font-semibold text-ink">
+      <label htmlFor={inputId} className="text-sm font-medium text-fg">
         Vibe{' '}
-        <span className="font-mono text-xs font-normal text-ink-muted tabular-nums">
+        <span className="font-mono text-xs font-normal text-fg-subtle tabular-nums">
           {value.length}/{MAX_VIBE_TAGS}
         </span>
       </label>
@@ -50,7 +50,7 @@ export function VibeTagsInput({
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-accent/15 py-0.5 pl-2.5 pr-1 font-mono text-xs text-ink"
+            className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-raised py-0.5 pl-2.5 pr-1 text-sm text-fg"
           >
             #{tag}
             <button
@@ -58,14 +58,14 @@ export function VibeTagsInput({
               onClick={() => onChange(value.filter((t) => t !== tag))}
               disabled={disabled}
               aria-label={`Rimuovi #${tag}`}
-              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-secondary hover:bg-ink/10 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-fg-muted hover:bg-fg/[0.08] hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
               <X aria-hidden="true" weight="bold" className="h-3 w-3" />
             </button>
           </span>
         ))}
         <span className="flex min-w-[8rem] flex-1 items-center gap-1">
-          <Hash aria-hidden="true" className="text-ink-muted" />
+          <Hash aria-hidden="true" className="text-fg-subtle" />
           <input
             id={inputId}
             value={draft}
@@ -89,11 +89,11 @@ export function VibeTagsInput({
               }
             }}
             onBlur={() => commit()}
-            className="h-7 w-full min-w-0 bg-transparent text-base text-ink placeholder:text-ink-muted focus:outline-none sm:text-sm"
+            className="h-7 w-full min-w-0 bg-transparent text-base text-fg placeholder:text-fg-subtle focus:outline-none sm:text-sm"
           />
         </span>
       </div>
-      <p id={hintId} className="text-xs text-ink-muted">
+      <p id={hintId} className="text-xs text-fg-subtle">
         Premi Invio o la virgola per aggiungere un tag.
       </p>
     </div>

@@ -40,16 +40,16 @@ export function GenreFilter({
               className={cn(
                 chip,
                 active
-                  ? 'border-accent bg-accent text-on-accent font-semibold'
-                  : 'border-line bg-surface text-ink-secondary hover:border-line-strong hover:text-ink'
+                  ? 'border-fg bg-fg font-medium text-canvas'
+                  : 'border-line text-fg-muted hover:border-line-strong hover:text-fg'
               )}
             >
               {option.label}
               {option.count !== undefined && (
                 <span
                   className={cn(
-                    'font-mono text-[11px] tabular-nums',
-                    active ? 'text-on-accent' : 'text-ink-muted'
+                    'font-mono text-xs tabular-nums',
+                    active ? 'text-canvas/75' : 'text-fg-subtle'
                   )}
                 >
                   {option.count}
@@ -78,10 +78,10 @@ export function SortToggle({
   return (
     <fieldset className="flex items-center gap-2">
       <legend className="sr-only">Ordina i dischi</legend>
-      <span aria-hidden="true" className="om-eyebrow hidden sm:inline">
+      <span aria-hidden="true" className="hidden text-sm text-fg-subtle sm:inline">
         Ordina
       </span>
-      <div className="inline-flex rounded-md border border-line bg-sunken p-0.5">
+      <div className="inline-flex rounded-md bg-sunken p-0.5">
         {SORTS.map((option) => (
           <label
             key={option.value}
@@ -89,8 +89,8 @@ export function SortToggle({
               'relative cursor-pointer rounded-[5px] px-3 py-1.5 text-sm transition-colors duration-fast',
               'has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
               value === option.value
-                ? 'bg-elevated font-semibold text-ink shadow-om-sm'
-                : 'text-ink-secondary hover:text-ink'
+                ? 'bg-surface-raised font-medium text-fg shadow-hairline'
+                : 'text-fg-muted hover:text-fg'
             )}
           >
             <input

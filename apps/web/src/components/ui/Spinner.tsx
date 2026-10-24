@@ -17,43 +17,38 @@ const sizes: Record<SpinnerSize, string> = {
   lg: 'h-10 w-10',
 };
 
-/** A tiny spinning record: grooves, amber label, spindle hole. */
+/**
+ * A thin ring with a quarter arc, in `currentColor`. It turns at an unhurried 0.9s; under
+ * reduced motion it stands still (the label still announces the busy state).
+ */
 export function Spinner({ size = 'md', label = 'Caricamento…', className }: SpinnerProps) {
   const svg = (
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
-      className={cn('om-spin-record shrink-0', sizes[size], className)}
+      className={cn(
+        'shrink-0 animate-[spin_0.9s_linear_infinite] motion-reduce:animate-none',
+        sizes[size],
+        className
+      )}
     >
-      <circle cx="12" cy="12" r="11" fill="currentColor" opacity="0.18" />
       <circle
         cx="12"
         cy="12"
-        r="8.5"
+        r="9.5"
         fill="none"
         stroke="currentColor"
-        strokeOpacity="0.35"
-        strokeWidth="0.75"
-      />
-      <circle
-        cx="12"
-        cy="12"
-        r="6.5"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.25"
-        strokeWidth="0.75"
+        strokeOpacity="0.2"
+        strokeWidth="2"
       />
       <path
-        d="M12 1a11 11 0 0 1 11 11"
+        d="M12 2.5a9.5 9.5 0 0 1 9.5 9.5"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
       />
-      <circle cx="12" cy="12" r="4" fill="rgb(var(--om-accent))" />
-      <circle cx="12" cy="12" r="1" fill="rgb(var(--om-bg))" />
     </svg>
   );
 

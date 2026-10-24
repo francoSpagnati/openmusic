@@ -50,7 +50,7 @@ export function ReleasePicker({
   if (value) {
     return (
       <div className="space-y-1.5">
-        <p className="text-sm font-semibold text-ink">Disco collegato</p>
+        <p className="text-sm font-semibold text-fg">Disco collegato</p>
         <div className="flex items-center gap-3 rounded-md border border-line-strong bg-sunken p-2">
           <CoverArt
             src={value.coverUrl}
@@ -59,8 +59,8 @@ export function ReleasePicker({
             className="h-10 w-10 shrink-0 rounded-xs"
           />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-ink">{value.title}</span>
-            <span className="block truncate text-xs text-ink-secondary">{value.artistName}</span>
+            <span className="block truncate text-sm font-semibold text-fg">{value.title}</span>
+            <span className="block truncate text-xs text-fg-muted">{value.artistName}</span>
           </span>
           <IconButton
             label="Scollega il disco"
@@ -88,7 +88,7 @@ export function ReleasePicker({
         aria-describedby={statusId}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <p id={statusId} role="status" className="text-xs text-ink-muted">
+      <p id={statusId} role="status" className="text-xs text-fg-subtle">
         {loading ? (
           <span className="inline-flex items-center gap-2">
             <Spinner size="xs" label={null} /> Cerco nel catalogo…
@@ -111,7 +111,7 @@ export function ReleasePicker({
                   onChange(release);
                   setQuery('');
                 }}
-                className="flex w-full items-center gap-3 px-2 py-2 text-left hover:bg-ink/5 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                className="flex w-full items-center gap-3 px-2 py-2 text-left hover:bg-fg/5 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
               >
                 <CoverArt
                   src={release.coverUrl}
@@ -120,10 +120,8 @@ export function ReleasePicker({
                   className="h-8 w-8 shrink-0 rounded-xs"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-ink">{release.title}</span>
-                  <span className="block truncate text-xs text-ink-secondary">
-                    {release.artistName}
-                  </span>
+                  <span className="block truncate text-sm text-fg">{release.title}</span>
+                  <span className="block truncate text-xs text-fg-muted">{release.artistName}</span>
                 </span>
               </button>
             </li>

@@ -28,17 +28,17 @@ function EditionScore({
     <span
       role="img"
       aria-label={label}
-      className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-ink-secondary"
+      className="inline-flex items-center gap-1 text-xs text-fg-muted"
     >
-      <Icon aria-hidden="true" weight="duotone" className="h-3.5 w-3.5" />
+      <Icon aria-hidden="true" className="h-3.5 w-3.5 text-fg-subtle" />
       {count > 0 && avg !== null ? (
         <>
           <Star aria-hidden="true" weight="fill" className="h-3 w-3 text-accent" />
-          {formatStars(avg)}
-          <span className="text-ink-muted">· {count}</span>
+          <span className="font-mono tabular-nums text-fg">{formatStars(avg)}</span>
+          <span className="font-mono tabular-nums text-fg-subtle">({count})</span>
         </>
       ) : (
-        <span className="text-ink-muted">—</span>
+        <span className="font-mono text-fg-subtle">—</span>
       )}
     </span>
   );
@@ -46,7 +46,7 @@ function EditionScore({
 
 export function EditionScores({ edition }: { edition: EditionSummary }) {
   return (
-    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
       <EditionScore kind="critic" avg={edition.criticAvg} count={edition.criticCount} />
       <EditionScore kind="audience" avg={edition.audienceAvg} count={edition.audienceCount} />
     </span>
@@ -54,38 +54,39 @@ export function EditionScores({ edition }: { edition: EditionSummary }) {
 }
 
 /**
- * Editions as a row of record sleeves (release page, "Altre edizioni"). Scrolls sideways on
- * phones, wraps into a grid from `sm` up. Each sleeve links to that edition's own page.
+ * Editions as one quiet horizontal row (release page, "Altre edizioni"): small sleeves with the
+ * edition name underneath, scrolling sideways when they do not fit. Each links to its own page.
  */
 export function EditionShelf({ editions, label }: { editions: EditionSummary[]; label: string }) {
   return (
     <ul
       aria-label={label}
-      className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible sm:px-0 xl:grid-cols-4"
+      className="-mx-4 flex snap-x gap-6 overflow-x-auto px-4 pb-3 sm:-mx-0 sm:px-0 [scrollbar-width:thin]"
     >
       {editions.map((edition) => (
-        <li key={edition.id} className="w-40 shrink-0 snap-start sm:w-auto">
-          <article className="om-sleeve group relative flex h-full flex-col gap-2 p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus">
+        <li key={edition.id} className="w-36 shrink-0 snap-start sm:w-40">
+          <article className="group relative flex h-full flex-col gap-2 rounded-sm focus-within:outline focus-within:outline-2 focus-within:outline-offset-4 focus-within:outline-focus">
             <CoverArt
               src={edition.coverUrl}
               placeholderColor={edition.dominantColor}
               alt=""
-              sizes="(min-width: 1280px) 200px, (min-width: 640px) 30vw, 160px"
-              className="aspect-square w-full rounded-sm"
+              sizes="160px"
+              framed
+              className="aspect-square w-full rounded-sm transition-opacity duration-base group-hover:opacity-85"
             />
-            <EditionChip label={edition.editionLabel} size="sm" className="self-start" />
-            <h3 className="text-sm font-semibold leading-snug text-ink">
+            <h3 className="mt-1 text-sm font-medium leading-snug text-fg">
               <Link
                 href={`/releases/${edition.id}`}
-                className="line-clamp-2 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none group-hover:text-accent"
+                className="line-clamp-2 underline-offset-4 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none group-hover:underline"
               >
                 {edition.title}
               </Link>
             </h3>
-            <p className="om-eyebrow truncate">
-              {[RELEASE_TYPE_LABEL[edition.releaseType], ...editionFacts(edition)].join(' · ')}
+            <EditionChip label={edition.editionLabel} size="sm" className="self-start" />
+            <p className="truncate text-xs text-fg-subtle">
+              {[RELEASE_TYPE_LABEL[edition.releaseType], ...editionFacts(edition)].join(', ')}
             </p>
-            <div className="mt-auto pt-1">
+            <div className="mt-auto">
               <EditionScores edition={edition} />
             </div>
           </article>
@@ -109,47 +110,45 @@ export function EditionList({
   className?: string;
 }) {
   return (
-    <ol
-      aria-label={label}
-      className={cn('divide-y divide-line rounded-lg border border-line bg-surface', className)}
-    >
+    <ol aria-label={label} className={cn('border-t border-line', className)}>
       {editions.map((edition) => (
         <li
           key={edition.id}
-          className="group relative flex gap-3 p-3 focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-focus hover:bg-elevated sm:gap-4 sm:p-4"
+          className="group relative flex gap-4 border-b border-line py-4 transition-colors duration-fast focus-within:outline focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-focus hover:bg-fg/[0.03] sm:gap-5 sm:px-2"
         >
           <CoverArt
             src={edition.coverUrl}
             placeholderColor={edition.dominantColor}
             alt=""
             sizes="80px"
-            className="h-16 w-16 shrink-0 rounded-xs shadow-om-sm sm:h-20 sm:w-20"
+            framed
+            className="h-16 w-16 shrink-0 rounded-sm sm:h-20 sm:w-20"
           />
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <EditionChip label={edition.editionLabel} size="sm" />
               {edition.year && (
-                <span className="font-mono text-xs tabular-nums text-ink-muted">
+                <span className="font-mono text-xs tabular-nums text-fg-subtle">
                   {edition.year}
                 </span>
               )}
             </div>
-            <h3 className="text-sm font-semibold leading-snug text-ink sm:text-base">
+            <h3 className="om-headline text-lg leading-snug text-fg">
               <Link
                 href={`/releases/${edition.id}`}
-                className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none group-hover:text-accent"
+                className="underline-offset-4 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none group-hover:underline"
               >
                 {edition.title}
               </Link>
             </h3>
-            <p className="font-mono text-xs text-ink-secondary">
+            <p className="text-xs text-fg-muted">
               {[
                 RELEASE_TYPE_LABEL[edition.releaseType],
                 ...editionFacts({ ...edition, year: null }),
                 edition.trackCount ? plural(edition.trackCount, 'brano', 'brani') : null,
               ]
                 .filter(Boolean)
-                .join(' · ')}
+                .join(', ')}
             </p>
             <EditionScores edition={edition} />
           </div>

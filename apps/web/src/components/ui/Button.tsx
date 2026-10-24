@@ -2,29 +2,39 @@ import React from 'react';
 import { cn } from './cn';
 import { Spinner } from './Spinner';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'link';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const base =
-  'relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-sans font-semibold ' +
-  'transition-[background-color,border-color,color,box-shadow,translate] duration-fast ease-standard ' +
+  'om-press relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-sans font-medium ' +
+  'transition-[background-color,border-color,color,text-decoration-color] duration-fast ease-out ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ' +
-  'disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress active:translate-y-px';
+  'disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress ' +
+  // Windows High Contrast drops fills: keep a visible boundary on every variant.
+  'forced-colors:border forced-colors:border-solid';
 
+/* One clay fill per view (primary). Everything else is ink on paper with hairlines. */
 const variants: Record<ButtonVariant, string> = {
-  primary:
-    'bg-accent text-on-accent hover:bg-accent-strong ' +
-    'shadow-[inset_0_1px_0_rgb(255_255_255/0.18),inset_0_-2px_0_rgb(0_0_0/0.12)]',
-  secondary: 'bg-elevated text-ink border border-line hover:border-line-strong hover:bg-surface',
-  outline: 'border border-line-strong text-ink hover:border-ink hover:bg-ink/5',
-  ghost: 'text-ink-secondary hover:bg-ink/5 hover:text-ink',
-  danger: 'border border-rotten/60 text-rotten hover:bg-rotten/10',
+  primary: 'bg-accent text-accent-contrast hover:bg-accent-hover',
+  secondary:
+    'border border-line bg-surface-raised text-fg hover:border-line-strong hover:bg-surface',
+  outline: 'border border-line-strong text-fg hover:bg-fg/[0.04]',
+  ghost: 'text-fg-muted hover:bg-fg/[0.05] hover:text-fg',
+  danger: 'border border-rotten/50 text-rotten hover:border-rotten hover:bg-rotten/[0.06]',
+  link: 'text-accent underline decoration-accent/35 underline-offset-4 hover:decoration-current',
 };
 
 const sizes: Record<ButtonSize, string> = {
   sm: 'h-8 rounded-md px-3 text-sm',
   md: 'h-10 rounded-md px-4 text-sm',
-  lg: 'h-12 rounded-lg px-6 text-base',
+  lg: 'h-12 rounded-lg px-5 text-base',
+};
+
+/* The link variant sits inline with text: no box, no fixed height. */
+const linkSizes: Record<ButtonSize, string> = {
+  sm: 'text-sm',
+  md: 'text-sm',
+  lg: 'text-base',
 };
 
 export interface ButtonStyleOptions {
@@ -41,7 +51,13 @@ export function buttonClasses({
   fullWidth = false,
   className,
 }: ButtonStyleOptions = {}): string {
-  return cn(base, variants[variant], sizes[size], fullWidth && 'w-full', className);
+  return cn(
+    base,
+    variants[variant],
+    variant === 'link' ? linkSizes[size] : sizes[size],
+    fullWidth && 'w-full',
+    className
+  );
 }
 
 export interface ButtonProps

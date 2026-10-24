@@ -18,29 +18,29 @@ export function ConversationList({
   viewerId: string;
 }) {
   return (
-    <ul aria-label="Conversazioni" className="divide-y divide-line">
+    <ul aria-label="Conversazioni" className="space-y-0.5 px-2 py-2">
       {conversations.map(({ otherUser, lastMessage, unreadCount }) => {
         const name = displayNameOf(otherUser);
         const active = otherUser.id === activePeerId;
         const unread = unreadCount > 0;
         return (
-          <li key={otherUser.id}>
+          <li key={otherUser.id} className="om-fade">
             <Link
               href={chatHref(otherUser.id)}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 transition-colors duration-fast',
+                'flex items-center gap-3 rounded-lg px-3 py-3 transition-colors duration-fast ease-out',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus',
-                active ? 'bg-surface' : 'hover:bg-surface/60'
+                active ? 'bg-surface' : 'hover:bg-fg/[0.04]'
               )}
             >
               <Avatar name={name} src={otherUser.avatarUrl} size="md" decorative />
               <span className="min-w-0 flex-1">
-                <span className="flex items-baseline justify-between gap-2">
+                <span className="flex items-baseline justify-between gap-3">
                   <span
                     className={cn(
-                      'truncate text-sm text-ink',
-                      unread ? 'font-bold' : 'font-semibold'
+                      'truncate text-sm text-fg',
+                      unread ? 'font-semibold' : 'font-medium'
                     )}
                   >
                     {name}
@@ -48,24 +48,23 @@ export function ConversationList({
                   <time
                     dateTime={lastMessage.createdAt}
                     title={absoluteTime(lastMessage.createdAt)}
-                    className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted"
+                    className="shrink-0 text-xs tabular-nums text-fg-subtle"
                   >
                     {inboxTime(lastMessage.createdAt)}
                   </time>
                 </span>
-                <span className="flex items-center justify-between gap-2">
-                  <span
-                    className={cn(
-                      'truncate text-xs',
-                      unread ? 'font-medium text-ink' : 'text-ink-secondary'
-                    )}
-                  >
+                <span className="mt-0.5 flex items-center justify-between gap-3">
+                  <span className={cn('truncate text-sm', unread ? 'text-fg' : 'text-fg-muted')}>
                     {messagePreview(lastMessage, lastMessage.senderId === viewerId)}
                   </span>
                   {unread && (
-                    <span className="min-w-5 shrink-0 rounded-full bg-accent px-1.5 text-center font-mono text-[11px] font-bold leading-5 text-on-accent tabular-nums">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                      <span className="sr-only"> messaggi non letti</span>
+                    <span className="flex h-5 shrink-0 items-center">
+                      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent" />
+                      <span className="sr-only">
+                        {unreadCount === 1
+                          ? '1 messaggio non letto'
+                          : `${unreadCount > 99 ? 'Più di 99' : unreadCount} messaggi non letti`}
+                      </span>
                     </span>
                   )}
                 </span>
@@ -80,10 +79,10 @@ export function ConversationList({
 
 export function ConversationListSkeleton() {
   return (
-    <div aria-busy="true" className="divide-y divide-line">
+    <div aria-busy="true" className="space-y-0.5 px-2 py-2">
       <span className="sr-only">Caricamento delle conversazioni…</span>
       {[0, 1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex items-center gap-3 px-4 py-3">
+        <div key={i} className="flex items-center gap-3 px-3 py-3">
           <Skeleton shape="circle" className="h-10 w-10" />
           <Skeleton shape="text" lines={2} />
         </div>

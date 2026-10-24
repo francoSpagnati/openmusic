@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import {
   WS_EVENTS,
@@ -11,7 +11,6 @@ import {
   type SessionRevoked,
   type WsAck,
 } from '@openmusic/shared';
-import { API_URL } from './api/config';
 import { authApi } from './api/auth';
 import { isApiError } from './api/errors';
 import { nowPlayingApi } from './api/social';
@@ -21,25 +20,72 @@ export type OpenMusicSocket = Socket<ServerToClientEvents, ClientToServerEvents>
 
 const ACK_TIMEOUT_MS = 5000;
 
-let socket: OpenMusicSocket | null = null;
-
-/**
- * The app-wide socket. It authenticates with the httpOnly session cookie (`withCredentials`), so
- * it must only be connected while signed in; `useSocket` handles that.
+/*
+ * ADR-014: HTTP goes through the web app's same-origin `/api` proxy, but Socket.io connects
+ * straight to the API (proxies do not carry websocket upgrades reliably). The session cookie
+ * belongs to the web origin, so every handshake (first connect and each reconnect) presents a
+ * fresh 60-second token from `GET /api/auth/socket-token`, which also says where the API is.
  */
-function getSocket(): OpenMusicSocket {
-  socket ??= io(API_URL, {
-    withCredentials: true,
-    autoConnect: false,
-    transports: ['websocket'],
-  });
-  return socket;
+let socket: OpenMusicSocket | null = null;
+let pending: Promise<OpenMusicSocket> | null = null;
+/** Bumped by `disconnectSocket` so a socket still being created is dropped. */
+let generation = 0;
+const listeners = new Set<() => void>();
+
+function publish(next: OpenMusicSocket | null): void {
+  socket = next;
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** The app-wide socket, created (not connected) once a socket token was obtained. */
+function ensureSocket(): Promise<OpenMusicSocket> {
+  if (socket) return Promise.resolve(socket);
+  if (pending) return pending;
+  const myGeneration = generation;
+  pending = authApi
+    .socketToken()
+    .then(({ token, url }) => {
+      if (myGeneration !== generation) throw new Error('SIGNED_OUT');
+      let firstToken: string | null = token;
+      const created: OpenMusicSocket = io(url, {
+        autoConnect: false,
+        transports: ['websocket'],
+        auth: (cb) => {
+          if (firstToken) {
+            const t = firstToken;
+            firstToken = null;
+            cb({ token: t });
+            return;
+          }
+          authApi.socketToken().then(
+            (r) => cb({ token: r.token }),
+            // No session any more: the handshake fails with UNAUTHORIZED.
+            () => cb({})
+          );
+        },
+      });
+      publish(created);
+      return created;
+    })
+    .finally(() => {
+      pending = null;
+    });
+  return pending;
 }
 
 /** Closes the socket (called automatically on logout). */
 export function disconnectSocket(): void {
-  socket?.disconnect();
-  socket = null;
+  generation += 1;
+  const current = socket;
+  if (current) {
+    current.disconnect();
+    publish(null);
+  }
 }
 
 export interface SocketState {
@@ -52,16 +98,30 @@ export interface SocketState {
 /** Connects the shared socket while the user is authenticated and disconnects on logout. */
 export function useSocket(): SocketState {
   const { status } = useAuth();
+  const s = useSyncExternalStore(
+    subscribe,
+    () => socket,
+    () => null
+  );
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== 'authenticated') {
       if (status === 'anonymous') disconnectSocket();
+      return;
+    }
+    ensureSocket().catch((err: unknown) => {
+      if (err instanceof Error && err.message === 'SIGNED_OUT') return;
+      setError(isApiError(err) && err.status === 401 ? 'UNAUTHORIZED' : 'Realtime non disponibile');
+    });
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !s) {
       setConnected(false);
       return;
     }
-    const s = getSocket();
     const onConnect = () => {
       setConnected(true);
       setError(null);
@@ -78,9 +138,9 @@ export function useSocket(): SocketState {
       s.off('disconnect', onDisconnect);
       s.off('connect_error', onError);
     };
-  }, [status]);
+  }, [status, s]);
 
-  return { socket: status === 'authenticated' ? getSocket() : null, connected, error };
+  return { socket: status === 'authenticated' ? s : null, connected, error };
 }
 
 /**

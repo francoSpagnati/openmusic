@@ -37,7 +37,7 @@ export function UserIdentity({
         <p className="flex min-w-0 items-center gap-1 text-sm">
           <Link
             href={profileHref(user)}
-            className="truncate font-semibold text-ink hover:underline focus-visible:underline"
+            className="truncate font-medium text-fg hover:underline focus-visible:underline"
           >
             {name}
           </Link>
@@ -50,9 +50,9 @@ export function UserIdentity({
             />
           )}
         </p>
-        <p className="truncate font-mono text-xs text-ink-muted">
+        <p className="truncate text-[13px] text-fg-subtle">
           @{user.username}
-          {meta ? <span className="text-ink-muted"> · {meta}</span> : null}
+          {meta ? <span> · {meta}</span> : null}
         </p>
       </div>
     </div>

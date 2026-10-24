@@ -40,9 +40,9 @@ export function PreviewButton({
     state === 'loading' ? (
       <ActivityIndicator color={colors.accent} />
     ) : state === 'playing' ? (
-      <Pause size={iconSize} color={colors.onAccent} weight="fill" />
+      <Pause size={iconSize} color={colors.accentContrast} weight="fill" />
     ) : state === 'unavailable' ? (
-      <SpeakerSlash size={iconSize} color={colors.muted} />
+      <SpeakerSlash size={iconSize} color={colors.textSubtle} />
     ) : (
       <Play size={iconSize} color={colors.text} weight="fill" />
     );

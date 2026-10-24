@@ -14,7 +14,7 @@ export interface BadgeProps {
   size?: BadgeSize;
   /** Pair colour with an icon or text, never colour alone. */
   icon?: React.ReactNode;
-  /** Monospace uppercase label for catalogue numbers, genres-as-tags, counters. */
+  /** Tabular monospace, only for numeric labels (counters). Words stay in the sans. */
   mono?: boolean;
 }
 
@@ -28,14 +28,14 @@ export function Badge({
 }: BadgeProps) {
   const { colors, radii, font } = useTheme();
   const base = {
-    neutral: colors.textSecondary,
+    neutral: colors.textMuted,
     accent: colors.accent,
     fresh: colors.fresh,
-    mixed: colors.mixed,
+    mixed: colors.warning,
     rotten: colors.rotten,
-    live: colors.live,
+    live: colors.fresh,
   }[tone];
-  const solidFg = tone === 'accent' ? colors.onAccent : colors.bg;
+  const solidFg = tone === 'accent' ? colors.accentContrast : colors.bg;
   const look =
     variant === 'solid'
       ? {
@@ -52,12 +52,12 @@ export function Badge({
         : {
             backgroundColor: withAlpha(
               tone === 'neutral' ? colors.text : base,
-              tone === 'neutral' ? 0.07 : 0.14
+              tone === 'neutral' ? 0.06 : 0.12
             ),
             borderColor: 'transparent',
             color: base,
           };
-  const fontSize = size === 'sm' ? 11 : 12;
+  const fontSize = size === 'sm' ? 12 : 13;
   return (
     <View
       style={[
@@ -65,7 +65,7 @@ export function Badge({
         {
           height: size === 'sm' ? 20 : 24,
           paddingHorizontal: size === 'sm' ? 6 : 8,
-          borderRadius: radii.xs,
+          borderRadius: radii.sm,
           backgroundColor: look.backgroundColor,
           borderColor: look.borderColor,
         },
@@ -78,9 +78,8 @@ export function Badge({
           color: look.color,
           fontSize,
           lineHeight: fontSize + 2,
-          fontFamily: mono ? font.mono : font.sansSemiBold,
-          textTransform: mono ? 'uppercase' : 'none',
-          letterSpacing: mono ? fontSize * 0.06 : 0,
+          fontFamily: mono ? font.mono : font.sansMedium,
+          fontVariant: mono ? ['tabular-nums'] : undefined,
         }}
       >
         {label}
@@ -95,6 +94,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 4,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

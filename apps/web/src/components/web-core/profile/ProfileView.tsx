@@ -35,15 +35,19 @@ export function ProfileView({ handle }: { handle?: string }) {
   return (
     <div className="mx-auto flex max-w-7xl justify-center">
       <Sidebar />
-      <div className="min-w-0 max-w-3xl flex-1 border-line lg:border-r">
-        <ProfileBody
-          profile={profile}
-          onFollowersChange={(followersCount, isFollowedByMe) =>
-            profile.setData((data) =>
-              data ? { ...data, social: { ...data.social, followersCount, isFollowedByMe } } : data
-            )
-          }
-        />
+      <div className="min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-[42rem]">
+          <ProfileBody
+            profile={profile}
+            onFollowersChange={(followersCount, isFollowedByMe) =>
+              profile.setData((data) =>
+                data
+                  ? { ...data, social: { ...data.social, followersCount, isFollowedByMe } }
+                  : data
+              )
+            }
+          />
+        </div>
       </div>
       <RightSidebar />
     </div>
@@ -60,7 +64,7 @@ function ProfileBody({
   if (profile.status === 'error') {
     if (isApiError(profile.error) && profile.error.status === 404) {
       return (
-        <div className="p-4 sm:p-6">
+        <div className="px-4 py-12 sm:px-6">
           <h1 className="sr-only">Profilo non trovato</h1>
           <EmptyState
             title="Questo profilo non esiste"
@@ -75,7 +79,7 @@ function ProfileBody({
       );
     }
     return (
-      <div className="p-4 sm:p-6">
+      <div className="px-4 py-12 sm:px-6">
         <h1 className="sr-only">Profilo</h1>
         <ErrorState
           title="Il profilo non si è caricato"
@@ -129,7 +133,7 @@ function ProfileBody({
 
 function ProfileSkeleton() {
   return (
-    <div aria-busy="true" className="px-4 pb-6 pt-8 sm:px-6">
+    <div aria-busy="true" className="px-4 pb-8 pt-10 sm:px-6">
       <span className="sr-only" role="status">
         Caricamento del profilo…
       </span>

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import type { ChatMessage, ChatReactionType, UniversalTrackLinks } from '@openmusic/shared';
 import { Heart, ThumbsDown } from '../../components/icons';
-import { useTheme, withAlpha } from '../../theme';
+import { useEntering, useTheme, withAlpha } from '../../theme';
 import { CoverArt, Text } from '../../components/ui';
 import { formatDuration, formatRelative } from '../../lib/format';
 import { ArrowSquareOut, CheckCircle, Checks, Fire } from './icons';
@@ -61,10 +61,12 @@ export function MusicChatBubble({
   animateIn = false,
 }: MusicChatBubbleProps) {
   const { colors, radii } = useTheme();
+  const entering = useEntering('up');
   const { track, content, reaction, isListened } = message;
   const link = bestTrackLink(message.universalLinks);
-  const fg = isMine ? 'onAccent' : 'primary';
-  const subtle = isMine ? 'onAccent' : 'muted';
+  // Calm bubbles: mine on soft stone, theirs on raised paper with a hairline. No clay fills.
+  const fg = 'primary';
+  const subtle = 'muted';
   const canInteract = !isMine;
 
   const time = formatRelative(message.createdAt);
@@ -81,7 +83,7 @@ export function MusicChatBubble({
 
   return (
     <Animated.View
-      entering={animateIn ? FadeInUp.springify().damping(18) : undefined}
+      entering={animateIn ? entering : undefined}
       style={[styles.wrapper, { justifyContent: isMine ? 'flex-end' : 'flex-start' }]}
     >
       <View
@@ -90,8 +92,8 @@ export function MusicChatBubble({
         style={[
           styles.bubble,
           {
-            backgroundColor: isMine ? colors.accent : colors.surface,
-            borderColor: isMine ? colors.accent : colors.border,
+            backgroundColor: isMine ? colors.surface : colors.surfaceRaised,
+            borderColor: isMine ? colors.surface : colors.border,
             borderRadius: radii.lg,
             borderBottomRightRadius: isMine ? radii.sm : radii.lg,
             borderBottomLeftRadius: isMine ? radii.lg : radii.sm,
@@ -105,7 +107,7 @@ export function MusicChatBubble({
             style={[
               styles.track,
               {
-                backgroundColor: isMine ? withAlpha(colors.bg, 0.18) : colors.sunken,
+                backgroundColor: isMine ? colors.surfaceRaised : colors.sunken,
                 borderRadius: radii.md,
               },
             ]}
@@ -116,17 +118,13 @@ export function MusicChatBubble({
                 <Text variant="title" size="sm" tone={fg} numberOfLines={1}>
                   {track.title}
                 </Text>
-                <Text size="xs" tone={isMine ? 'onAccent' : 'secondary'} numberOfLines={1}>
+                <Text size="xs" tone="secondary" numberOfLines={1}>
                   {track.artistName} · {formatDuration(track.durationMs)}
                 </Text>
                 {isListened ? (
                   <View style={styles.inline}>
-                    <CheckCircle
-                      size={12}
-                      color={isMine ? colors.onAccent : colors.fresh}
-                      weight="fill"
-                    />
-                    <Text size="xs" tone={isMine ? 'onAccent' : 'fresh'}>
+                    <CheckCircle size={12} color={colors.fresh} weight="fill" />
+                    <Text size="xs" tone="fresh">
                       Ascoltato
                     </Text>
                   </View>
@@ -153,16 +151,12 @@ export function MusicChatBubble({
                 style={[
                   styles.chip,
                   {
-                    borderColor: isMine ? colors.onAccent : colors.border,
+                    borderColor: colors.borderStrong,
                     borderRadius: radii.pill,
                   },
                 ]}
               >
-                <ArrowSquareOut
-                  size={14}
-                  color={isMine ? colors.onAccent : colors.text}
-                  weight="bold"
-                />
+                <ArrowSquareOut size={14} color={colors.text} weight="regular" />
                 <Text size="xs" variant="bodyStrong" tone={fg}>
                   Apri
                 </Text>
@@ -176,7 +170,7 @@ export function MusicChatBubble({
                 style={[
                   styles.chip,
                   {
-                    borderColor: isMine ? colors.onAccent : colors.border,
+                    borderColor: colors.borderStrong,
                     borderRadius: radii.pill,
                   },
                 ]}
@@ -208,13 +202,13 @@ export function MusicChatBubble({
         {content ? <Text tone={fg}>{content}</Text> : null}
 
         <View style={styles.meta}>
-          <Text variant="mono" size="xs" tone={subtle}>
+          <Text size="xs" tone={subtle}>
             {time}
           </Text>
           {isMine ? (
             <Checks
               size={14}
-              color={colors.onAccent}
+              color={message.readAt ? colors.fresh : colors.textSubtle}
               weight={message.readAt ? 'bold' : 'regular'}
             />
           ) : null}
@@ -224,11 +218,7 @@ export function MusicChatBubble({
           <View style={styles.reactions} accessibilityRole={canInteract ? 'radiogroup' : undefined}>
             {REACTIONS.filter((r) => canInteract || r.type === reaction).map((r) => {
               const active = reaction === r.type;
-              const color = active
-                ? colors.accent
-                : isMine
-                  ? colors.onAccent
-                  : colors.textSecondary;
+              const color = active ? colors.accent : colors.textMuted;
               return (
                 <Pressable
                   key={r.type}
@@ -245,12 +235,8 @@ export function MusicChatBubble({
                     styles.reaction,
                     {
                       borderRadius: radii.pill,
-                      borderColor: active
-                        ? colors.accent
-                        : isMine
-                          ? colors.onAccent
-                          : colors.border,
-                      backgroundColor: active ? withAlpha(colors.accent, 0.16) : 'transparent',
+                      borderColor: active ? colors.accent : colors.border,
+                      backgroundColor: active ? withAlpha(colors.accent, 0.1) : 'transparent',
                     },
                   ]}
                 >
@@ -266,8 +252,14 @@ export function MusicChatBubble({
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flexDirection: 'row', marginVertical: 3 },
-  bubble: { maxWidth: '84%', paddingHorizontal: 12, paddingVertical: 8, gap: 6, borderWidth: 1 },
+  wrapper: { flexDirection: 'row', marginVertical: 4 },
+  bubble: {
+    maxWidth: '84%',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   flex: { flex: 1, minWidth: 0, gap: 2 },
   track: { padding: 8 },
   trackRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

@@ -28,7 +28,7 @@ function friendLabel(f: FriendPresence): string {
 
 /**
  * Home "in ascolto ora" strip: one-tap Ghost Mode (44pt target) followed by the followed users who
- * are online, playing first, tinted with the cover's dominant colour. Data comes from the
+ * are online, playing first. Data comes from the
  * authenticated socket (`useFriendsPresence`).
  */
 export function LiveFriendsBar({
@@ -64,17 +64,17 @@ export function LiveFriendsBar({
           styles.ghost,
           {
             borderRadius: radii.pill,
-            borderColor: isGhostMode ? colors.accent : colors.border,
-            backgroundColor: isGhostMode ? withAlpha(colors.accent, 0.14) : colors.surface,
+            borderColor: isGhostMode ? colors.borderStrong : colors.border,
+            backgroundColor: isGhostMode ? withAlpha(colors.text, 0.06) : colors.surfaceRaised,
           },
         ]}
       >
         {isGhostMode ? (
-          <Ghost size={18} color={colors.accent} weight="fill" />
+          <Ghost size={18} color={colors.text} weight="fill" />
         ) : (
-          <Broadcast size={18} color={colors.live} weight="duotone" />
+          <Broadcast size={18} color={colors.fresh} weight="regular" />
         )}
-        <Text variant="bodyStrong" size="sm" tone={isGhostMode ? 'accent' : 'primary'}>
+        <Text variant="eyebrow" size="sm" tone="primary">
           {isGhostMode ? 'Ghost' : 'Live'}
         </Text>
       </PressableScale>
@@ -86,7 +86,6 @@ export function LiveFriendsBar({
       ) : (
         sorted.map((f) => {
           const t = f.isGhostMode ? null : f.currentlyPlaying;
-          const tint = t?.dominantColor ?? colors.border;
           return (
             <PressableScale
               key={f.userId}
@@ -102,8 +101,8 @@ export function LiveFriendsBar({
                 styles.friend,
                 {
                   borderRadius: radii.pill,
-                  borderColor: tint,
-                  backgroundColor: withAlpha(tint, 0.16),
+                  borderColor: colors.border,
+                  backgroundColor: colors.surfaceRaised,
                 },
               ]}
             >
@@ -145,7 +144,7 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 44,
     paddingHorizontal: 14,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   friend: {
     flexDirection: 'row',
@@ -153,8 +152,8 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 44,
     paddingLeft: 6,
-    paddingRight: 12,
-    borderWidth: 1,
+    paddingRight: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     maxWidth: 210,
   },
   meta: { flexShrink: 1 },

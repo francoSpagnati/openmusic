@@ -130,8 +130,8 @@ export function ReviewComposer({
   }
 
   return (
-    <Card variant="surface" padding="md" style={{ gap: space[3] }}>
-      <Text variant="title" accessibilityRole="header">
+    <Card variant="sleeve" padding="md" style={{ gap: space[4] }}>
+      <Text variant="title" size="xl" accessibilityRole="header">
         {existing ? 'Modifica la tua recensione' : `Com'è ${releaseTitle}?`}
       </Text>
       {edition ? (
@@ -185,7 +185,7 @@ export function ReviewComposer({
       {tags.length > 0 ? (
         <View style={styles.tags}>
           {tags.map((tag) => (
-            <Badge key={tag} label={`#${tag}`} size="sm" mono />
+            <Badge key={tag} label={`#${tag}`} size="sm" />
           ))}
         </View>
       ) : null}

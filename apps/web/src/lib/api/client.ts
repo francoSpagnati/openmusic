@@ -1,5 +1,5 @@
 import type { ZodType, ZodTypeDef } from 'zod';
-import { API_URL } from './config';
+import { apiUrl } from './config';
 import { ApiError } from './errors';
 
 export type QueryValue = string | number | boolean | null | undefined;
@@ -18,7 +18,7 @@ export interface RequestOptions<T> {
 }
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
-  const url = new URL(`${API_URL}${path}`);
+  const url = apiUrl(path);
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
   }
@@ -26,8 +26,9 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
 }
 
 /**
- * Low-level fetch wrapper. Sends the httpOnly session cookie (`credentials: 'include'`), so no
- * token ever lives in JS. Throws `ApiError` on network failures, non-2xx responses and responses
+ * Low-level fetch wrapper. In the browser it calls the web app's own `/api` proxy, which forwards
+ * the httpOnly session cookie to the API (`credentials: 'include'` is kept for same-site setups),
+ * so no token ever lives in JS. Throws `ApiError` on network failures, non-2xx responses and responses
  * that do not match `schema`.
  */
 export async function apiRequest<T = void>(

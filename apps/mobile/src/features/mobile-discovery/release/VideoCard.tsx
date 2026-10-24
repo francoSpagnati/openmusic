@@ -41,12 +41,12 @@ export function VideoCard({ video, width = 240 }: { video: MusicVideoItem; width
             accessible={false}
           />
         ) : (
-          <VideoCamera size={32} color={colors.muted} weight="duotone" />
+          <VideoCamera size={32} color={colors.textSubtle} weight="light" />
         )}
         <View
           style={[
             styles.play,
-            { backgroundColor: withAlpha(colors.bg, 0.7), borderRadius: radii.pill },
+            { backgroundColor: withAlpha(colors.surfaceRaised, 0.85), borderRadius: radii.pill },
           ]}
         >
           <Play size={20} color={colors.text} weight="fill" />
@@ -54,7 +54,7 @@ export function VideoCard({ video, width = 240 }: { video: MusicVideoItem; width
         <View
           style={[
             styles.duration,
-            { backgroundColor: withAlpha(colors.bg, 0.8), borderRadius: radii.sm },
+            { backgroundColor: withAlpha(colors.surfaceRaised, 0.9), borderRadius: radii.sm },
           ]}
         >
           <Text variant="mono" size="xs">

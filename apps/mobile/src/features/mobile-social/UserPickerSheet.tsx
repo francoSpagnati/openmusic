@@ -74,7 +74,7 @@ export function UserPickerSheet({ visible, title, onClose, onPick }: UserPickerS
       onRequestClose={close}
     >
       <SafeAreaView edges={['top', 'bottom']} style={[styles.flex, { backgroundColor: colors.bg }]}>
-        <View style={[styles.header, { paddingHorizontal: space[4], paddingTop: space[3] }]}>
+        <View style={[styles.header, { paddingHorizontal: space[5], paddingTop: space[3] }]}>
           <Text variant="title" accessibilityRole="header">
             {title}
           </Text>
@@ -88,7 +88,7 @@ export function UserPickerSheet({ visible, title, onClose, onPick }: UserPickerS
             <X size={22} color={colors.text} />
           </Pressable>
         </View>
-        <View style={{ padding: space[4] }}>
+        <View style={{ padding: space[5] }}>
           <Field
             label="Cerca persone"
             placeholder="Nome o @username"
@@ -103,7 +103,7 @@ export function UserPickerSheet({ visible, title, onClose, onPick }: UserPickerS
           keyExtractor={(u) => u.id}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
-            paddingHorizontal: space[4],
+            paddingHorizontal: space[5],
             paddingBottom: space[8],
             gap: space[1],
           }}
@@ -129,7 +129,7 @@ export function UserPickerSheet({ visible, title, onClose, onPick }: UserPickerS
                   styles.row,
                   {
                     borderRadius: radii.md,
-                    backgroundColor: pressed ? colors.elevated : 'transparent',
+                    backgroundColor: pressed ? colors.surface : 'transparent',
                   },
                 ]}
               >
@@ -138,7 +138,7 @@ export function UserPickerSheet({ visible, title, onClose, onPick }: UserPickerS
                   <Text variant="bodyStrong" numberOfLines={1}>
                     {name}
                   </Text>
-                  <Text variant="mono" size="xs" tone="muted">
+                  <Text size="xs" tone="muted">
                     @{item.username}
                   </Text>
                 </View>

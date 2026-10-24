@@ -3,104 +3,60 @@
 @tailwind utilities;
 
 /*
- * OpenMusic — "Warm Editorial Vinyl" design tokens.
- * Mirrors THEME in packages/shared/src/theme.ts (keep both in sync).
- * Colours are stored as space-separated RGB channels so Tailwind opacity
- * modifiers (`bg-accent/10`) work: use them as rgb(var(--om-x) / <alpha>).
- * Docs: docs/05_DESIGN_SYSTEM.md
+ * OpenMusic — "Carta e argilla" (ADR-015). Docs: docs/05_DESIGN_SYSTEM.md
+ *
+ * Colour, radius and motion variables are generated from THEME (packages/shared/src/theme.ts)
+ * by the `themeTokens` plugin in tailwind.config.ts, so they never drift:
+ *   :root                                   → THEME.light, color-scheme: light dark
+ *   prefers-color-scheme: dark (no choice)  → THEME.dark
+ *   <html data-theme="light|dark">          → explicit user choice (set before paint)
+ * Colours are RGB channels: use rgb(var(--om-x) / <alpha>) or the Tailwind names.
+ * This file only holds what is not a THEME value: shadows, base element styles, the editorial
+ * component classes and the motion utilities.
  */
 
 @layer base {
   :root {
-    color-scheme: dark;
-
-    /* Colour — dark scheme (default) */
-    --om-bg: 20 18 15;
-    --om-sunken: 16 14 12;
-    --om-surface: 29 26 22;
-    --om-elevated: 39 35 30;
-    --om-border: 58 52 44;
-    --om-border-strong: 125 114 98;
-    --om-text: 242 235 221;
-    --om-text-secondary: 184 174 156;
-    --om-muted: 150 140 124;
-    --om-accent: 229 138 74;
-    --om-accent-strong: 240 156 95;
-    --om-on-accent: 20 18 15;
-    --om-fresh: 93 181 133;
-    --om-mixed: 217 166 62;
-    --om-rotten: 224 115 96;
-    --om-live: 93 181 133;
-    --om-focus: 244 194 122;
-
-    /* Shadows: warm-tinted lift, never coloured glows */
-    --om-shadow-rgb: 10 8 5;
-    --om-shadow-sm: 0 1px 2px rgb(var(--om-shadow-rgb) / 0.35);
+    /* Elevation: near zero. Hairline borders carry structure; only floating layers lift. */
+    --om-shadow-k: 1;
+    --om-shadow-sm: 0 1px 0 rgb(var(--om-overlay) / calc(0.04 * var(--om-shadow-k)));
     --om-shadow-md:
-      0 2px 6px -1px rgb(var(--om-shadow-rgb) / 0.4),
-      0 8px 20px -6px rgb(var(--om-shadow-rgb) / 0.45);
+      0 1px 2px rgb(var(--om-overlay) / calc(0.05 * var(--om-shadow-k))),
+      0 4px 12px -6px rgb(var(--om-overlay) / calc(0.08 * var(--om-shadow-k)));
     --om-shadow-lg:
-      0 4px 12px -2px rgb(var(--om-shadow-rgb) / 0.45),
-      0 24px 48px -12px rgb(var(--om-shadow-rgb) / 0.55);
-    --om-shadow-sleeve:
-      inset 0 1px 0 rgb(255 244 222 / 0.04), 0 10px 24px -12px rgb(var(--om-shadow-rgb) / 0.7);
-
-    /* Radii */
-    --om-radius-xs: 2px;
-    --om-radius-sm: 4px;
-    --om-radius-sleeve: 6px;
-    --om-radius-md: 8px;
-    --om-radius-lg: 12px;
-    --om-radius-xl: 16px;
-
-    /* Motion */
-    --om-duration-instant: 80ms;
-    --om-duration-fast: 140ms;
-    --om-duration-base: 200ms;
-    --om-duration-slow: 320ms;
-    --om-duration-groove: 1800ms;
-    --om-ease-standard: cubic-bezier(0.2, 0, 0, 1);
-    --om-ease-enter: cubic-bezier(0, 0, 0.2, 1);
-    --om-ease-exit: cubic-bezier(0.4, 0, 1, 1);
-    --om-ease-tonearm: cubic-bezier(0.3, 1.3, 0.5, 1);
-
-    /* Grain intensity (0 disables the texture) */
-    --om-grain-opacity: 0.06;
+      0 2px 4px rgb(var(--om-overlay) / calc(0.04 * var(--om-shadow-k))),
+      0 16px 32px -16px rgb(var(--om-overlay) / calc(0.18 * var(--om-shadow-k)));
+    --om-shadow-sleeve: var(--om-shadow-sm);
+    --om-backdrop-alpha: 0.36;
 
     /* Font fallbacks: next/font sets the real variables on <html> */
-    --font-fraunces: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-    --font-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
-    --font-jetbrains-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-newsreader: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+    --font-instrument: 'Instrument Sans', system-ui, sans-serif;
+    --font-mono: 'Spline Sans Mono', ui-monospace, monospace;
+    /* Pre ADR-015 names, in case a page reads them directly */
+    --font-fraunces: var(--font-newsreader);
+    --font-jakarta: var(--font-instrument);
+    --font-jetbrains-mono: var(--font-mono);
+
+    accent-color: rgb(var(--om-accent));
   }
 
-  /* "Carta editoriale" light scheme — opt-in with <html data-theme="light"> */
-  [data-theme='light'] {
-    color-scheme: light;
-    --om-bg: 245 240 230;
-    --om-sunken: 234 227 212;
-    --om-surface: 237 230 216;
-    --om-elevated: 251 248 242;
-    --om-border: 217 207 189;
-    --om-border-strong: 138 127 110;
-    --om-text: 28 25 21;
-    --om-text-secondary: 79 72 62;
-    --om-muted: 106 98 85;
-    --om-accent: 154 71 22;
-    --om-accent-strong: 127 58 16;
-    --om-on-accent: 245 240 230;
-    --om-fresh: 42 111 72;
-    --om-mixed: 122 88 11;
-    --om-rotten: 166 55 37;
-    --om-live: 42 111 72;
-    --om-focus: 154 74 22;
-    --om-shadow-rgb: 60 45 25;
-    --om-grain-opacity: 0.08;
+  /* Dark needs a stronger shadow base to read at all on graphite */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --om-shadow-k: 3;
+      --om-backdrop-alpha: 0.6;
+    }
+  }
+  :root[data-theme='dark'] {
+    --om-shadow-k: 3;
+    --om-backdrop-alpha: 0.6;
   }
 
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    scrollbar-color: rgb(var(--om-border-strong)) rgb(var(--om-bg));
+    scrollbar-color: rgb(var(--om-border-strong)) transparent;
   }
 
   /* Prevent page scroll while a modal <dialog> is open */
@@ -111,31 +67,25 @@
   body {
     background-color: rgb(var(--om-bg));
     color: rgb(var(--om-text));
-    font-family: var(--font-jakarta);
+    font-family: var(--font-instrument);
+    line-height: 1.6;
     overflow-x: hidden;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Analog grain: a fixed SVG-noise layer above everything, never interactive */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 700;
-    pointer-events: none;
-    opacity: var(--om-grain-opacity);
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.95  0 0 0 0 0.85  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  }
-
   ::selection {
-    background-color: rgb(var(--om-accent));
-    color: rgb(var(--om-on-accent));
+    background-color: rgb(var(--om-accent) / 0.22);
+    color: rgb(var(--om-text));
   }
 
-  /* One focus language everywhere: a warm double ring that survives any surface */
+  ::placeholder {
+    color: rgb(var(--om-text-subtle));
+    opacity: 1;
+  }
+
+  /* One focus language everywhere: a 2px clay ring, offset so it never touches the fill */
   :focus-visible {
     outline: 2px solid rgb(var(--om-focus));
     outline-offset: 2px;
@@ -145,7 +95,7 @@
     text-wrap: balance;
   }
 
-  :where(p, blockquote, figcaption) {
+  :where(p, blockquote, figcaption, li) {
     text-wrap: pretty;
   }
 
@@ -154,8 +104,7 @@
   }
 
   dialog::backdrop {
-    background-color: rgb(var(--om-shadow-rgb) / 0.72);
-    backdrop-filter: blur(3px) saturate(0.8);
+    background-color: rgb(var(--om-overlay) / var(--om-backdrop-alpha));
   }
 
   input[type='search']::-webkit-search-cancel-button {
@@ -163,154 +112,129 @@
   }
 }
 
-/* WebKit fallback for the analog scrollbar (Safari has no scrollbar-color) */
+/* WebKit fallback for the scrollbar (older Safari has no scrollbar-color) */
 @supports not (scrollbar-color: auto) {
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: rgb(var(--om-bg));
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--om-border));
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--om-border-strong));
+    background: rgb(var(--om-border-strong) / 0.6);
+    border: 3px solid rgb(var(--om-bg));
+    border-radius: 9999px;
   }
 }
 
 @layer components {
-  /* Editorial headline: Fraunces at display optical size, softened, a touch "wonky" */
+  /* Editorial headline: Newsreader at its display optical size, light and quiet */
   .om-headline {
-    font-family: var(--font-fraunces);
+    font-family: var(--font-newsreader);
     font-optical-sizing: auto;
-    font-variation-settings:
-      'SOFT' 50,
-      'WONK' 1;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
+    font-weight: 450;
+    letter-spacing: -0.015em;
+    line-height: 1.12;
   }
 
   /* Italic deck / standfirst under a headline */
   .om-deck {
-    font-family: var(--font-fraunces);
+    font-family: var(--font-newsreader);
+    font-optical-sizing: auto;
     font-style: italic;
-    font-variation-settings: 'SOFT' 100;
     font-weight: 400;
-    color: rgb(var(--om-text-secondary));
+    line-height: 1.45;
+    color: rgb(var(--om-text-muted));
   }
 
-  /* Small-caps mono label, like a catalogue number on a record spine */
+  /* Small context label above a heading. Sentence case: never tracked-out caps. */
   .om-eyebrow {
-    font-family: var(--font-jetbrains-mono);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    line-height: 1rem;
-    text-transform: uppercase;
-    color: rgb(var(--om-muted));
+    font-family: var(--font-instrument);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.25rem;
+    color: rgb(var(--om-text-subtle));
   }
 
-  /* Magazine double rule (thick + hairline) to open a section */
+  /* Section divider: a single hairline */
   .om-rule {
     border: 0;
-    height: 5px;
-    border-top: 2px solid rgb(var(--om-text));
-    border-bottom: 1px solid rgb(var(--om-border-strong));
+    height: 0;
+    border-top: 1px solid rgb(var(--om-border));
   }
 
-  /* Review drop cap */
+  /* Review drop cap: serif, ink colour (the accent stays for actions) */
   .om-dropcap::first-letter {
     float: left;
-    font-family: var(--font-fraunces);
-    font-variation-settings:
-      'SOFT' 100,
-      'WONK' 1;
-    font-weight: 700;
-    font-size: 3.4em;
-    line-height: 0.85;
-    margin: 0.06em 0.08em 0 0;
-    color: rgb(var(--om-accent));
+    font-family: var(--font-newsreader);
+    font-weight: 500;
+    font-size: 3.2em;
+    line-height: 0.88;
+    margin: 0.06em 0.1em 0 0;
+    color: rgb(var(--om-text));
   }
 
-  /* Pull-quote with an amber hanging bar */
+  /* Pull-quote: serif italic with a thin clay rule */
   .om-pullquote {
-    font-family: var(--font-fraunces);
+    font-family: var(--font-newsreader);
+    font-optical-sizing: auto;
     font-style: italic;
-    font-variation-settings: 'SOFT' 100;
     font-size: 1.375rem;
-    line-height: 1.35;
-    border-left: 3px solid rgb(var(--om-accent));
-    padding-left: 1rem;
+    line-height: 1.45;
+    border-left: 2px solid rgb(var(--om-accent));
+    padding-left: 1.125rem;
   }
 
-  /* Record-sleeve surface: cardboard edge, ring-wear circle, slight paper lift */
+  /* Quiet card: stone surface, hairline edge, soft corner. (Kept name from the sleeve era.) */
   .om-sleeve {
     position: relative;
-    isolation: isolate;
     background-color: rgb(var(--om-surface));
     border: 1px solid rgb(var(--om-border));
     border-radius: var(--om-radius-sleeve);
-    box-shadow: var(--om-shadow-sleeve);
     overflow: hidden;
   }
 
-  .om-sleeve::before {
-    /* ring wear: the faint circle a record leaves on its sleeve over the years */
-    content: '';
-    position: absolute;
-    z-index: -1;
-    width: 140%;
-    aspect-ratio: 1;
-    right: -70%;
-    top: 50%;
-    translate: 0 -50%;
-    border-radius: 9999px;
-    border: 1px solid rgb(var(--om-text) / 0.045);
-    box-shadow: inset 0 0 0 18px rgb(var(--om-text) / 0.012);
-    pointer-events: none;
-  }
-
-  .om-sleeve::after {
-    /* open edge of the sleeve */
-    content: '';
-    position: absolute;
-    inset-block: 0;
-    right: 0;
-    width: 3px;
-    background: linear-gradient(to right, transparent, rgb(var(--om-shadow-rgb) / 0.25));
-    pointer-events: none;
-  }
-
-  /* Vinyl grooves: concentric rings, for empty states, placeholders, discs */
+  /* Record placeholder: faint concentric grooves, small clay label */
   .om-grooves {
     background-color: rgb(var(--om-sunken));
     background-image:
       radial-gradient(
         circle at center,
-        rgb(var(--om-accent)) 0 9%,
-        rgb(var(--om-sunken)) 9% 10.5%,
-        transparent 10.5%
+        rgb(var(--om-accent) / 0.85) 0 7%,
+        rgb(var(--om-sunken)) 7% 8.5%,
+        transparent 8.5%
       ),
       repeating-radial-gradient(
         circle at center,
-        rgb(var(--om-text) / 0.05) 0 1px,
-        transparent 1px 4px
+        rgb(var(--om-text) / 0.045) 0 1px,
+        transparent 1px 5px
       );
     border-radius: 9999px;
   }
 
-  /* Paper texture for light surfaces and editorial blocks */
+  /* Kept for compatibility; the paper is the background itself now */
   .om-paper {
-    background-image: linear-gradient(180deg, rgb(var(--om-text) / 0.015), transparent 40%);
+    background-image: none;
   }
 
   .om-tabular {
-    font-family: var(--font-jetbrains-mono);
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Inline text link: clay, underline on hover, offset so descenders breathe */
+  .om-link {
+    color: rgb(var(--om-accent));
+    text-decoration-line: underline;
+    text-decoration-color: rgb(var(--om-accent) / 0.35);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    transition: text-decoration-color var(--om-duration-fast) var(--om-ease-out);
+  }
+  .om-link:hover {
+    text-decoration-color: currentColor;
   }
 }
 
@@ -319,8 +243,61 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* ---- Motion utilities (ADR-015 §motion). All of them stand still under reduced motion. ---- */
+
+  .om-stagger > :nth-child(2) {
+    --om-i: 1;
+  }
+  .om-stagger > :nth-child(3) {
+    --om-i: 2;
+  }
+  .om-stagger > :nth-child(4) {
+    --om-i: 3;
+  }
+  .om-stagger > :nth-child(5) {
+    --om-i: 4;
+  }
+  .om-stagger > :nth-child(6) {
+    --om-i: 5;
+  }
+  .om-stagger > :nth-child(7) {
+    --om-i: 6;
+  }
+  .om-stagger > :nth-child(8) {
+    --om-i: 7;
+  }
+  .om-stagger > :nth-child(n + 9) {
+    --om-i: 8;
+  }
+
   .om-spin-record {
     animation: om-spin var(--om-duration-groove) linear infinite;
+  }
+}
+
+/*
+ * Motion utilities (ADR-015). They only move when the user has not asked for less motion:
+ *   .om-enter    fade + 6px rise, 250ms ease-out (one orchestrated entrance per view)
+ *   .om-fade     fade only, 200ms
+ *   .om-stagger  children enter 40ms apart, capped at 8 steps; override with style={{'--om-i': n}}
+ *   .om-press    2% sink while pressed
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .om-enter,
+  .om-stagger > * {
+    animation: om-fade-up var(--om-duration-slow) var(--om-ease-out) both;
+  }
+  .om-stagger > * {
+    animation-delay: calc(min(var(--om-i, 0), 8) * var(--om-stagger));
+  }
+  .om-fade {
+    animation: om-fade-in var(--om-duration-base) var(--om-ease-out) both;
+  }
+  .om-press {
+    transition: scale var(--om-duration-instant) var(--om-ease-out);
+  }
+  .om-press:active:not(:disabled) {
+    scale: 0.98;
   }
 }
 
@@ -339,68 +316,87 @@
   }
 }
 
-@keyframes om-toast-in {
+@keyframes om-pulse-soft {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes om-fade-in {
   from {
     opacity: 0;
-    translate: 0 12px;
   }
-  to {
-    opacity: 1;
-    translate: 0 0;
+}
+
+@keyframes om-fade-up {
+  from {
+    opacity: 0;
+    translate: 0 var(--om-distance-md);
   }
 }
 
 @keyframes om-dialog-in {
   from {
     opacity: 0;
-    translate: 0 8px;
-    scale: 0.98;
-  }
-  to {
-    opacity: 1;
-    translate: 0 0;
-    scale: 1;
+    translate: 0 var(--om-distance-lg);
   }
 }
 
-/* Respect users who ask for less motion: keep state changes, drop movement */
+/* Optional View Transitions (if a page opts in): a calm cross-fade at the house tempo */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--om-duration-base);
+  animation-timing-function: var(--om-ease-out);
+}
+
+/*
+ * Reduced motion. Not a global `animation-duration: 0.01ms` (that makes some animations more
+ * jarring): our own utilities opt in with `prefers-reduced-motion: no-preference` above. This
+ * net catches page code: no movement-based transitions, loops play once, no view transitions.
+ */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    transition-property:
+      color, background-color, border-color, outline-color, text-decoration-color, fill, stroke,
+      opacity !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  }
+  .om-spin-record,
+  .animate-shimmer,
+  .animate-pulse-soft,
+  .animate-spin-record,
+  .animate-fade-up,
+  .animate-toast-in,
+  .animate-dialog-in {
+    animation: none !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
 
 @media (prefers-contrast: more) {
-  :root {
+  /* :root x3 beats the theme selectors generated by the Tailwind plugin */
+  :root:root:root {
     --om-border: var(--om-border-strong);
-    --om-muted: var(--om-text-secondary);
-    --om-grain-opacity: 0;
+    --om-text-subtle: var(--om-text-muted);
   }
 }
 
 /* Windows High Contrast: drop decoration, keep boundaries */
 @media (forced-colors: active) {
-  body::after,
-  .om-sleeve::before,
-  .om-sleeve::after {
-    display: none;
-  }
   .om-sleeve,
   .om-grooves {
     border: 1px solid CanvasText;
   }
   :focus-visible {
     outline-color: Highlight;
-  }
-}
-
-@media print {
-  body::after {
-    display: none;
   }
 }

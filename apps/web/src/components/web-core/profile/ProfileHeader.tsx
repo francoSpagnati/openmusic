@@ -29,40 +29,27 @@ export function ProfileHeader({
   const role = user.role === 'USER' ? null : ROLE_BADGE[user.role];
 
   return (
-    <header className="relative overflow-hidden border-b border-line px-4 pb-6 pt-8 sm:px-6">
-      {/* Decorative record peeking out of the masthead. */}
-      <span
-        aria-hidden="true"
-        className="om-grooves pointer-events-none absolute -right-24 -top-24 hidden h-72 w-72 opacity-60 sm:block"
-      />
-
-      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <header className="om-enter border-b border-line px-4 pb-8 pt-10 sm:px-6">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 items-end gap-4">
-          <Avatar
-            name={name}
-            src={user.avatarUrl}
-            size="xl"
-            decorative
-            className="ring-4 ring-canvas"
-          />
+          <Avatar name={name} src={user.avatarUrl} size="xl" decorative />
           <div className="min-w-0">
-            <p className="om-eyebrow">
-              {social.isMe ? 'Il tuo profilo' : 'Profilo'} · dal {monthYear(user.createdAt)}
-            </p>
-            <h1 className="om-headline mt-1 break-words text-display-sm text-ink">{name}</h1>
-            <p className="font-mono text-sm text-ink-secondary">@{user.username}</p>
+            <h1 className="om-headline break-words text-display-sm text-fg">{name}</h1>
+            <p className="mt-1 text-sm text-fg-muted">@{user.username}</p>
+            <p className="text-sm text-fg-subtle">Su OpenMusic da {monthYear(user.createdAt)}</p>
           </div>
         </div>
 
         <div className="flex shrink-0 gap-2">
           {social.isMe ? (
-            <Link href="/settings" className={buttonClasses({ variant: 'outline', size: 'md' })}>
-              <PencilSimple aria-hidden="true" weight="bold" />
+            <Link href="/settings" className={buttonClasses({ variant: 'secondary', size: 'md' })}>
+              <PencilSimple aria-hidden="true" />
               Modifica profilo
             </Link>
           ) : (
             <FollowButton
               size="md"
+              emphasis="primary"
               userId={user.id}
               username={user.username}
               isFollowing={social.isFollowedByMe}
@@ -73,27 +60,25 @@ export function ProfileHeader({
       </div>
 
       {(role || user.bio) && (
-        <div className="relative mt-5 max-w-prose space-y-3">
+        <div className="mt-6 max-w-prose space-y-3">
           {role && (
             <Badge tone={role.tone} icon={role.icon}>
               {role.label}
               {user.role === 'CRITIC' && user.criticOutlet ? ` · ${user.criticOutlet}` : ''}
             </Badge>
           )}
-          {user.bio && (
-            <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink">{user.bio}</p>
-          )}
+          {user.bio && <p className="whitespace-pre-line text-base text-fg">{user.bio}</p>}
         </div>
       )}
 
-      <dl className="relative mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+      <dl className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <div>
           <dt className="sr-only">Post</dt>
           <dd className="flex items-baseline gap-1.5">
-            <span className="font-mono font-semibold text-ink tabular-nums">
+            <span className="font-mono font-medium text-fg tabular-nums">
               {compactNumber(social.postsCount)}
             </span>
-            <span aria-hidden="true" className="text-ink-secondary">
+            <span aria-hidden="true" className="text-fg-muted">
               post
             </span>
           </dd>
@@ -106,10 +91,10 @@ export function ProfileHeader({
               onClick={() => setList('followers')}
               className="flex items-baseline gap-1.5 rounded-xs hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
-              <span className="font-mono font-semibold text-ink tabular-nums">
+              <span className="font-mono font-medium text-fg tabular-nums">
                 {compactNumber(social.followersCount)}
               </span>
-              <span className="text-ink-secondary">follower</span>
+              <span className="text-fg-muted">follower</span>
             </button>
           </dd>
         </div>
@@ -121,10 +106,10 @@ export function ProfileHeader({
               onClick={() => setList('following')}
               className="flex items-baseline gap-1.5 rounded-xs hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
-              <span className="font-mono font-semibold text-ink tabular-nums">
+              <span className="font-mono font-medium text-fg tabular-nums">
                 {compactNumber(social.followingCount)}
               </span>
-              <span className="text-ink-secondary">seguiti</span>
+              <span className="text-fg-muted">seguiti</span>
             </button>
           </dd>
         </div>

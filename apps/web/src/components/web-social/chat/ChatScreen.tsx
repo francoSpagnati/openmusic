@@ -62,7 +62,7 @@ export function ChatScreen() {
       <Sidebar />
       <div
         className={cn(
-          'sticky top-[3.75rem] flex h-[calc(100dvh-3.75rem)] min-w-0 max-w-5xl flex-1 border-line lg:top-0 lg:h-dvh lg:border-r',
+          'sticky top-[3.75rem] flex h-[calc(100dvh-3.75rem)] min-w-0 flex-1 border-line lg:top-0 lg:h-dvh lg:border-r',
           // Leave room for the fixed preview player so it never covers the composer.
           currentTrack && 'pb-24'
         )}
@@ -76,26 +76,23 @@ export function ChatScreen() {
             showConversation ? 'hidden' : 'flex'
           )}
         >
-          <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
-            <div>
-              <p className="om-eyebrow">Passaparola</p>
-              <h2 id="inbox-title" className="om-headline text-2xl text-ink">
-                Messaggi
-              </h2>
-            </div>
+          <div className="flex items-center justify-between gap-2 px-5 pb-1 pt-6">
+            <h2 id="inbox-title" className="om-headline text-2xl text-fg">
+              Messaggi
+            </h2>
             <IconButton
               label="Nuova conversazione"
               icon={<NotePencil />}
-              variant="outline"
+              variant="ghost"
               disabled={!ready}
               onClick={() => setComposing(true)}
             />
           </div>
           {ready && <LiveFriendsTicker variant="compact" />}
-          <div className="min-h-0 flex-1 overflow-y-auto border-t border-line">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {!ready || inbox.data === null ? (
               inbox.status === 'error' ? (
-                <div className="p-4">
+                <div className="px-5 py-4">
                   <ErrorState
                     variant="inline"
                     title="I messaggi non si sono caricati"
@@ -107,7 +104,7 @@ export function ChatScreen() {
                 <ConversationListSkeleton />
               )
             ) : inbox.data.length === 0 ? (
-              <div className="p-4">
+              <div className="px-5 py-4">
                 <EmptyState
                   size="compact"
                   title="Ancora nessuna conversazione"
@@ -238,7 +235,7 @@ function ConversationArea({
     return (
       <div aria-busy="true" className="flex flex-1 flex-col">
         <span className="sr-only">Caricamento della conversazione…</span>
-        <div className="flex items-center gap-3 border-b border-line p-4">
+        <div className="flex items-center gap-3 border-b border-line px-5 py-3">
           <Skeleton shape="circle" className="h-10 w-10" />
           <Skeleton shape="text" lines={2} className="max-w-[10rem]" />
         </div>

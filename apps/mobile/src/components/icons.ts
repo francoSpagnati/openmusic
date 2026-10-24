@@ -21,3 +21,6 @@ export { ThumbsUp } from 'phosphor-react-native/src/icons/ThumbsUp';
 export { User } from 'phosphor-react-native/src/icons/User';
 export { UsersThree } from 'phosphor-react-native/src/icons/UsersThree';
 export { WarningCircle } from 'phosphor-react-native/src/icons/WarningCircle';
+export { DeviceMobile } from 'phosphor-react-native/src/icons/DeviceMobile';
+export { Moon } from 'phosphor-react-native/src/icons/Moon';
+export { Sun } from 'phosphor-react-native/src/icons/Sun';

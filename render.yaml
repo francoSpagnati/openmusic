@@ -1,0 +1,128 @@
+# OpenMusic on Render (free plan) - Blueprint, see docs/07_DEPLOY.md and ADR-014.
+#
+#   browser --https--> openmusic-web  (Next.js; /api/* proxied server-side to the API)
+#   browser --wss----> openmusic-api  (Socket.io only, short-lived token from /api/auth/socket-token)
+#   Expo Go --https--> openmusic-api  (Bearer token, direct)
+#   openmusic-api ---> openmusic-db (Postgres) + openmusic-kv (Key Value, Redis-compatible)
+#
+# Spec: https://render.com/docs/blueprint-spec - schema: https://render.com/schema/render.yaml.json
+# Free web services cannot RECEIVE private-network traffic, so the web app reaches the API on its
+# public URL (RENDER_EXTERNAL_URL); free web services do not run preDeployCommand, so migrations
+# run in the API start command. Every value marked `sync: false` is optional: leave it empty.
+
+databases:
+  - name: openmusic-db
+    plan: free
+    region: frankfurt
+    databaseName: openmusic
+    user: openmusic
+    postgresMajorVersion: '16'
+    # No external connections: only Render services in this workspace/region (internal URL).
+    ipAllowList: []
+
+services:
+  - type: keyvalue
+    name: openmusic-kv
+    plan: free
+    region: frankfurt
+    # Caches, presence and leases carry a TTL and may be evicted; the poller schedule has none.
+    maxmemoryPolicy: volatile-lru
+    # Internal connections only.
+    ipAllowList: []
+
+  - type: web
+    name: openmusic-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    autoDeployTrigger: commit
+    # --include=dev: with NODE_ENV=production `npm ci` would skip devDependencies (one lockfile
+    # for the whole monorepo; the web build needs TypeScript/Tailwind). Node version: .nvmrc.
+    buildCommand: npm ci --include=dev && npm run db:generate
+    # = `prisma migrate deploy` + `node --import tsx apps/api/src/server.ts` (binds $PORT on 0.0.0.0).
+    startCommand: npm run start:api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: openmusic-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: openmusic-kv
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      # Shared with openmusic-web: the proxy proves itself and forwards the browser's IP.
+      - key: PROXY_SECRET
+        generateValue: true
+      # Browsers only reach the API through the web app's proxy (and Socket.io): OAuth callbacks
+      # redirect there and CORS allows only that origin.
+      - key: WEB_APP_URL
+        fromService:
+          type: web
+          name: openmusic-web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: CORS_ORIGIN
+        fromService:
+          type: web
+          name: openmusic-web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: COOKIE_SECURE
+        value: 'true'
+      # Render's proxy terminates TLS and sets X-Forwarded-For.
+      - key: TRUST_PROXY
+        value: 'true'
+      - key: LOG_LEVEL
+        value: info
+      - key: CATALOG_EXTERNAL_ENABLED
+        value: 'true'
+      - key: MUSICBRAINZ_CONTACT
+        value: https://github.com/francoSpagnati/openmusic
+      - key: NOW_PLAYING_POLLER_ENABLED
+        value: 'true'
+      # First start: import the curated real albums once (SystemMarker table).
+      - key: SEED_ON_START
+        value: 'true'
+      # Optional: a long private password creates the demo community (francospagnati@openmusic.test,
+      # admin@openmusic.test, ...) with it. Empty = no demo accounts.
+      - key: DEMO_PASSWORD
+        sync: false
+      # Optional linked accounts. Empty = the app works without them.
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: LASTFM_API_KEY
+        sync: false
+      - key: LASTFM_SHARED_SECRET
+        sync: false
+
+  - type: web
+    name: openmusic-web
+    runtime: node
+    plan: free
+    region: frankfurt
+    autoDeployTrigger: commit
+    buildCommand: npm ci --include=dev && npm --workspace=@openmusic/web run build
+    startCommand: npm run start:web -- -H 0.0.0.0 -p $PORT
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: '1'
+      # Server-only: target of the /api/* proxy (read at runtime, never sent to the browser).
+      - key: API_ORIGIN
+        fromService:
+          type: web
+          name: openmusic-api
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: PROXY_SECRET
+        fromService:
+          type: web
+          name: openmusic-api
+          envVarKey: PROXY_SECRET

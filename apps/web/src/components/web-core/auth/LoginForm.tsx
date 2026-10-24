@@ -99,17 +99,13 @@ export function LoginForm({
         fullWidth
         loading={submitting}
         loadingLabel="Accesso in corso…"
-        leadingIcon={<SignIn aria-hidden="true" weight="bold" />}
+        leadingIcon={<SignIn aria-hidden="true" />}
       >
         Accedi
       </Button>
-      <p className="text-center text-sm text-ink-secondary">
+      <p className="text-center text-sm text-fg-muted">
         Prima volta qui?{' '}
-        <button
-          type="button"
-          onClick={onSwitchToRegister}
-          className="font-semibold text-accent underline-offset-2 hover:underline"
-        >
+        <button type="button" onClick={onSwitchToRegister} className="om-link font-medium">
           Crea un account
         </button>
       </p>

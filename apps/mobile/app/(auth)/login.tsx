@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 import { useAuth } from '../../src/lib/auth';
 import { isApiError } from '../../src/lib/api';
-import { Button, ErrorState, Field, Screen, Text, describeError } from '../../src/components/ui';
+import {
+  Button,
+  Enter,
+  ErrorState,
+  Field,
+  Screen,
+  Text,
+  describeError,
+} from '../../src/components/ui';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -35,15 +43,15 @@ export default function LoginScreen() {
 
   return (
     <Screen edges={['top', 'bottom']}>
-      <View style={styles.hero}>
-        <Text variant="eyebrow">OpenMusic · Lato A</Text>
+      <Enter style={styles.hero}>
+        <Text variant="eyebrow">OpenMusic</Text>
         <Text variant="display" accessibilityRole="header">
           Bentornato
         </Text>
         <Text variant="deck" tone="secondary">
           Accedi per vedere cosa gira sui piatti dei tuoi amici.
         </Text>
-      </View>
+      </Enter>
       {formError ? (
         <ErrorState variant="inline" title="Accesso non riuscito" description={formError} />
       ) : null}
@@ -80,6 +88,6 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { gap: 8, marginTop: 32, marginBottom: 8 },
+  hero: { gap: 12, marginTop: 48, marginBottom: 8 },
   link: { alignSelf: 'center', paddingVertical: 12 },
 });

@@ -1,202 +1,378 @@
-# 05 · Design System — "Warm Editorial Vinyl"
+# 05 · Design System — "Carta e argilla"
 
-> Status: **definitive** (ADR-008). Older colour and font values that appeared in previous
-> versions of the docs are superseded. UX principles and Nielsen heuristics live in
-> `02_DESIGN_AND_NIELSEN.md`.
-> Source of truth for tokens: `packages/shared/src/theme.ts` (`THEME`).
-> Web mirror: `apps/web/src/app/globals.css` (CSS variables) + `apps/web/tailwind.config.ts`.
-> Primitives: `apps/web/src/components/ui` (import from `@/components/ui` or a relative path).
-
----
-
-## 1. Direction
-
-OpenMusic should feel like **an independent record shop at closing time that also prints a
-music magazine**. You flip through sleeves, read a review with a drop cap, and the person
-next to you is playing something good.
-
-Three ideas carry the identity:
-
-1. **Paper and cardboard, not glass.** Surfaces are warm charcoal like a record-shop
-   counter at night (dark) or uncoated magazine paper (light). A fine analog grain sits over
-   everything. Borders are thin and matte. There are no coloured glows.
-2. **Editorial hierarchy.** Headlines use an expressive variable serif (Fraunces). Metadata
-   reads like the catalogue number on a record spine (mono, uppercase, tracked). Reviews get
-   drop caps and pull-quotes.
-3. **One warm accent.** Analog amber is the only brand colour. Green and red appear only to
-   carry meaning (fresh, rotten, live), and always next to an icon or text.
-
-### Signature touches (use them sparingly)
-
-| Touch | Class / primitive | Where |
-| --- | --- | --- |
-| Analog grain overlay | `body::after` (global, automatic) | Everywhere; set `--om-grain-opacity: 0` to disable locally |
-| Record-sleeve card (ring-wear circle, open edge, cardboard lift) | `.om-sleeve` / `<Card variant="sleeve">` | Album/release cards, reviews, featured blocks |
-| Vinyl grooves disc | `.om-grooves` | Empty states, cover placeholders, "now playing" discs |
-| Spinning record | `.om-spin-record`, `<Spinner>`, `<Avatar status="live">` | Loading, friends listening now |
-| Editorial headline | `.om-headline` | Page titles, album titles, dialog titles |
-| Italic deck (standfirst) | `.om-deck` | Line under a headline |
-| Catalogue eyebrow | `.om-eyebrow` | Section labels, "LATO A · 1997", genres |
-| Magazine double rule | `<hr class="om-rule">` | Section openers in long pages |
-| Drop cap | `.om-dropcap` | First paragraph of a long review |
-| Pull-quote | `.om-pullquote` | Critic quote highlights |
+> Stato: **definitivo** (ADR-015, che sostituisce la parte visiva di ADR-008). I principi UX e
+> le euristiche di Nielsen sono in `02_DESIGN_AND_NIELSEN.md`.
+> Fonte unica dei token: `packages/shared/src/theme.ts` (`THEME.light`, `THEME.dark`).
+> Web: le variabili CSS `--om-*` sono **generate** da `THEME` dal plugin `themeTokens` in
+> `apps/web/tailwind.config.ts`; `apps/web/src/app/globals.css` contiene solo ombre, stili di
+> base, classi editoriali e utility di movimento.
+> Primitive: `apps/web/src/components/ui` (import da `@/components/ui`).
+> Tema: `apps/web/src/lib/theme` (`ThemeProvider`, `useTheme`, script anti-flash).
+> Contrasti: `npx tsx scripts/check-contrast.ts` (esce con errore se una coppia scende sotto AA).
 
 ---
 
-## 2. Typography (decision)
+## 1. Direzione
 
-| Role | Font | Tailwind | Notes |
-| --- | --- | --- | --- |
-| Editorial / display | **Fraunces** (variable: `opsz`, `SOFT`, `WONK`, italic) | `font-editorial`, `.om-headline` | Headlines, album titles, review quotes, dialog titles |
-| UI / body | **Plus Jakarta Sans** | `font-sans` (default) | Controls, body copy, navigation |
-| Numbers | **JetBrains Mono** | `font-mono` + `tabular-nums`, `.om-tabular` | Durations, scores, counters, timestamps, catalogue labels |
+OpenMusic deve sembrare **una rivista musicale stampata su carta avorio, letta con calma**.
+Pochi elementi, molto spazio bianco, tipografia che fa il lavoro che prima facevano texture e
+ombre. Il colore è quasi tutto inchiostro e pietra; l'argilla (terracotta) compare solo dove
+l'utente deve agire o capire dove si trova.
 
-Loaded with `next/font/google` in `apps/web/src/app/layout.tsx` as CSS variables
-`--font-fraunces`, `--font-jakarta`, `--font-jetbrains-mono`.
+Quattro idee:
 
-**Why Fraunces + Plus Jakarta instead of Syne + Outfit**
+1. **Carta, non vetro.** Sfondo avorio (chiaro) o grafite calda (scuro). Le superfici si
+   distinguono per un tono di pietra e un filo (bordo da 1 px), non per ombre.
+2. **Gerarchia editoriale.** Un serif da giornale (Newsreader) per titoli, titoli di album e
+   citazioni; un grottesco tranquillo (Instrument Sans) per l'interfaccia; un mono a cifre
+   tabellari (Spline Sans Mono) per ogni numero.
+3. **Un solo accento, usato poco.** Argilla per azione primaria, focus, voce di navigazione
+   attiva e link. Verde e rosso solo per il significato (fresh, rotten), sempre con icona o testo.
+4. **Movimento che risponde.** 150–250 ms, ease-out, traslazioni di 4–8 px. Niente si muove
+   da solo se non per indicare un caricamento. Con `prefers-reduced-motion` tutto sta fermo.
 
-- *Syne* is a wide display grotesque that has become a stock "creative agency / Web3 landing"
-  face. It reads as a trend, not as a music magazine, and its extended widths waste space in
-  album titles, which are often long ("Weird Fishes/Arpeggi").
-- *Outfit* is a clean geometric sans with little character: it is part of the generic look
-  the anti-AI-slop rules forbid.
-- *Fraunces* is an "Old Style soft" serif inspired by 1970s display type (Windsor, Cooper),
-  the era of the LP sleeve. Its variable axes let one family behave like several: high
-  `opsz` and `SOFT 50` + `WONK 1` give characterful headlines, while low optical sizes stay
-  readable in review body text. The italic is warm and suits pull-quotes and decks.
-- *Plus Jakarta Sans* has slightly humanist, open shapes that stay legible at 12–14 px in
-  dense UI, and it pairs with Fraunces without competing.
-- Both were already named in `THEME.typography` and in the docs, so web and mobile now agree.
+### Ispirazione e limiti (vincolanti)
 
-**Rules**
+Il proprietario ha chiesto un'atmosfera **ispirata** all'interfaccia di Claude / Anthropic
+(claude.ai): calda, calma, minimale, editoriale. L'ispirazione riguarda solo il _linguaggio
+visivo generale_ (carta calda, inchiostro quasi nero, accento terracotta parco, serif per i
+contenuti e sans per l'interfaccia, molto spazio). **Non** prendiamo nulla di proprietario:
 
-- At most one Fraunces headline per visual group. Do not set long UI labels in Fraunces.
-- Every number that can change or be compared uses `font-mono tabular-nums` so columns do
-  not jitter.
-- `.om-eyebrow` is uppercase mono at 11 px/0.12em: use it for labels, never for sentences.
-- Headings get `text-wrap: balance` and paragraphs get `text-wrap: pretty` automatically.
-
-### Type scale (`THEME.typography.scale`, px, ratio ~1.25)
-
-| Token | Size / line | Tailwind |
-| --- | --- | --- |
-| xs | 12 / 16 | `text-xs` |
-| sm | 14 / 20 | `text-sm` |
-| base | 16 / 24 | `text-base` |
-| lg | 18 / 28 | `text-lg` |
-| xl | 20 / 28 | `text-xl` |
-| 2xl | 25 / 32 | `text-2xl` |
-| 3xl | 31 / 36 | `text-3xl` |
-| 4xl | 39 / 44 | `text-display-sm` (fluid 28→39) |
-| 5xl | 49 / 52 | `text-display-md` (fluid 36→49) |
-| 6xl | 61 / 62 | `text-display-lg` (fluid 44→61) |
-
-Tailwind keeps its default `text-*` steps so existing pages do not shift; the editorial
-display sizes are fluid `clamp()` values.
+- nessun logo, nome, marchio, simbolo o illustrazione di Anthropic o Claude;
+- nessun font proprietario (Styrene, Tiempos, Copernicus o simili): solo Google Fonts con
+  licenza SIL OFL;
+- nessun valore di colore copiato: la palette è nostra, calcolata per i contrasti AA (l'argilla
+  chiara `#9C4423` è più scura e bruna di qualunque accento di riferimento);
+- OpenMusic mantiene nome, marchio (`BrandMark`) e voce. Il testo dell'interfaccia non cita mai
+  Claude o Anthropic.
 
 ---
 
-## 3. Colour tokens
+## 2. Temi
 
-Every value is checked against WCAG 2.2: all text roles reach **≥ 4.5:1** on `bg`,
-`surface` and `elevated`; `borderStrong` reaches **≥ 3:1** for component boundaries.
+Due temi, stessi ruoli semantici:
 
-| Role (`THEME.scheme.*`) | CSS var | Tailwind | Dark | Light | Use |
-| --- | --- | --- | --- | --- | --- |
-| bg | `--om-bg` | `bg-canvas` | `#14120F` | `#F5F0E6` | Page background (never `#000` or `#FFF`) |
-| sunken | `--om-sunken` | `bg-sunken` | `#100E0C` | `#EAE3D4` | Inputs, wells, player groove |
-| surface | `--om-surface` | `bg-surface` | `#1D1A16` | `#EDE6D8` | Cards, sidebars |
-| elevated | `--om-elevated` | `bg-elevated` | `#27231E` | `#FBF8F2` | Dialogs, popovers, toasts, hover |
-| border | `--om-border` | `border-line` | `#3A342C` | `#D9CFBD` | Hairlines and dividers (decorative) |
-| borderStrong | `--om-border-strong` | `border-line-strong` | `#7D7262` | `#8A7F6E` | Input and outline-button boundaries |
-| text | `--om-text` | `text-ink` | `#F2EBDD` | `#1C1915` | Primary text (15.8:1 / 15.4:1) |
-| textSecondary | `--om-text-secondary` | `text-ink-secondary` | `#B8AE9C` | `#4F483E` | Metadata |
-| muted | `--om-muted` | `text-ink-muted` | `#968C7C` | `#6A6255` | Least emphasis, still AA |
-| accent | `--om-accent` | `bg-accent` / `text-accent` | `#E58A4A` | `#9A4716` | Primary action, active state, stars |
-| accentStrong | `--om-accent-strong` | `bg-accent-strong` | `#F09C5F` | `#7F3A10` | Hover/pressed |
-| onAccent | `--om-on-accent` | `text-on-accent` | `#14120F` | `#F5F0E6` | Text on an accent fill (7.2:1 / 5.6:1) |
-| fresh | `--om-fresh` | `text-fresh` | `#5DB585` | `#2A6F48` | Score ≥ 70% |
-| mixed | `--om-mixed` | `text-mixed` | `#D9A63E` | `#7A580B` | Score 45–69% (optional third state) |
-| rotten | `--om-rotten` | `text-rotten` | `#E07360` | `#A63725` | Score < 70%, errors, destructive |
-| live | `--om-live` | `bg-live` | `#5DB585` | `#2A6F48` | "Listening now" dot |
-| focus | `--om-focus` | `outline-focus` | `#F4C27A` | `#9A4A16` | Focus ring |
+| Tema   | Carattere                                                                      |
+| ------ | ------------------------------------------------------------------------------ |
+| Chiaro | Carta avorio, inchiostro quasi nero caldo, pietra morbida per le card          |
+| Scuro  | Grafite calda (né nero puro né grigio-blu), argilla schiarita per il contrasto |
 
-- The CSS variables hold **RGB channels** (`--om-bg: 20 18 15`) so Tailwind opacity
-  modifiers work: `bg-accent/10`, `border-fresh/40`.
-- **Dark is the default.** The light "carta editoriale" scheme is opt-in with
-  `<html data-theme="light">`, because the current pages were written dark-first.
-- Legacy Tailwind names (`om-bg`, `om-card`, `om-interactive`, `om-text`, `om-secondary`,
-  `om-muted`, `om-amber`, `om-fresh`, `om-rotten`, `om-border`) point at the same variables,
-  so existing pages pick up the new palette without changes. Use the semantic names in new code.
-- Legacy `THEME.colors.*` keys (used by mobile) are kept and now derive from
-  `THEME.scheme.dark`.
-- `prefers-contrast: more` promotes `border` to `borderStrong`, `muted` to `textSecondary`
-  and removes the grain. `forced-colors: active` drops decoration and keeps real borders.
+**Come si sceglie il tema**
 
-**Ambient album tint** (from the earlier ADR): when a page tints a surface with a cover's
-dominant colour, clamp it to HSL L 18–25 % and S ≤ 45 % and keep text on `text`. Never tint
-text or the accent.
+- Senza scelta dell'utente il sito segue `prefers-color-scheme` (anche con JS disattivato).
+- La scelta (`light` / `dark`) è salvata in `localStorage["om-theme"]` (in `try/catch`) e
+  messa su `<html data-theme="…">`. "Sistema" = nessun valore salvato, nessun attributo.
+- Uno script inline nel `<head>` (`THEME_BOOTSTRAP_SCRIPT`) applica la scelta **prima del primo
+  paint**: niente flash del tema sbagliato. `<html>` ha `suppressHydrationWarning` per questo.
+- `ThemeProvider` (montato nel root layout) tiene React allineato: segue i cambi del sistema,
+  degli altri tab (`storage`) e riconcilia dopo l'idratazione. Il cambio tema usa una View
+  Transition (dissolvenza 200 ms) dove esiste, mai con movimento ridotto.
+- `color-scheme` è sempre impostato su `:root`, quindi controlli nativi e scrollbar seguono il tema.
+- Selettori generati: `:root` (chiaro, `color-scheme: light dark`), `@media
+(prefers-color-scheme: dark) :root:not([data-theme="light"])` (scuro di sistema),
+  `:root[data-theme="dark"]`, `:root[data-theme="light"]`.
+- La variante Tailwind `dark:` segue la stessa regola (scelta esplicita, poi sistema).
+
+```tsx
+import { useTheme } from '@/lib/theme';
+const { preference, resolved, system, setPreference } = useTheme();
+// preference: 'light' | 'dark' | 'system'; resolved/system: 'light' | 'dark'
+```
 
 ---
 
-## 4. Other tokens
+## 3. Tipografia
 
-| Group | Tokens | Web |
-| --- | --- | --- |
-| Spacing | 4 px grid: `THEME.space` 0…24 (0–96 px) | Tailwind default spacing (same 4 px grid) |
-| Radii | `xs 2`, `sm 4`, `sleeve 6`, `md 8`, `lg 12`, `xl 16`, `pill` | `rounded-xs`, `rounded-sleeve`, default `rounded-*` |
-| Shadow | `sm`, `md`, `lg`, `sleeve` (warm-tinted lift) | `shadow-om-sm/md/lg`, `shadow-sleeve`; legacy `shadow-analog`/`shadow-glow` now map to `om-md` |
-| Duration | `instant 80`, `fast 140`, `base 200`, `slow 320`, `groove 1800` ms | `duration-fast`, `duration-base`… |
-| Easing | `standard`, `enter`, `exit`, `tonearm` (gentle overshoot) | `ease-standard`, `ease-tonearm`… |
-| Spring (mobile) | `THEME.spring.snappy`, `gentle` | n/a |
-| z-index | `base 0`, `raised 10`, `sticky 100`, `playerBar 200`, `overlay 300`, `dialog 400`, `toast 500`, `tooltip 600` (grain 700, non-interactive) | `z-sticky`, `z-playerBar`, `z-toast`… |
-| Animations | `spin-record`, `shimmer`, `toast-in`, `dialog-in` | `animate-*` |
+| Ruolo                | Font                                                            | Tailwind / classe                                             | Note                                                              |
+| -------------------- | --------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Editoriale / display | **Newsreader** (variabile `opsz` 6–72, `wght` 200–800, corsivo) | `font-editorial`, `.om-headline`, `.om-deck`, `.om-pullquote` | Titoli, titoli di album, citazioni dei critici, titoli dei dialog |
+| UI / testo           | **Instrument Sans** (variabile `wght` 400–700, `wdth` 75–100)   | `font-sans` (default)                                         | Controlli, navigazione, testo corrente                            |
+| Numeri               | **Spline Sans Mono** (variabile `wght` 300–700)                 | `font-mono tabular-nums`, `.om-tabular`                       | Durate, punteggi, contatori, date, numeri di traccia              |
 
-**Motion rules:** UI feedback takes 140–200 ms with `ease-standard`. Only the record spin
-loops. `prefers-reduced-motion: reduce` turns all animations and transitions into
-near-instant changes globally, so state still changes but nothing moves.
+Caricati con `next/font/google` in `apps/web/src/app/layout.tsx` come variabili
+`--font-newsreader`, `--font-instrument`, `--font-mono` (i vecchi nomi `--font-fraunces`,
+`--font-jakarta`, `--font-jetbrains-mono` restano come alias in `globals.css`).
+
+**Perché questi tre**
+
+- **Newsreader** (Production Type, OFL) è disegnato per la lettura su schermo di testate
+  giornalistiche: ha l'aria del quotidiano letterario che cerchiamo, senza la "stravaganza
+  anni '70" di Fraunces (`WONK`, `SOFT`) che stonava con una direzione calma. L'asse `opsz`
+  permette titoli sottili ed eleganti a 40–60 px e corsivi leggibili nelle citazioni.
+- **Instrument Sans** è un grottesco contemporaneo con dettagli umanisti (aperture ampie,
+  `a` e `g` morbide): neutro ma non anonimo, leggibile a 12–14 px. Evita i default
+  onnipresenti (Inter, Geist) e non imita alcun sans proprietario.
+- **Spline Sans Mono** ha lo **zero senza barra né punto** (DM Mono e JetBrains Mono rendevano
+  "Ø1" nei numeri di traccia) e pesi reali 300–700, quindi il codice delle pagine che usa
+  `font-semibold` sui numeri non produce grassetti sintetici.
+
+**Regole**
+
+- Un solo titolo Newsreader per gruppo visivo. Mai bottoni, etichette di form o testo UI lungo
+  in serif.
+- Ogni numero che cambia o si confronta usa `font-mono tabular-nums`.
+- `.om-eyebrow` è ora **in minuscolo/sentence case**, sans 13 px, colore `fg-subtle`. Niente
+  maiuscole spaziate. Usalo solo quando aggiunge contesto reale ("Album del 2007").
+- Misura di lettura: `max-w-prose` (68 ch) per il testo, `max-w-narrow` (52 ch) per stati vuoti.
+- Interlinea generosa: `body` 1,6; la scala sotto ha interlinee ampie.
+
+### Scala (`THEME.typography.scale`, px)
+
+| Token | Corpo / interlinea | Tailwind          |
+| ----- | ------------------ | ----------------- |
+| xs    | 12 / 18            | `text-xs`         |
+| sm    | 14 / 21            | `text-sm`         |
+| base  | 16 / 26            | `text-base`       |
+| lg    | 18 / 28            | `text-lg`         |
+| xl    | 20 / 30            | `text-xl`         |
+| 2xl   | 24 / 32            | `text-2xl`        |
+| 3xl   | 30 / 38            | `text-3xl`        |
+| 4xl   | 36 / 42            | `text-4xl`        |
+| 5xl   | 46 / 52            | `text-5xl`        |
+| 6xl   | 58 / 62            | `text-6xl`        |
+| —     | fluido 28→36       | `text-display-sm` |
+| —     | fluido 34→46       | `text-display-md` |
+| —     | fluido 40→58       | `text-display-lg` |
+
+I `text-*` di Tailwind ora leggono questa scala (interlinee più ampie dei default).
+
+### Tinta ambientale della copertina
+
+`ambientTint(dominantColor, alpha)` (`apps/web/src/components/discovery/ambientTint.ts`) porta il
+colore dominante della copertina nella testata di uscita (`ReleaseHero`), album (`/albums/[id]`)
+e reel (`ReelSlide`). Regole:
+
+- **Solo tema scuro**, applicata con la variante `dark:` (rispetta `data-theme`); nel tema chiaro
+  la carta resta neutra.
+- **Opacità 25%** (`alpha = 0.25`), su un colore già limitato a luminosità HSL 18–25% e
+  saturazione ≤ 45%: è un'ombra calda, non un fondo colorato, e il testo sopra resta AA.
+- Sfuma verso `transparent` entro il 70% dell'altezza (gradiente lineare per uscita/album, radiale
+  per i reel): niente bordi netti, niente gradienti fangosi.
+- La copertina resta l'unico elemento "colorato" della pagina; non usare la tinta su card o bottoni.
 
 ---
 
-## 5. Primitives (`apps/web/src/components/ui`)
+## 4. Token di colore
 
-All primitives are typed with strict TS, use Phosphor icons, show a visible `:focus-visible`
-ring (`outline-focus`), and do not rely on colour alone.
+Le variabili contengono **canali RGB** (`--om-bg: 246 242 234`), così i modificatori di
+opacità funzionano: `bg-accent/10`, `border-fresh/40`.
+
+| Ruolo (`THEME.light/dark`) | Variabile CSS          | Tailwind (canonico)       | Chiaro    | Scuro     | Uso                                               |
+| -------------------------- | ---------------------- | ------------------------- | --------- | --------- | ------------------------------------------------- |
+| bg                         | `--om-bg`              | `bg-canvas`               | `#F6F2EA` | `#1E1C19` | Sfondo pagina                                     |
+| surface                    | `--om-surface`         | `bg-surface`              | `#EEE8DC` | `#272521` | Card, sidebar, gruppi                             |
+| surfaceRaised              | `--om-surface-raised`  | `bg-surface-raised`       | `#FBF9F4` | `#302D29` | Dialog, toast, popover, input                     |
+| sunken                     | `--om-sunken`          | `bg-sunken`               | `#EFEAE0` | `#191815` | Pozzetti (ricerca, segmented)                     |
+| border                     | `--om-border`          | `border-line`             | `#E0D8C9` | `#3A3732` | Filo decorativo e divisori                        |
+| borderStrong               | `--om-border-strong`   | `border-line-strong`      | `#867D6D` | `#847C71` | Confini di componenti (≥ 3:1)                     |
+| text                       | `--om-text`            | `text-fg`                 | `#24211C` | `#ECE7DE` | Testo principale                                  |
+| textMuted                  | `--om-text-muted`      | `text-fg-muted`           | `#5A534A` | `#BBB3A6` | Testo secondario, metadati                        |
+| textSubtle                 | `--om-text-subtle`     | `text-fg-subtle`          | `#6F675B` | `#9C9487` | Minima enfasi, sempre AA                          |
+| accent                     | `--om-accent`          | `bg-accent`/`text-accent` | `#9C4423` | `#DE8C66` | Azione primaria, nav attiva, link                 |
+| accentHover                | `--om-accent-hover`    | `bg-accent-hover`         | `#82381C` | `#E9A281` | Hover/pressione dell'accento                      |
+| accentContrast             | `--om-accent-contrast` | `text-accent-contrast`    | `#FCF8F2` | `#1E1C19` | Testo su riempimento accento                      |
+| focus                      | `--om-focus`           | `outline-focus`           | `#9C4423` | `#E59B78` | Anello di focus                                   |
+| fresh                      | `--om-fresh`           | `text-fresh`              | `#2E6A45` | `#72BC8E` | Positivo: punteggio ≥ 70%, successo, "in ascolto" |
+| rotten                     | `--om-rotten`          | `text-rotten`             | `#A33340` | `#E9767F` | Negativo: < 70%, errori, distruttivo              |
+| warning                    | `--om-warning`         | `text-warning`            | `#7F5409` | `#D7A64C` | Attenzione, punteggio diviso                      |
+| overlay                    | `--om-overlay`         | `bg-overlay/40`           | `#24211C` | `#0F0E0C` | Base del backdrop (sempre con alfa)               |
+
+### Contrasti misurati (`scripts/check-contrast.ts`)
+
+Rapporto su `bg` / minimo su `bg`, `surface`, `surfaceRaised`, `sunken`. Soglie: testo 4,5:1;
+bordi di componenti e focus 3:1 (WCAG 1.4.11).
+
+| Ruolo                     | Chiaro            | Scuro             |
+| ------------------------- | ----------------- | ----------------- |
+| text                      | 14,36 / min 13,15 | 13,80 / min 11,12 |
+| textMuted                 | 6,79 / min 6,21   | 8,19 / min 6,60   |
+| textSubtle                | 4,99 / min 4,57   | 5,67 / min 4,57   |
+| accent                    | 5,76 / min 5,27   | 6,52 / min 5,25   |
+| fresh                     | 5,76 / min 5,27   | 7,53 / min 6,07   |
+| rotten                    | 6,06 / min 5,54   | 5,96 / min 4,80   |
+| warning                   | 5,92 / min 5,42   | 7,65 / min 6,16   |
+| borderStrong (UI, 3:1)    | 3,64 / min 3,33   | 4,13 / min 3,33   |
+| focus (3:1)               | 5,76 / min 5,27   | 7,52 / min 6,06   |
+| accentContrast su accent  | 6,08              | 6,52              |
+| border su bg (decorativo) | 1,27              | 1,43              |
+
+Lo script verifica anche i badge "soft" (testo colorato su tinta all'**8%** del colore, sopra
+`bg` e `surface`) e i badge "solid" (testo `bg` su colore): tutti AA. Per questo le tinte soft
+sono all'8%, non al 12–14% di prima.
+
+- `prefers-contrast: more` promuove `border` a `borderStrong` e `textSubtle` a `textMuted`.
+- `forced-colors: active`: bottoni, icon button, tab e opzioni del tema selezionate mantengono un
+  bordo visibile.
+
+### Nomi rinominati e alias (le pagine esistenti continuano a funzionare)
+
+| Vecchio nome (Tailwind / CSS)                                                                                                 | Nuovo canonico                                                                                            | Nota                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `ink` / `--om-text`                                                                                                           | `fg` / `--om-text`                                                                                        | stesso valore                                                                                 |
+| `ink-secondary` / `--om-text-secondary`                                                                                       | `fg-muted` / `--om-text-muted`                                                                            | secondo livello                                                                               |
+| `ink-muted` / `--om-muted`                                                                                                    | `fg-subtle` / `--om-text-subtle`                                                                          | **attenzione:** il vecchio `ink-muted` è il _terzo_ livello, il nuovo `fg-muted` il _secondo_ |
+| `elevated` / `--om-elevated`                                                                                                  | `surface-raised` / `--om-surface-raised`                                                                  |                                                                                               |
+| `accent-strong` / `--om-accent-strong`                                                                                        | `accent-hover` / `--om-accent-hover`                                                                      |                                                                                               |
+| `on-accent` / `--om-on-accent`                                                                                                | `accent-contrast` / `--om-accent-contrast`                                                                |                                                                                               |
+| `mixed` / `--om-mixed`                                                                                                        | `warning` / `--om-warning`                                                                                |                                                                                               |
+| `live` / `--om-live`                                                                                                          | `fresh` / `--om-fresh`                                                                                    |                                                                                               |
+| `--om-shadow-rgb`                                                                                                             | `--om-overlay`                                                                                            |                                                                                               |
+| `om-bg`, `om-card`, `om-interactive`, `om-text`, `om-secondary`, `om-muted`, `om-amber`, `om-fresh`, `om-rotten`, `om-border` | `canvas`, `surface`, `surface-raised`, `fg`, `fg-muted`, `fg-subtle`, `accent`, `fresh`, `rotten`, `line` | alias storici                                                                                 |
+| `THEME.scheme.dark/light`                                                                                                     | `THEME.dark` / `THEME.light`                                                                              | `scheme` resta (mobile `themeFor()`)                                                          |
+| `THEME.colors.*` (mobile)                                                                                                     | `THEME.dark.*`                                                                                            | chiavi piatte invariate, ora derivate dal tema scuro                                          |
+| `ColorScheme.textSecondary`, `muted`, `elevated`, `accentStrong`, `onAccent`, `mixed`, `live`                                 | `textMuted`, `textSubtle`, `surfaceRaised`, `accentHover`, `accentContrast`, `warning`, `fresh`           | chiavi `@deprecated`, stessi valori                                                           |
+
+`canvas`, `surface`, `sunken`, `line`, `line-strong`, `accent`, `fresh`, `rotten`, `focus`
+non cambiano nome.
+
+---
+
+## 5. Altri token
+
+| Gruppo         | Token                                                                                                                           | Web                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Spaziatura     | griglia 4 px: `THEME.space` 0…24 (0–96 px)                                                                                      | spaziatura Tailwind standard                                                                                                           |
+| Raggi          | `xs 4`, `sm 6`, `md 8`, `sleeve 10`, `lg 12`, `xl 16`, `pill`                                                                   | `rounded-xs`, `rounded` (= 6), `rounded-sm`, `rounded-md`, `rounded-sleeve`, `rounded-lg`, `rounded-xl`, `rounded-full`                |
+| Ombre          | quasi zero: `sm` (filo), `md`, `lg` (solo livelli fluttuanti)                                                                   | `shadow-om-sm/md/lg`, `shadow-hairline` (bordo interno 1 px); `shadow-sleeve`, `shadow-analog`, `shadow-glow` restano come alias tenui |
+| Durate         | `instant 100`, `fast 150`, `base 200`, `slow 250`, `groove 1800` (periodo dei loop)                                             | `duration-fast`… (default `duration` = 200)                                                                                            |
+| Curve          | `out` (0.22, 1, 0.36, 1) = curva della casa; `standard`, `enter` (= out), `exit`; `tonearm` deprecato (= out, niente overshoot) | `ease-out` (default), `ease-standard`…                                                                                                 |
+| Stagger        | `THEME.motion.stagger` = 40 ms, max 8 passi                                                                                     | `delay-stagger`, `.om-stagger`                                                                                                         |
+| Distanze       | `THEME.motion.distance` 4 / 6 / 8 px                                                                                            | `--om-distance-sm/md/lg`                                                                                                               |
+| Molle (mobile) | `snappy`, `gentle` (smorzate, senza rimbalzo)                                                                                   | n/d                                                                                                                                    |
+| z-index        | `base 0`, `raised 10`, `sticky 100`, `playerBar 200`, `overlay 300`, `dialog 400`, `toast 500`, `tooltip 600`                   | `z-sticky`, `z-toast`…                                                                                                                 |
+
+Tailwind cambia il valore di `rounded-sm/md/lg/xl` e `rounded` (più morbidi dei default).
+
+---
+
+## 6. Movimento
+
+**Regole**
+
+- Il movimento risponde a un'azione (aprire, confermare, cambiare scheda) o segnala un
+  caricamento. Un solo ingresso orchestrato per vista; niente "fade-up su ogni sezione".
+- Durate 150–250 ms, curva `ease-out`, traslazioni 4–8 px. Solo `opacity`, `translate`,
+  `scale` (compositor).
+- Hover: cambia colore/bordo, non sposta. Pressione: `om-press` (scala 0,98).
+- `prefers-reduced-motion: reduce`: le utility sotto non animano affatto; una rete globale
+  limita le transizioni a colore/opacità, fa girare i loop una volta sola e spegne le View
+  Transitions. **Non** usiamo il globale `animation-duration: 0.01ms` (rende alcune animazioni
+  più brusche).
+
+| Utility                                                                       | Effetto                                                                                                           |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `.om-enter`                                                                   | dissolvenza + salita 6 px, 250 ms (ingresso di una vista o di un blocco)                                          |
+| `.om-fade`                                                                    | sola dissolvenza, 200 ms (pannelli dei Tabs)                                                                      |
+| `.om-stagger`                                                                 | sul contenitore: i figli entrano a 40 ms di distanza, max 8 passi; `style={{ '--om-i': n }}` per forzare l'ordine |
+| `.om-press`                                                                   | affondo del 2% mentre si preme (già su Button e IconButton)                                                       |
+| `animate-fade-in`, `animate-fade-up`, `animate-dialog-in`, `animate-toast-in` | keyframe equivalenti per Tailwind                                                                                 |
+| `animate-pulse-soft`                                                          | respiro di opacità 2 s per gli skeleton                                                                           |
+| `animate-shimmer`, `animate-spin-record`, `.om-spin-record`                   | mantenuti per compatibilità (fermi con movimento ridotto)                                                         |
+
+**View Transitions tra route:** non attivate. In Next 16 richiedono il flag sperimentale
+`experimental.viewTransition` e `<ViewTransition>` di React (API instabile); `globals.css`
+contiene già la dissolvenza calma e lo spegnimento con movimento ridotto, così l'attivazione
+futura è una riga in `next.config.mjs`. Il cambio di tema usa già `startViewTransition`.
+
+---
+
+## 7. Classi editoriali (`globals.css`)
+
+| Classe          | Aspetto                                                                         |
+| --------------- | ------------------------------------------------------------------------------- |
+| `.om-headline`  | Newsreader 450, `opsz` automatico, interlinea 1,12, -0,015em                    |
+| `.om-deck`      | Newsreader corsivo, `fg-muted` (catenaccio sotto il titolo)                     |
+| `.om-eyebrow`   | sans 13 px medio, `fg-subtle`, **senza maiuscole**                              |
+| `.om-pullquote` | Newsreader corsivo 22 px con filo d'argilla di 2 px                             |
+| `.om-dropcap`   | capolettera serif in colore testo                                               |
+| `.om-rule`      | singolo filo `border`                                                           |
+| `.om-sleeve`    | card in pietra con filo e raggio 10 (niente più anello d'usura né bordo aperto) |
+| `.om-grooves`   | disco segnaposto con solchi tenui e piccola etichetta d'argilla                 |
+| `.om-link`      | link d'argilla con sottolineatura leggera che si rafforza in hover              |
+| `.om-tabular`   | mono + `tabular-nums`                                                           |
+| `.om-paper`     | mantenuta, ora non fa nulla (la carta è lo sfondo)                              |
+
+La grana analogica globale (`body::after`) è stata **rimossa**.
+
+---
+
+## 8. Primitive (`apps/web/src/components/ui`)
+
+Tutte in TypeScript strict, icone Phosphor, anello `:focus-visible` in `focus`, nessun
+significato affidato al solo colore.
 
 ```tsx
 import {
-  Button, buttonClasses, IconButton, Card, CardHeader, Avatar, Badge,
-  Field, Input, Textarea, Tabs, Dialog, Skeleton, EmptyState, ErrorState,
-  ToastProvider, useToast, RatingStars, starsFromRating, ratingFromStars,
-  ScoreBadge, Spinner,
+  Button,
+  buttonClasses,
+  IconButton,
+  Card,
+  CardHeader,
+  Avatar,
+  Badge,
+  Field,
+  Input,
+  Textarea,
+  controlClasses,
+  Tabs,
+  Dialog,
+  Skeleton,
+  EmptyState,
+  ErrorState,
+  ToastProvider,
+  useToast,
+  RatingStars,
+  starsFromRating,
+  ratingFromStars,
+  ScoreBadge,
+  scoreStatus,
+  FRESH_THRESHOLD,
+  Spinner,
+  ThemeToggle,
+  cn,
 } from '@/components/ui';
 ```
 
-| Primitive | Key props | Accessibility |
-| --- | --- | --- |
-| `Button` | `variant: primary \| secondary \| outline \| ghost \| danger`, `size: sm \| md \| lg`, `loading`, `loadingLabel`, `leadingIcon`, `trailingIcon`, `fullWidth` | `type="button"` by default; `aria-busy` and click-blocking while loading; label kept for stable width |
-| `buttonClasses(opts)` | same style options | Style a Next `<Link>` as a button without nesting interactive elements |
-| `IconButton` | `label` (required), `icon`, `variant: solid \| subtle \| ghost \| outline`, `size`, `pressed`, `loading` | `aria-label` + tooltip; `aria-pressed` for toggles |
-| `Card` / `CardHeader` | `variant: surface \| sleeve \| outline \| sunken`, `padding`, `interactive`, `as`; header `eyebrow`, `title`, `level`, `action` | Semantic element via `as`; heading level is separate from size |
-| `Avatar` | `name`, `src`, `size: xs…xl`, `status: live \| online \| ghost \| offline`, `decorative` | `role="img"` with name and status; initials fallback when the image fails |
-| `Badge` | `tone: neutral \| accent \| fresh \| mixed \| rotten \| live`, `variant: soft \| outline \| solid`, `size`, `icon`, `mono` | Pair tone with icon/text |
-| `Field` | `label`, `hint`, `error`, `required`, `hideLabel`, `aside`, render-prop child | Wires `id`, `aria-describedby`, `aria-invalid`, `aria-required` |
-| `Input` / `Textarea` | All native props + Field props + `leadingIcon` (Input) | Built on `Field`; 16 px text on mobile to avoid iOS zoom; textarea auto-grows where `field-sizing` is supported |
-| `Tabs` | `items: {id,label,icon?,count?,disabled?,content}[]`, `value`/`defaultValue`/`onValueChange`, `label`, `variant: underline \| pill` | WAI-ARIA tabs, roving tabindex, ←/→/Home/End |
-| `Dialog` | `open`, `onClose`, `title`, `description`, `footer`, `size`, `dismissible`, `closeLabel` | Native modal `<dialog>` (focus trap, Esc, inert page); `closedby="any"` light dismiss with a fallback for Safari; scroll lock through `:has(dialog:modal)` |
-| `Skeleton` | `shape: text \| rect \| circle \| cover`, `lines` | Decorative (`aria-hidden`); put `aria-busy` on the region |
-| `EmptyState` | `title`, `description`, `icon`, `action`, `size` | Grooved disc by default; always offer a next step |
-| `ErrorState` | `title`, `description`, `onRetry`, `retrying`, `action`, `variant: block \| inline` | `role="alert"`; human copy, never HTTP codes |
-| `ToastProvider` / `useToast()` | `notify({title, description?, tone?, action?, duration?}) → id`, `dismiss(id)` | Polite region for info/success, assertive for errors; pauses on hover/focus; action supports Undo |
-| `RatingStars` | `value` (0.5–5 stars or `null`), `onChange?`, `size`, `label`, `showValue`, `disabled` | Read-only is `role="img"`; interactive is a `role="slider"` with ←/→ ±0.5, PgUp/PgDn ±1, Home/End; pointer picks halves |
-| `starsFromRating` / `ratingFromStars` | ADR-001 conversion `70 ↔ 3.5` | |
-| `ScoreBadge` | `kind: critic \| audience`, `percentage \| null`, `totalReviews`, `status?`, `size` | Thumb up/down icon and text; full sentence in `aria-label` |
-| `scoreStatus`, `FRESH_THRESHOLD` (70) | | |
-| `Spinner` | `size`, `label` (`null` when decorative) | `role="status"` with a hidden label |
-| `cn(...)` | class joiner | |
+| Primitiva                      | Props principali (novità in **grassetto**)                                                                                                                                                        | Accessibilità                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `Button`                       | `variant: primary \| secondary \| outline \| ghost \| danger \| **link**`, `size: sm \| md \| lg`, `loading`, `loadingLabel`, `leadingIcon`, `trailingIcon`, `fullWidth`                          | `type="button"` di default; `aria-busy` e click bloccati durante il caricamento; bordo in forced-colors |
+| `buttonClasses(opts)`          | stesse opzioni                                                                                                                                                                                    | per dare l'aspetto di bottone a un `<Link>`                                                             |
+| `IconButton`                   | `label` (obbligatorio), `icon`, `variant: solid \| subtle \| ghost \| outline`, `size`, `pressed`, `loading`, **`shape: round \| square`** (default: round per `solid`, square per gli altri)     | `aria-label` + tooltip; `aria-pressed` per i toggle                                                     |
+| `Card` / `CardHeader`          | `variant: surface \| **raised** \| sleeve \| outline \| sunken`, `padding`, `interactive` (ora solo bordo più forte, **niente sollevamento**), `as`; header `eyebrow`, `title`, `level`, `action` | elemento semantico con `as`                                                                             |
+| `Avatar`                       | `name`, `src`, `size: xs…xl`, `status: live \| online \| ghost \| offline`, `decorative`                                                                                                          | `role="img"` con nome e stato; `live` è ora un anello verde fermo (niente vinile che gira)              |
+| `Badge`                        | `tone: neutral \| accent \| fresh \| mixed \| rotten \| live`, `variant: soft \| outline \| solid`, `size`, `icon`, `mono` (**niente più maiuscole forzate**)                                     | abbinare il tono a icona o testo                                                                        |
+| `Field`                        | `label`, `hint`, `error`, `required`, `hideLabel`, `aside`, figlio render-prop                                                                                                                    | collega `id`, `aria-describedby`, `aria-invalid`, `aria-required`                                       |
+| `Input` / `Textarea`           | props native + Field + `leadingIcon` (Input)                                                                                                                                                      | campo carta `surface-raised`, bordo ≥ 3:1, focus = bordo 2 px d'argilla                                 |
+| `Tabs`                         | `items`, `value`/`defaultValue`/`onValueChange`, `label`, `variant: underline \| pill`                                                                                                            | tab WAI-ARIA, ←/→/Home/End; il pannello ora mostra il focus e si dissolve al cambio                     |
+| `Dialog`                       | `open`, `onClose`, `title`, `description`, `footer`, `size`, `dismissible`, `closeLabel`                                                                                                          | `<dialog>` modale nativo; backdrop `overlay` senza sfocatura                                            |
+| `Skeleton`                     | `shape: text \| rect \| circle \| cover`, `lines`                                                                                                                                                 | decorativo; respiro `pulse-soft`, fermo con movimento ridotto                                           |
+| `EmptyState`                   | `title`, `description`, `icon`, `action`, `size`                                                                                                                                                  | proporre sempre un passo successivo                                                                     |
+| `ErrorState`                   | `title`, `description`, `onRetry`, `retrying`, `action`, `variant: block \| inline`                                                                                                               | `role="alert"`; icona `WarningCircle` al posto della faccina                                            |
+| `ToastProvider` / `useToast()` | `notify({title, description?, tone?, action?, duration?})`, `dismiss(id)`                                                                                                                         | regioni live polite/assertive; pulsante chiudi 32 px                                                    |
+| `RatingStars`                  | `value`, `onChange?`, `size`, `label`, `showValue`, `disabled`                                                                                                                                    | slider ARIA; stelle vuote in `line-strong` (≥ 3:1)                                                      |
+| `ScoreBadge`                   | `kind`, `percentage \| null`, `totalReviews`, `status?`, `size`                                                                                                                                   | pollice su/giù + testo; frase completa in `aria-label`                                                  |
+| `Spinner`                      | `size`, `label` (`null` se decorativo)                                                                                                                                                            | anello sottile, fermo con movimento ridotto; `role="status"`                                            |
+| **`ThemeToggle`**              | `variant: segmented \| icon`, `size` (icon), `label` (default "Tema"), `className`                                                                                                                | vedi sotto                                                                                              |
 
-### Examples
+### ThemeToggle
+
+- `variant="segmented"` (default): tre radio native in un `<fieldset>` con legenda nascosta
+  ("Chiaro", "Scuro", "Sistema, ora scuro"); frecce per cambiare, focus visibile sull'opzione.
+  Riga di aiuto sotto ("Segue il sistema, ora chiaro."). **Per la pagina Impostazioni.**
+- `variant="icon"`: un solo `IconButton` ("Passa al tema scuro/chiaro") per l'header o il
+  piede della sidebar. Passa all'opposto di ciò che si vede; se il bersaglio coincide con il
+  sistema cancella la scelta invece di salvarla (così non resta "bloccato" contro il sistema).
+- Richiede `ThemeProvider`, già montato in `app/layout.tsx`. Il posizionamento in Navbar e
+  Impostazioni spetta alle pagine.
+
+```tsx
+// Impostazioni → Aspetto
+<ThemeToggle />
+// Navbar / piede della sidebar
+<ThemeToggle variant="icon" size="sm" />
+```
+
+### Esempi
 
 ```tsx
 <Button loading={saving} loadingLabel="Salvataggio…" leadingIcon={<FloppyDisk />}>
@@ -207,91 +383,55 @@ import {
   Esplora
 </Link>
 
-<IconButton label={isPlaying ? 'Pausa' : 'Ascolta anteprima'} pressed={isPlaying}
-  icon={isPlaying ? <Pause weight="fill" /> : <Play weight="fill" />} variant="solid" />
-
-<Card variant="sleeve" as="article" interactive>
-  <CardHeader eyebrow="LP · 1997 · Parlophone" title="OK Computer" level={2} />
+<Card as="article" interactive>
+  <CardHeader eyebrow="Album del 1997" title="OK Computer" level={2} />
   <ScoreBadge kind="critic" percentage={94} totalReviews={38} />
-  <ScoreBadge kind="audience" percentage={62} totalReviews={1204} size="sm" />
 </Card>
 
-<Input label="Email" type="email" autoComplete="email" required
-  error={errors.email} hint="Non la mostriamo a nessuno." />
+<ul className="om-stagger grid gap-4">{items.map((i) => <li key={i.id}>…</li>)}</ul>
 
-<Textarea label="La tua recensione" aside={`${text.length}/3000`} maxLength={3000}
-  value={text} onChange={(e) => setText(e.target.value)} />
-
-<RatingStars label="Il tuo voto per OK Computer" value={stars} onChange={setStars} showValue />
-// persist: ratingFromStars(stars) → 10..100
-
-<Tabs label="Profilo" items={[
-  { id: 'diary', label: 'Diario', count: 128, content: <Diary /> },
-  { id: 'reviews', label: 'Recensioni', content: <Reviews /> },
-]} />
-
-<Dialog open={open} onClose={() => setOpen(false)} title="Elimina recensione"
-  description="Non potrai recuperarla."
-  footer={<>
-    <Button variant="ghost" onClick={() => setOpen(false)}>Annulla</Button>
-    <Button variant="danger" onClick={remove}>Elimina</Button>
-  </>} />
-
-// once, near the root (e.g. in layout or a client Providers component):
-<ToastProvider>{children}</ToastProvider>
-const { notify } = useToast();
-notify({ title: 'Brano salvato nello Scaffale', action: { label: 'Annulla', onAction: undo } });
-
-<EmptyState title="Lo scaffale è vuoto"
-  description="Salva un album dai Reels o dalla pagina di un disco."
-  action={<Link className={buttonClasses()} href="/reels">Apri i Reels</Link>} />
-
-<ErrorState variant="inline" title="La connessione con Spotify si è interrotta"
-  description="I tuoi ascolti restano salvati." onRetry={reconnect} retryLabel="Riconnetti" />
-
-<div aria-busy="true"><span className="sr-only">Caricamento…</span>
-  <Skeleton shape="cover" /><Skeleton shape="text" lines={2} /></div>
+<p>Leggi la <a className="om-link" href="/critics">recensione completa</a>.</p>
 ```
 
 ---
 
-## 6. Do / Don't
+## 9. Da fare / Da evitare
 
-**Do**
+**Da fare**
 
-- Use semantic tokens (`bg-surface`, `text-ink-secondary`, `border-line-strong`) or `THEME`.
-  If you need a new role, add it to `THEME.scheme`, `globals.css` and the Tailwind config together.
-- Use `font-mono tabular-nums` for every number, duration and percentage.
-- Pair every status colour with an icon or a word (fresh = thumbs-up icon + %, rotten = thumbs-down icon + %).
-- Use `<Card variant="sleeve">` for music objects (albums, tracks, reviews), and plain
-  `surface` for UI containers (settings, forms).
-- Use `.om-eyebrow` + `.om-headline` (+ `.om-deck` if needed) to open a page.
-- Write copy like a record-shop clerk: "In rotazione tra i tuoi amici", "La puntina è saltata".
-- Use `Button`'s `loading` state for async actions. Use `Skeleton` for first loads and
-  `EmptyState` / `ErrorState` for the other two states every screen must design.
-- Keep touch targets ≥ 40 px (`md` sizes) on mobile layouts.
+- Usare i token canonici (`bg-canvas`, `bg-surface`, `text-fg-muted`, `border-line`) o `THEME`.
+  Un nuovo ruolo va aggiunto a `ColorScheme` in `theme.ts` (il CSS si genera da solo) e misurato
+  con `scripts/check-contrast.ts`.
+- Separare con fili e spazio, non con ombre. Ombre solo su dialog, toast, popover.
+- Un solo bottone `primary` (argilla) per vista; il resto `secondary`, `outline` o `ghost`.
+- Titoli e citazioni in Newsreader; tutto il resto in Instrument Sans; numeri in mono tabellare.
+- Etichette in sentence case. Lasciare respirare: `p-6`/`p-10` nelle card grandi, `gap-6`+ tra sezioni.
+- Abbinare sempre fresh/rotten a icona e parola.
+- Testare entrambi i temi (`node …/shoot.mjs <dir> light|dark`).
 
-**Don't**
+**Da evitare**
 
-- No `#000`, no `#FFF`, no purple/indigo/cyan, no neon gradients, no coloured `box-shadow` glows.
-- No glassmorphism stacks. One `backdrop-filter` (the dialog backdrop) is enough.
-- No hardcoded hex values in components. `text-white`/`bg-black` are banned too.
-- Don't set long UI copy, buttons or form labels in Fraunces.
-- Don't use colour as the only signal, and don't remove focus outlines (`outline-none`)
-  without the `focus-visible` replacement the primitives already provide.
-- Don't stack several signature touches on one element (grain is global; at most one of
-  sleeve, grooves or drop cap per block).
-- Don't animate layout or loop anything except the record spin, and never ignore
-  `prefers-reduced-motion`.
-- Don't show HTTP codes or stack traces to users.
+- `#000`, `#FFF`, `text-white`, `bg-black`, esadecimali nei componenti, gradienti, bagliori.
+- Loghi, nomi, illustrazioni o font di Anthropic/Claude; copiare valori dal loro prodotto.
+- Etichette tutte maiuscole spaziate, eyebrow sopra ogni titolo, numerazioni 01/02/03 su
+  contenuti che non sono una sequenza.
+- L'argilla come decorazione (icone colorate, sfondi tinti grandi, capilettera).
+- Animare il layout, far entrare ogni sezione con un fade-up, loop che non indicano un caricamento,
+  ignorare `prefers-reduced-motion`.
+- Sollevamenti in hover (`hover:-translate-y`) e `shadow-*` su card statiche.
+- Codici HTTP o stack trace nei messaggi.
 
 ---
 
-## 7. Migration notes for page owners
+## 10. Note di migrazione per chi possiede le pagine
 
-1. Pages keep working: legacy `om-*` colours and `shadow-glow`/`shadow-analog` map to the
-   new variables. Visually they shift to the warmer palette and `text-om-muted` now meets AA.
-2. Replace ad-hoc buttons, inputs, modals and score boxes with the primitives above
-   (`DualScoreBadge` → two `ScoreBadge`s; `ShareSongModal`/`StoryListeningModal` → `Dialog`).
-3. Replace `text-white`, `bg-black/…`, hardcoded hex and `om-om-*` typos with semantic tokens.
-4. Mount `<ToastProvider>` once in a client providers component when the first page needs it.
+1. Nulla si rompe: tutti i nomi vecchi sono alias (tabella §4). L'aspetto però cambia subito:
+   pagine chiare di default se il sistema è chiaro, niente grana, eyebrow senza maiuscole,
+   raggi più morbidi.
+2. Sostituire `ink*` con `fg*` facendo attenzione allo slittamento (`ink-muted` → `fg-subtle`).
+3. Rimuovere `hover:-translate-y-*`, `shadow-om-md` su card statiche, `uppercase tracking-*`
+   sulle etichette, gradienti ambientali scuri pensati per il vecchio tema solo-scuro (la tinta
+   della copertina ora è solo scura e al 25%: vedi §3 "Tinta ambientale della copertina").
+4. Montare `<ThemeToggle variant="icon" />` nella Navbar e `<ThemeToggle />` in Impostazioni.
+5. Mobile: `THEME.light`/`THEME.dark` sono pronti; i font Newsreader / Instrument Sans /
+   Spline Sans Mono vanno aggiunti con `@expo-google-fonts/*` in `apps/mobile/src/theme/fonts.ts`.

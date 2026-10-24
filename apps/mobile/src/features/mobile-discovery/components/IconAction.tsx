@@ -58,7 +58,7 @@ export function IconAction({
         disabled={disabled}
         onPress={onPress}
         onPressIn={() => {
-          scale.value = withSpring(0.9, THEME.spring.snappy);
+          scale.value = withSpring(0.96, THEME.spring.snappy);
         }}
         onPressOut={() => {
           scale.value = withSpring(1, THEME.spring.snappy);
@@ -70,10 +70,12 @@ export function IconAction({
             height: diameter,
             borderRadius: diameter / 2,
             backgroundColor: active
-              ? withAlpha(colors.accent, overlay ? 0.9 : 0.16)
+              ? overlay
+                ? colors.accent
+                : withAlpha(colors.accent, 0.12)
               : overlay
-                ? withAlpha(colors.bg, 0.72)
-                : colors.elevated,
+                ? withAlpha(colors.surfaceRaised, 0.86)
+                : colors.surfaceRaised,
             borderColor: active ? colors.accent : colors.border,
             opacity: disabled ? 0.5 : 1,
           },
@@ -86,7 +88,7 @@ export function IconAction({
         <Text
           variant="caption"
           size="xs"
-          tone="secondary"
+          tone="primary"
           numberOfLines={1}
           importantForAccessibility="no"
           accessibilityElementsHidden
@@ -100,5 +102,5 @@ export function IconAction({
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: 4 },
-  button: { alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  button: { alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
 });

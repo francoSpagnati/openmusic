@@ -229,7 +229,7 @@ export function PublishVideoDialog({
         {errors.form && (
           <p
             role="alert"
-            className="rounded-md border border-rotten/50 bg-rotten/10 px-3 py-2 text-sm text-ink"
+            className="rounded-md border border-rotten/50 bg-rotten/10 px-3 py-2 text-sm text-fg"
           >
             {errors.form}
           </p>

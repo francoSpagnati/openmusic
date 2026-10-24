@@ -1,6 +1,5 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { Compass } from '@phosphor-icons/react/dist/ssr';
 import type { GenreList, ReleasePage } from '@openmusic/shared';
 import { api } from '../../lib/api';
 import { DiscoveryShell, PageOpener } from '../../components/discovery/DiscoveryShell';
@@ -35,10 +34,8 @@ export default async function ExplorePage({
   const initialPage: ReleasePage | null = page.status === 'fulfilled' ? page.value : null;
 
   return (
-    <DiscoveryShell className="space-y-10">
+    <DiscoveryShell className="space-y-12">
       <PageOpener
-        eyebrow="Esplora · Catalogo"
-        icon={<Compass weight="duotone" />}
         title="Trova la tua prossima ossessione"
         deck="Sfoglia gli scaffali per genere, cerca un disco o lascia scegliere alla roulette."
       />
@@ -51,9 +48,8 @@ export default async function ExplorePage({
         initialPage={initialPage}
       />
 
-      <section aria-labelledby="roulette-heading" className="space-y-4">
-        <hr className="om-rule" />
-        <h2 id="roulette-heading" className="om-headline text-2xl text-ink">
+      <section aria-labelledby="roulette-heading" className="space-y-6 border-t border-line pt-12">
+        <h2 id="roulette-heading" className="om-headline text-3xl text-fg">
           Fuori dalla bolla
         </h2>
         <GenreRouletteInteractive />

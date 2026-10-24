@@ -52,14 +52,14 @@ export function ScoreBadge({
         accessibilityLabel={`Voto ${kindLabel[kind].toLowerCase()}: pochi voti`}
         style={[styles.box, box, { borderColor: colors.borderStrong, borderStyle: 'dashed' }]}
       >
-        <KindIcon size={d.icon} weight="duotone" color={colors.muted} />
+        <KindIcon size={d.icon} weight="regular" color={colors.textSubtle} />
         <View>
           <Text
             style={{
               fontFamily: font.monoBold,
               fontSize: d.digits,
               lineHeight: d.digits * 1.15,
-              color: colors.muted,
+              color: colors.textSubtle,
             }}
           >
             —
@@ -84,11 +84,11 @@ export function ScoreBadge({
       style={[
         styles.box,
         box,
-        { borderColor: withAlpha(tone, 0.4), backgroundColor: withAlpha(tone, 0.1) },
+        { borderColor: withAlpha(tone, 0.35), backgroundColor: withAlpha(tone, 0.07) },
       ]}
     >
       <View style={styles.icons}>
-        <KindIcon size={d.icon} weight="duotone" color={tone} />
+        <KindIcon size={d.icon} weight="regular" color={tone} />
         <Thumb size={d.icon} weight="fill" color={tone} />
       </View>
       <View>
@@ -104,9 +104,13 @@ export function ScoreBadge({
           {percentage}%
         </Text>
         {size !== 'sm' ? (
-          <Text variant="mono" size="xs" tone="secondary">
+          <Text size="xs" tone="secondary">
             {kindLabel[kind]}
-            {totalReviews !== undefined ? ` · ${totalReviews}` : ''}
+            {totalReviews !== undefined ? (
+              <Text variant="mono" size="xs" tone="secondary">
+                {` · ${totalReviews}`}
+              </Text>
+            ) : null}
           </Text>
         ) : null}
       </View>
@@ -120,7 +124,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   icons: { flexDirection: 'row', gap: 2 },
 });

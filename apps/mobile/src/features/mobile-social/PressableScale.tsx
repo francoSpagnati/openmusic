@@ -7,7 +7,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface PressableScaleProps extends Omit<PressableProps, 'style'> {
   style?: StyleProp<ViewStyle>;
-  /** Scale while pressed (default 0.94). */
+  /** Scale while pressed (default 0.98, the web `.om-press`). */
   pressedScale?: number;
 }
 
@@ -17,7 +17,7 @@ export interface PressableScaleProps extends Omit<PressableProps, 'style'> {
  */
 export function PressableScale({
   style,
-  pressedScale = 0.94,
+  pressedScale = 0.98,
   onPressIn,
   onPressOut,
   ...rest

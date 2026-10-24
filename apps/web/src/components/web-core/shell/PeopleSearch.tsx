@@ -66,7 +66,7 @@ export function PeopleSearch() {
       <div className="relative">
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted"
+          className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-fg-subtle"
         >
           {state === 'loading' ? <Spinner size="sm" label={null} /> : <MagnifyingGlass />}
         </span>
@@ -83,7 +83,7 @@ export function PeopleSearch() {
             if (e.key === 'Escape') setQuery('');
           }}
           aria-describedby={statusId}
-          className={cn(controlClasses, 'h-10 rounded-full pl-10 text-base sm:text-sm')}
+          className={cn(controlClasses, 'h-10 pl-10 text-base sm:text-sm')}
         />
       </div>
       <p
@@ -91,14 +91,14 @@ export function PeopleSearch() {
         role="status"
         className={cn(
           'px-1 text-xs',
-          state === 'error' ? 'text-rotten' : 'text-ink-muted',
+          state === 'error' ? 'text-rotten' : 'text-fg-subtle',
           !statusText && 'sr-only'
         )}
       >
         {statusText}
       </p>
       {results.length > 0 && (
-        <ul className="space-y-3 rounded-lg border border-line bg-surface p-3">
+        <ul className="om-fade space-y-3 rounded-lg border border-line bg-surface-raised p-3">
           {results.map((u) => (
             <li key={u.id} className="flex items-center justify-between gap-2">
               <UserIdentity user={u} size="sm" />

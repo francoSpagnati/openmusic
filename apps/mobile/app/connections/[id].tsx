@@ -46,7 +46,7 @@ function FollowRow({
           <Text variant="bodyStrong" numberOfLines={1}>
             {name}
           </Text>
-          <Text variant="mono" size="xs" tone="muted">
+          <Text size="xs" tone="muted">
             @{user.username}
           </Text>
         </View>
@@ -55,7 +55,7 @@ function FollowRow({
         <Button
           size="sm"
           label={user.isFollowedByMe ? 'Segui già' : 'Segui'}
-          variant={user.isFollowedByMe ? 'secondary' : 'primary'}
+          variant={user.isFollowedByMe ? 'ghost' : 'outline'}
           accessibilityLabel={`${user.isFollowedByMe ? 'Smetti di seguire' : 'Segui'} ${name}`}
           onPress={() => void follow.toggle(user.id, user.isFollowedByMe)}
         />
@@ -87,7 +87,7 @@ export default function ConnectionsScreen() {
       <FlatList
         data={list.items}
         keyExtractor={(u) => u.id}
-        contentContainerStyle={{ padding: space[4], gap: space[1] }}
+        contentContainerStyle={{ padding: space[5], gap: space[1] }}
         renderItem={({ item }) => (
           <FollowRow
             user={item}

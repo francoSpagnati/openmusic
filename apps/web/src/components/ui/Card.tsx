@@ -1,20 +1,25 @@
 import React from 'react';
 import { cn } from './cn';
 
-export type CardVariant = 'surface' | 'sleeve' | 'outline' | 'sunken';
+export type CardVariant = 'surface' | 'raised' | 'sleeve' | 'outline' | 'sunken';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
 export interface CardProps extends React.HTMLAttributes<HTMLElement> {
-  /** `sleeve` is the signature record-sleeve look (ring wear + open edge). */
+  /**
+   * `surface` stone card (default), `raised` paper card for floating/featured content,
+   * `outline` hairline only, `sunken` recessed well. `sleeve` is kept as an alias of the
+   * music-object card (same hairline look, slightly larger corner).
+   */
   variant?: CardVariant;
   padding?: CardPadding;
-  /** Adds hover lift. Put the real link/button inside; the card itself is not focusable. */
+  /** Hover/focus-within strengthens the hairline. Put the real link/button inside. */
   interactive?: boolean;
   as?: 'div' | 'article' | 'section' | 'li' | 'aside';
 }
 
 const variants: Record<CardVariant, string> = {
-  surface: 'rounded-lg border border-line bg-surface shadow-om-sm',
+  surface: 'rounded-lg border border-line bg-surface',
+  raised: 'rounded-lg border border-line bg-surface-raised',
   sleeve: 'om-sleeve',
   outline: 'rounded-lg border border-line',
   sunken: 'rounded-lg bg-sunken',
@@ -23,8 +28,8 @@ const variants: Record<CardVariant, string> = {
 const paddings: Record<CardPadding, string> = {
   none: '',
   sm: 'p-3',
-  md: 'p-4 sm:p-5',
-  lg: 'p-6 sm:p-8',
+  md: 'p-4 sm:p-6',
+  lg: 'p-6 sm:p-10',
 };
 
 export function Card({
@@ -42,7 +47,7 @@ export function Card({
         variants[variant],
         paddings[padding],
         interactive &&
-          'transition-[border-color,translate,box-shadow] duration-base ease-standard hover:-translate-y-0.5 hover:border-line-strong hover:shadow-om-md focus-within:border-line-strong',
+          'transition-[border-color,background-color] duration-base ease-out hover:border-line-strong focus-within:border-line-strong',
         className
       )}
       {...rest}
@@ -53,7 +58,7 @@ export function Card({
 }
 
 export interface CardHeaderProps {
-  /** Small mono catalogue label above the title, e.g. "LATO A · 1997". */
+  /** Small sentence-case context line above the title, e.g. "Album del 1997". */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   /** Heading level for document outline; visual size is fixed. */
@@ -65,10 +70,10 @@ export interface CardHeaderProps {
 export function CardHeader({ eyebrow, title, level = 3, action, className }: CardHeaderProps) {
   const Heading = `h${level}` as const;
   return (
-    <div className={cn('mb-3 flex items-start justify-between gap-3', className)}>
+    <div className={cn('mb-4 flex items-start justify-between gap-3', className)}>
       <div className="min-w-0">
-        {eyebrow && <p className="om-eyebrow mb-1">{eyebrow}</p>}
-        <Heading className="om-headline truncate text-xl text-ink">{title}</Heading>
+        {eyebrow && <p className="om-eyebrow mb-0.5">{eyebrow}</p>}
+        <Heading className="om-headline truncate text-xl text-fg">{title}</Heading>
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

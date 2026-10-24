@@ -13,7 +13,16 @@ import { api } from '../src/lib/api';
 import { useSocketEvent } from '../src/lib/socket';
 import { formatRelative } from '../src/lib/format';
 import { useTheme, withAlpha } from '../src/theme';
-import { Avatar, Button, EmptyState, ErrorState, Skeleton, Text } from '../src/components/ui';
+import {
+  Avatar,
+  Button,
+  Divider,
+  EmptyState,
+  Enter,
+  ErrorState,
+  Skeleton,
+  Text,
+} from '../src/components/ui';
 import { Bell, Heart, SealCheck, ThumbsUp } from '../src/components/icons';
 import { CheckCircle, UserPlus } from '../src/features/mobile-social/icons';
 import { haptics } from '../src/features/mobile-social/haptics';
@@ -73,7 +82,12 @@ export default function NotificationsScreen() {
       style={{ backgroundColor: colors.bg }}
       data={list.items}
       keyExtractor={(n) => n.id}
-      contentContainerStyle={{ padding: space[4], gap: space[1] }}
+      contentContainerStyle={{
+        paddingHorizontal: space[5],
+        paddingTop: space[2],
+        paddingBottom: space[12],
+      }}
+      ItemSeparatorComponent={() => <Divider style={{ marginLeft: 60 }} />}
       refreshControl={
         <RefreshControl
           refreshing={list.refreshing}
@@ -83,48 +97,53 @@ export default function NotificationsScreen() {
       }
       onEndReached={() => void list.loadMore()}
       onEndReachedThreshold={0.5}
-      renderItem={({ item }) => {
+      renderItem={({ item, index }) => {
         const unread = item.readAt === null;
         const target = notificationTarget(item);
         const text = describeNotification(item);
         return (
-          <Pressable
-            accessibilityRole={target ? 'link' : 'text'}
-            accessibilityLabel={`${unread ? 'Nuova. ' : ''}${text}, ${formatRelative(item.createdAt)}`}
-            disabled={!target}
-            onPress={() => target && router.push(target)}
-            style={({ pressed }) => [
-              styles.row,
-              {
-                borderRadius: radii.md,
-                backgroundColor: pressed
-                  ? colors.elevated
-                  : unread
-                    ? withAlpha(colors.accent, 0.08)
-                    : 'transparent',
-              },
-            ]}
-          >
-            <View>
-              <Avatar name={actorName(item)} src={item.actor?.avatarUrl} size="md" decorative />
-              <View
-                style={[styles.badge, { backgroundColor: colors.surface, borderColor: colors.bg }]}
-              >
-                <TypeIcon type={item.type} color={colors.accent} />
+          <Enter index={index} kind="fade">
+            <Pressable
+              accessibilityRole={target ? 'link' : 'text'}
+              accessibilityLabel={`${unread ? 'Nuova. ' : ''}${text}, ${formatRelative(item.createdAt)}`}
+              disabled={!target}
+              onPress={() => target && router.push(target)}
+              style={({ pressed }) => [
+                styles.row,
+                {
+                  borderRadius: radii.md,
+                  backgroundColor: pressed
+                    ? colors.surface
+                    : unread
+                      ? withAlpha(colors.text, 0.035)
+                      : 'transparent',
+                },
+              ]}
+            >
+              <View>
+                <Avatar name={actorName(item)} src={item.actor?.avatarUrl} size="md" decorative />
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: colors.surfaceRaised, borderColor: colors.bg },
+                  ]}
+                >
+                  <TypeIcon type={item.type} color={colors.textMuted} />
+                </View>
               </View>
-            </View>
-            <View style={styles.flex}>
-              <Text size="sm" variant={unread ? 'bodyStrong' : 'body'}>
-                {text}
-              </Text>
-              <Text variant="mono" size="xs" tone="muted">
-                {formatRelative(item.createdAt)}
-              </Text>
-            </View>
-            {unread ? (
-              <View style={[styles.unreadDot, { backgroundColor: colors.accent }]} />
-            ) : null}
-          </Pressable>
+              <View style={styles.flex}>
+                <Text size="sm" variant={unread ? 'bodyStrong' : 'body'}>
+                  {text}
+                </Text>
+                <Text size="xs" tone="muted">
+                  {formatRelative(item.createdAt)}
+                </Text>
+              </View>
+              {unread ? (
+                <View style={[styles.unreadDot, { backgroundColor: colors.accent }]} />
+              ) : null}
+            </Pressable>
+          </Enter>
         );
       }}
       ListFooterComponent={
@@ -152,7 +171,7 @@ export default function NotificationsScreen() {
           <EmptyState
             title="Tutto tranquillo"
             description="Qui vedrai follow, like, reazioni e i brani che i tuoi amici hanno ascoltato."
-            icon={<Bell size={28} color={colors.muted} />}
+            icon={<Bell size={32} color={colors.textSubtle} weight="light" />}
           />
         )
       }
@@ -165,9 +184,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    minHeight: 64,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    minHeight: 72,
   },
   flex: { flex: 1, minWidth: 0, gap: 2 },
   badge: {

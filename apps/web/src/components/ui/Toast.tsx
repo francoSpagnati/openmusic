@@ -35,7 +35,7 @@ export function useToast(): ToastApi {
 }
 
 const toneIcon: Record<ToastTone, React.ReactNode> = {
-  neutral: <Info weight="fill" className="h-5 w-5 text-accent" />,
+  neutral: <Info weight="fill" className="h-5 w-5 text-fg-subtle" />,
   success: <CheckCircle weight="fill" className="h-5 w-5 text-fresh" />,
   error: <WarningCircle weight="fill" className="h-5 w-5 text-rotten" />,
 };
@@ -58,16 +58,16 @@ function ToastItem({ toast, onDismiss }: { toast: ToastRecord; onDismiss: (id: n
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
       className={cn(
-        'pointer-events-auto flex w-full items-start gap-3 rounded-sleeve border bg-elevated px-4 py-3 shadow-om-lg animate-toast-in',
-        tone === 'error' ? 'border-rotten/50' : 'border-line'
+        'pointer-events-auto flex w-full items-start gap-3 rounded-lg border bg-surface-raised px-4 py-3 shadow-om-lg animate-toast-in',
+        tone === 'error' ? 'border-rotten/40' : 'border-line'
       )}
     >
       <span aria-hidden="true" className="mt-0.5 shrink-0">
         {toneIcon[tone]}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-ink">{title}</p>
-        {description && <p className="mt-0.5 text-sm text-ink-secondary">{description}</p>}
+        <p className="text-sm font-medium text-fg">{title}</p>
+        {description && <p className="mt-0.5 text-sm text-fg-muted">{description}</p>}
       </div>
       {action && (
         <button
@@ -76,7 +76,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastRecord; onDismiss: (id: n
             action.onAction();
             onDismiss(id);
           }}
-          className="shrink-0 rounded-xs px-1 text-sm font-bold text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+          className="shrink-0 rounded-xs px-1 text-sm font-medium text-accent underline decoration-accent/35 underline-offset-4 hover:decoration-current focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
         >
           {action.label}
         </button>
@@ -85,7 +85,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastRecord; onDismiss: (id: n
         type="button"
         aria-label="Chiudi notifica"
         onClick={() => onDismiss(id)}
-        className="-mr-1 shrink-0 rounded-full p-1 text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+        className="-my-1 -mr-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-fg-subtle hover:bg-fg/[0.05] hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
       >
         <X aria-hidden="true" weight="bold" className="h-4 w-4" />
       </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowClockwise, SmileySad } from '@phosphor-icons/react';
+import { ArrowClockwise, WarningCircle } from '@phosphor-icons/react';
 import { cn } from './cn';
 import { Button } from './Button';
 
@@ -51,19 +51,15 @@ export function ErrorState({
       <div
         role="alert"
         className={cn(
-          'flex flex-wrap items-center justify-between gap-3 rounded-md border border-rotten/40 bg-rotten/[0.08] px-4 py-3',
+          'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rotten/30 bg-rotten/[0.06] px-4 py-3',
           className
         )}
       >
         <div className="flex min-w-0 items-start gap-2">
-          <SmileySad
-            aria-hidden="true"
-            weight="duotone"
-            className="mt-0.5 h-5 w-5 shrink-0 text-rotten"
-          />
+          <WarningCircle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-rotten" />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-ink">{title}</p>
-            {description && <p className="text-sm text-ink-secondary">{description}</p>}
+            <p className="text-sm font-medium text-fg">{title}</p>
+            {description && <p className="text-sm text-fg-muted">{description}</p>}
           </div>
         </div>
         {actions}
@@ -75,14 +71,14 @@ export function ErrorState({
     <div
       role="alert"
       className={cn(
-        'flex flex-col items-center gap-3 rounded-lg border border-line px-6 py-12 text-center',
+        'flex flex-col items-center gap-3 rounded-xl border border-line px-6 py-14 text-center',
         className
       )}
     >
-      <SmileySad aria-hidden="true" weight="duotone" className="h-10 w-10 text-rotten" />
-      <h3 className="om-headline text-2xl text-ink">{title}</h3>
-      {description && <p className="max-w-prose text-sm text-ink-secondary">{description}</p>}
-      {actions && <div className="mt-1">{actions}</div>}
+      <WarningCircle aria-hidden="true" className="h-8 w-8 text-rotten" />
+      <h3 className="om-headline text-2xl text-fg">{title}</h3>
+      {description && <p className="max-w-narrow text-sm text-fg-muted">{description}</p>}
+      {actions && <div className="mt-2">{actions}</div>}
     </div>
   );
 }

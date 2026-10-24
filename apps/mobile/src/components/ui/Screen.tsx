@@ -14,7 +14,7 @@ export interface ScreenProps {
   refreshControl?: ScrollViewProps['refreshControl'];
 }
 
-/** Page container: themed background, safe areas, 16px gutters. */
+/** Page container: themed background, safe areas, 20px gutters, generous 24px rhythm. */
 export function Screen({
   children,
   scroll = true,
@@ -23,12 +23,17 @@ export function Screen({
   refreshControl,
 }: ScreenProps) {
   const { colors, space } = useTheme();
-  const pad = padded ? space[4] : 0;
+  const pad = padded ? space[5] : 0;
   return (
     <SafeAreaView edges={edges} style={[styles.flex, { backgroundColor: colors.bg }]}>
       {scroll ? (
         <ScrollView
-          contentContainerStyle={{ padding: pad, gap: space[4], paddingBottom: space[8] }}
+          contentContainerStyle={{
+            paddingHorizontal: pad,
+            paddingTop: space[4],
+            gap: space[6],
+            paddingBottom: space[12],
+          }}
           keyboardShouldPersistTaps="handled"
           refreshControl={refreshControl}
         >

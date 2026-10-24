@@ -10,8 +10,8 @@ export interface SkeletonProps {
   className?: string;
 }
 
-const shimmer =
-  'bg-elevated bg-[linear-gradient(100deg,transparent_30%,rgb(var(--om-text)/0.06)_50%,transparent_70%)] bg-[length:200%_100%] animate-shimmer';
+/* A calm 2s opacity breath on an ink wash; static under reduced motion. */
+const shimmer = 'bg-fg/[0.07] animate-pulse-soft';
 
 /**
  * Placeholder that mirrors the final layout to avoid shifts. Decorative only:
@@ -27,6 +27,8 @@ export function Skeleton({ shape = 'rect', lines = 3, className }: SkeletonProps
             key={index}
             className={cn(
               'block h-3 rounded-xs',
+              // Stagger the breath so lines do not pulse in lockstep.
+              index % 2 === 1 && '[animation-delay:150ms]',
               shimmer,
               index === lines - 1 && lines > 1 ? 'w-3/5' : 'w-full'
             )}
@@ -43,7 +45,7 @@ export function Skeleton({ shape = 'rect', lines = 3, className }: SkeletonProps
         'block',
         shimmer,
         shape === 'circle' && 'aspect-square rounded-full',
-        shape === 'cover' && 'aspect-square w-full rounded-sleeve',
+        shape === 'cover' && 'aspect-square w-full rounded-md',
         shape === 'rect' && 'h-24 w-full rounded-md',
         className
       )}

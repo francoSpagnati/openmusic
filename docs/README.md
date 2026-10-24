@@ -14,7 +14,8 @@ l'altro va corretto.
 | [`04_STATUS_AND_OPEN_QUESTIONS.md`](./04_STATUS_AND_OPEN_QUESTIONS.md)                             | Cosa è reale, cosa manca, prossimi passi mobile, questioni aperte           |
 | [`05_DESIGN_SYSTEM.md`](./05_DESIGN_SYSTEM.md) (in inglese)                                        | Tipografia, colori, token, primitive UI                                     |
 | [`06_API_AND_AUTH.md`](./06_API_AND_AUTH.md)                                                       | Sessione e auth, formato errori, elenco endpoint, Socket.io, client web     |
-| [`decisioni_chiuse_adr_e_roadmap_di_sviluppo.md`](./decisioni_chiuse_adr_e_roadmap_di_sviluppo.md) | ADR-001…011 e roadmap per milestone                                         |
+| [`07_DEPLOY.md`](./07_DEPLOY.md)                                                                   | Deploy online su Render (Blueprint `render.yaml`), limiti del piano free    |
+| [`decisioni_chiuse_adr_e_roadmap_di_sviluppo.md`](./decisioni_chiuse_adr_e_roadmap_di_sviluppo.md) | ADR-001…014 e roadmap per milestone                                         |
 
 Fonti nel codice che prevalgono sempre sui documenti:
 

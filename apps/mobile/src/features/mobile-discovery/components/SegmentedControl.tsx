@@ -49,7 +49,10 @@ export function SegmentedControl<T extends string>({
             style={[
               styles.segment,
               { borderRadius: radii.md - 2 },
-              selected && { backgroundColor: colors.elevated, borderColor: colors.borderStrong },
+              selected && {
+                backgroundColor: colors.surfaceRaised,
+                borderColor: colors.borderStrong,
+              },
             ]}
           >
             <Text variant="bodyStrong" size="sm" tone={selected ? 'primary' : 'secondary'}>
@@ -63,7 +66,7 @@ export function SegmentedControl<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', padding: 3, borderWidth: 1, gap: 3 },
+  row: { flexDirection: 'row', padding: 3, borderWidth: StyleSheet.hairlineWidth, gap: 3 },
   segment: {
     flex: 1,
     minHeight: 40,

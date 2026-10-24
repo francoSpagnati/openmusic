@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { At, EnvelopeSimple, Sparkle, UserCircle } from '@phosphor-icons/react';
+import { At, EnvelopeSimple, UserCircle } from '@phosphor-icons/react';
 import { RegisterInputSchema } from '@openmusic/shared';
 import { isApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -167,7 +167,7 @@ export function RegisterForm({
         hint={
           handle ? (
             <>
-              Il tuo profilo sarà <span className="font-mono text-ink-secondary">@{handle}</span>
+              Il tuo profilo sarà <span className="font-mono text-fg-muted">@{handle}</span>
             </>
           ) : (
             'Da 3 a 30 caratteri: lettere, numeri e underscore.'
@@ -217,17 +217,12 @@ export function RegisterForm({
         fullWidth
         loading={submitting}
         loadingLabel="Creazione account…"
-        leadingIcon={<Sparkle aria-hidden="true" weight="bold" />}
       >
         Crea account
       </Button>
-      <p className="text-center text-sm text-ink-secondary">
+      <p className="text-center text-sm text-fg-muted">
         Hai già un account?{' '}
-        <button
-          type="button"
-          onClick={onSwitchToLogin}
-          className="font-semibold text-accent underline-offset-2 hover:underline"
-        >
+        <button type="button" onClick={onSwitchToLogin} className="om-link font-medium">
           Accedi
         </button>
       </p>

@@ -31,7 +31,7 @@ export function ConversationPane({ peer, viewerId, onSent, onRead }: Conversatio
 
       {conversation.data === null ? (
         conversation.status === 'error' ? (
-          <div className="flex flex-1 items-center p-4">
+          <div className="flex flex-1 items-center px-5 py-4">
             <ErrorState
               title="La conversazione non si è caricata"
               description={errorMessage(conversation.error)}
@@ -42,7 +42,7 @@ export function ConversationPane({ peer, viewerId, onSent, onRead }: Conversatio
           <ThreadSkeleton />
         )
       ) : conversation.data.length === 0 && conversation.outbox.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center p-4">
+        <div className="flex flex-1 items-center justify-center px-5 py-4">
           <EmptyState
             title={`Rompi il ghiaccio con ${name}`}
             description="Scrivi due righe o consigliagli un brano: riceverà l’anteprima di 30 secondi e i link per ascoltarlo ovunque."
@@ -76,7 +76,7 @@ function PeerHeader({ peer, name }: { peer: ChatPeer; name: string }) {
   const track = presence && isListening(presence) ? presence.currentlyPlaying : null;
 
   return (
-    <header className="flex items-center gap-3 border-b border-line bg-canvas px-3 py-3 sm:px-4">
+    <header className="flex items-center gap-3 border-b border-line bg-canvas px-3 py-3 sm:px-5">
       <Link
         href="/chat"
         className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'md:hidden' })}
@@ -94,20 +94,23 @@ function PeerHeader({ peer, name }: { peer: ChatPeer; name: string }) {
         />
       </Link>
       <div className="min-w-0 flex-1">
-        <h2 id="conversation-title" className="truncate text-base font-semibold text-ink">
+        <h2 id="conversation-title" className="truncate text-base font-medium text-fg">
           <Link href={profileHref(peer)} className="hover:underline focus-visible:underline">
             {name}
           </Link>
         </h2>
         {track ? (
-          <p className="flex min-w-0 items-center gap-1 text-xs text-fresh">
-            <Waveform aria-hidden="true" weight="bold" className="h-3.5 w-3.5 shrink-0" />
+          <p
+            key={`${track.title}:${track.artistName}`}
+            className="om-fade flex min-w-0 items-center gap-1.5 text-sm text-fg-muted"
+          >
+            <Waveform aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-fresh" />
             <span className="truncate">
-              In ascolto: {track.title} · {track.artistName}
+              <span className="text-fresh">In ascolto:</span> {track.title} di {track.artistName}
             </span>
           </p>
         ) : (
-          <p className="truncate font-mono text-xs text-ink-muted">
+          <p className="truncate text-sm text-fg-subtle">
             @{peer.username}
             {presence?.isGhostMode ? ' · in Ghost Mode' : presence?.isOnline ? ' · online' : ''}
           </p>
@@ -119,16 +122,20 @@ function PeerHeader({ peer, name }: { peer: ChatPeer; name: string }) {
 
 function ThreadSkeleton() {
   return (
-    <div aria-busy="true" className="flex-1 space-y-5 overflow-hidden px-3 py-4 sm:px-5">
+    <div
+      aria-busy="true"
+      className="mx-auto w-full max-w-2xl flex-1 space-y-8 overflow-hidden px-4 py-8 sm:px-6"
+    >
       <span className="sr-only">Caricamento dei messaggi…</span>
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className={i % 2 ? 'flex justify-end' : 'flex'}>
-          <Skeleton
-            shape="rect"
-            className={i % 2 ? 'h-10 w-2/5 rounded-lg' : 'h-16 w-3/5 rounded-lg'}
-          />
-        </div>
-      ))}
+      {[0, 1, 2, 3].map((i) =>
+        i % 2 ? (
+          <div key={i} className="flex justify-end">
+            <Skeleton shape="rect" className="h-11 w-2/5 rounded-xl" />
+          </div>
+        ) : (
+          <Skeleton key={i} shape="text" lines={2} className="max-w-[60%]" />
+        )
+      )}
     </div>
   );
 }

@@ -91,9 +91,8 @@ export function ProfileForm({ user }: { user: AuthUser }) {
           size="lg"
           decorative
         />
-        <p className="text-sm text-ink-secondary">
-          Anteprima di come ti vedono gli altri, <span className="font-mono">@{user.username}</span>
-          .
+        <p className="text-sm text-fg-muted">
+          Anteprima di come ti vedono gli altri, <span className="text-fg">@{user.username}</span>.
         </p>
       </div>
       <Input
@@ -137,9 +136,9 @@ export function ProfileForm({ user }: { user: AuthUser }) {
         hint="Compaiono sul profilo e orientano i suggerimenti."
         disabled={saving}
       />
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line pt-5">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line pt-6">
         {dirty && !saving && (
-          <p role="status" className="mr-auto text-sm text-ink-muted">
+          <p role="status" className="mr-auto text-sm text-fg-subtle">
             Modifiche non salvate
           </p>
         )}
@@ -158,7 +157,7 @@ export function ProfileForm({ user }: { user: AuthUser }) {
           disabled={!dirty}
           loading={saving}
           loadingLabel="Salvataggio…"
-          leadingIcon={<FloppyDisk aria-hidden="true" weight="bold" />}
+          leadingIcon={<FloppyDisk aria-hidden="true" />}
         >
           Salva profilo
         </Button>

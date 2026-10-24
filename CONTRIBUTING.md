@@ -21,20 +21,22 @@ Grazie per l'interesse. Questo file descrive come lavoriamo; per l'ambiente loca
 
 ## Comandi
 
-| Comando                                      | Cosa fa                                                    |
-| -------------------------------------------- | ---------------------------------------------------------- |
-| `npm run dev`                                | API (:4000) + web (:3000) in watch                         |
-| `npm run dev:api` / `dev:web` / `dev:mobile` | Un'app sola                                                |
-| `npm run lint`                               | ESLint su api, db, shared, web (incluso `apps/web/e2e`)    |
-| `npm run typecheck`                          | `tsc --noEmit` su tutti i pacchetti, mobile incluso        |
-| `npm run format` / `format:check`            | Prettier                                                   |
-| `npm run db:generate`                        | Rigenera il client Prisma                                  |
-| `npm run db:migrate`                         | Nuova migrazione da `schema.prisma` (`prisma migrate dev`) |
-| `npm run db:migrate:deploy`                  | Applica le migrazioni esistenti                            |
-| `npm run db:seed`                            | Dati di esempio (password `openmusic-dev`)                 |
-| `npm run db:test:prepare`                    | Ricrea il DB `openmusic_test` (rifiuta nomi senza `_test`) |
-| `npm test`                                   | Vitest: `packages/shared` + `apps/api`                     |
-| `npm run e2e`                                | Playwright (richiede build web + DB seedato)               |
+| Comando                                      | Cosa fa                                                     |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| `npm run dev`                                | API (:4000) + web (:3000) in watch                          |
+| `npm run dev:api` / `dev:web` / `dev:mobile` | Un'app sola                                                 |
+| `npm run lint`                               | ESLint su api, db, shared, web (incluso `apps/web/e2e`)     |
+| `npm run typecheck`                          | `tsc --noEmit` su tutti i pacchetti, mobile incluso         |
+| `npm run format` / `format:check`            | Prettier                                                    |
+| `npm run db:generate`                        | Rigenera il client Prisma                                   |
+| `npm run db:migrate`                         | Nuova migrazione da `schema.prisma` (`prisma migrate dev`)  |
+| `npm run db:migrate:deploy`                  | Applica le migrazioni esistenti                             |
+| `npm run db:seed`                            | Dati di esempio (password `openmusic-dev`)                  |
+| `npm run db:test:prepare`                    | Ricrea il DB `openmusic_test` (rifiuta nomi senza `_test`)  |
+| `npm test`                                   | Vitest: `packages/shared` + `apps/api`                      |
+| `npm run e2e`                                | Playwright (richiede build web + DB seedato)                |
+| `E2E_PROFILE=cross-site npm run e2e`         | Playwright come su Render: produzione, web e API cross-site |
+| `npm run start:api` / `start:web`            | Avvio di produzione (quello di `render.yaml`, ADR-014)      |
 
 Checklist minima prima di una PR:
 
@@ -43,6 +45,7 @@ npm run lint && npm run typecheck
 npm run db:test:prepare && npm test
 npx turbo run build --filter=@openmusic/web   # se tocchi il web
 npm run e2e                                   # se tocchi flussi utente
+E2E_PROFILE=cross-site npm run e2e            # se tocchi auth, proxy /api, socket o deploy
 ```
 
 ## Convenzioni

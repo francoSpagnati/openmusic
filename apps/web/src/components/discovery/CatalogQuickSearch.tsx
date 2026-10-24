@@ -86,7 +86,7 @@ export function CatalogQuickSearch({ className }: { className?: string }) {
         aria-controls={open ? listId : undefined}
       />
       {open && (
-        <div className="mt-2 overflow-hidden rounded-md border border-line bg-surface shadow-om-md">
+        <div className="mt-2 overflow-hidden rounded-md border border-line bg-surface">
           <p role="status" className="sr-only">
             {results.items.length === 0
               ? 'Nessun disco nel catalogo locale: premi Invio per cercare ovunque.'
@@ -100,7 +100,7 @@ export function CatalogQuickSearch({ className }: { className?: string }) {
                   <li key={release.id}>
                     <Link
                       href={`/releases/${release.id}`}
-                      className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-ink/5 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                      className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-fg/5 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
                     >
                       <CoverArt
                         src={release.coverUrl}
@@ -110,12 +110,12 @@ export function CatalogQuickSearch({ className }: { className?: string }) {
                         className="h-8 w-8 shrink-0 rounded-xs"
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-ink">
+                        <span className="block truncate text-sm font-semibold text-fg">
                           {release.title}
                         </span>
-                        <span className="block truncate text-xs text-ink-secondary">
+                        <span className="block truncate text-xs text-fg-muted">
                           {release.artistName}
-                          {year ? ` · ${year}` : ''}
+                          {year ? `, ${year}` : ''}
                         </span>
                       </span>
                     </Link>
@@ -126,7 +126,7 @@ export function CatalogQuickSearch({ className }: { className?: string }) {
           )}
           <Link
             href={exploreHref}
-            className="flex items-center justify-between gap-2 border-t border-line px-2.5 py-2 text-sm font-semibold text-accent first:border-t-0 hover:bg-ink/5 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+            className="flex items-center justify-between gap-2 border-t border-line px-2.5 py-2 text-sm font-semibold text-accent first:border-t-0 hover:bg-fg/5 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
           >
             <span className="truncate">Cerca “{q}” ovunque</span>
             <ArrowRight aria-hidden="true" weight="bold" className="h-4 w-4 shrink-0" />

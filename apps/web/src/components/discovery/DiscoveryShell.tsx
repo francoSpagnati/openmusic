@@ -25,32 +25,30 @@ export function DiscoveryShell({
   );
 }
 
-/** Editorial page opener: catalogue eyebrow, Fraunces headline, italic deck. */
+/**
+ * Editorial page opener: an optional quiet context line, the Newsreader headline and an italic
+ * deck. No icon, no accent: the sidebar already says where you are.
+ */
 export function PageOpener({
   eyebrow,
   title,
   deck,
-  icon,
   children,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: React.ReactNode;
   deck?: React.ReactNode;
+  /** @deprecated Ignored since ADR-015 (openers carry no icon). */
   icon?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
-    <header className="space-y-3">
-      <p className="om-eyebrow flex items-center gap-2 text-accent">
-        {icon && (
-          <span aria-hidden="true" className="inline-flex text-base">
-            {icon}
-          </span>
-        )}
-        {eyebrow}
-      </p>
-      <h1 className="om-headline text-display-sm text-ink sm:text-display-md">{title}</h1>
-      {deck && <p className="om-deck max-w-2xl text-lg">{deck}</p>}
+    <header className="om-enter max-w-3xl space-y-3 pt-2">
+      {eyebrow && <p className="om-eyebrow">{eyebrow}</p>}
+      <h1 className="om-headline text-balance text-display-md text-fg lg:text-display-lg">
+        {title}
+      </h1>
+      {deck && <p className="om-deck max-w-prose text-lg sm:text-xl">{deck}</p>}
       {children}
     </header>
   );

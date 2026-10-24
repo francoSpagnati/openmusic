@@ -58,17 +58,14 @@ export function LoadMore({
   }
 
   if (!hasMore) {
-    return endLabel ? <p className="om-eyebrow px-4 py-8 text-center">{endLabel}</p> : null;
+    return endLabel ? (
+      <p className="px-4 py-10 text-center text-sm text-fg-subtle">{endLabel}</p>
+    ) : null;
   }
 
   return (
-    <div ref={sentinel} className="flex justify-center p-6">
-      <Button
-        variant="secondary"
-        onClick={onLoadMore}
-        loading={loading}
-        loadingLabel="Caricamento…"
-      >
+    <div ref={sentinel} className="flex justify-center px-4 py-8">
+      <Button variant="ghost" onClick={onLoadMore} loading={loading} loadingLabel="Caricamento…">
         {label}
       </Button>
     </div>

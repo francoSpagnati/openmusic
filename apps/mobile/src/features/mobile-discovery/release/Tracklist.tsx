@@ -23,7 +23,7 @@ export function Tracklist({
   return (
     <View style={{ gap: space[3] }}>
       {sides.map((side) => (
-        <Card key={side.name} variant="sunken" padding="sm">
+        <Card key={side.name} variant="sleeve" padding="sm">
           <View style={[styles.sideHead, { marginBottom: space[1] }]} accessibilityRole="header">
             <Text variant="eyebrow">Lato {side.name}</Text>
             <Text variant="mono" size="xs" tone="muted">
@@ -41,7 +41,7 @@ export function Tracklist({
                 style={[
                   styles.track,
                   { borderRadius: radii.sm, paddingHorizontal: space[1] },
-                  current && { backgroundColor: withAlpha(colors.accent, 0.08) },
+                  current && { backgroundColor: withAlpha(colors.accent, 0.06) },
                 ]}
               >
                 <Text

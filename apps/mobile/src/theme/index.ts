@@ -1,8 +1,17 @@
-import { useColorScheme } from 'react-native';
-import { THEME, type ColorScheme, type ColorSchemeName } from '@openmusic/shared';
-import { FONT } from './fonts';
+import { THEME } from '@openmusic/shared';
 
 export { FONT, FONT_ASSETS, type FontFamily } from './fonts';
+export {
+  AppThemeProvider,
+  THEME_PREFERENCES,
+  resolveScheme,
+  themeFor,
+  useTheme,
+  useThemePreference,
+  type AppTheme,
+  type ThemePreference,
+} from './ThemeProvider';
+export { useEntering } from './motion';
 
 export type TypeStep = keyof typeof THEME.typography.scale;
 
@@ -24,28 +33,4 @@ export function withAlpha(hex: string, alpha: number): string {
   const g = parseInt(value.slice(2, 4), 16);
   const b = parseInt(value.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-export interface AppTheme {
-  name: ColorSchemeName;
-  colors: ColorScheme;
-  space: typeof THEME.space;
-  radii: typeof THEME.radii;
-  font: typeof FONT;
-}
-
-export function themeFor(name: ColorSchemeName): AppTheme {
-  return {
-    name,
-    colors: THEME.scheme[name],
-    space: THEME.space,
-    radii: THEME.radii,
-    font: FONT,
-  };
-}
-
-/** Current theme from the OS appearance; dark ("record shop at night") is the default. */
-export function useTheme(): AppTheme {
-  const scheme = useColorScheme();
-  return themeFor(scheme === 'light' ? 'light' : 'dark');
 }

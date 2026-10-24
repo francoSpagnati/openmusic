@@ -10,7 +10,7 @@ export interface AvatarProps {
   name: string;
   src?: string | null;
   size?: AvatarSize;
-  /** `live` draws a slowly spinning vinyl ring: the user is listening right now. */
+  /** `live` draws a quiet green ring and dot: the user is listening right now. */
   status?: AvatarStatus;
   /** Hide the name from assistive tech when it is already written next to the avatar. */
   decorative?: boolean;
@@ -60,15 +60,12 @@ export function Avatar({
       className={cn('relative inline-flex shrink-0', s.box, className)}
     >
       {status === 'live' && (
-        <span
-          aria-hidden="true"
-          className="om-spin-record absolute -inset-1 rounded-full bg-sunken ring-1 ring-accent/60 [background-image:conic-gradient(transparent_0_18%,rgb(var(--om-text)/0.16)_25%,transparent_32%_68%,rgb(var(--om-text)/0.16)_75%,transparent_82%),repeating-radial-gradient(circle_at_center,rgb(var(--om-text)/0.14)_0_1px,transparent_1px_3px)]"
-        />
+        <span aria-hidden="true" className="absolute -inset-[3px] rounded-full ring-2 ring-fresh" />
       )}
       <span
         className={cn(
           'relative inline-flex h-full w-full items-center justify-center overflow-hidden rounded-full',
-          'bg-elevated font-editorial font-semibold text-ink-secondary ring-1 ring-line',
+          'bg-surface font-editorial font-medium text-fg-muted ring-1 ring-line',
           status === 'ghost' && 'opacity-60 grayscale',
           s.text
         )}
@@ -93,7 +90,7 @@ export function Avatar({
           aria-hidden="true"
           className={cn(
             'absolute bottom-0 right-0 rounded-full ring-2 ring-canvas',
-            status === 'ghost' ? 'bg-ink-muted' : 'bg-live',
+            status === 'ghost' ? 'bg-fg-subtle' : 'bg-fresh',
             s.dot
           )}
         />

@@ -65,10 +65,16 @@ export function PendingRequestsPanel() {
   };
 
   return (
-    <Card padding="lg" as="section" aria-labelledby="pending-heading" className="space-y-4">
+    <Card
+      variant="outline"
+      padding="md"
+      as="section"
+      aria-labelledby="pending-heading"
+      className="space-y-4"
+    >
       <div>
         <p className="om-eyebrow">Solo staff</p>
-        <h2 id="pending-heading" className="om-headline text-2xl text-ink">
+        <h2 id="pending-heading" className="om-headline text-2xl text-fg">
           Richieste da verificare
         </h2>
       </div>
@@ -94,18 +100,18 @@ export function PendingRequestsPanel() {
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <Avatar name={name} size="sm" decorative />
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-ink">
+                    <p className="truncate text-sm text-fg">
                       <strong>{r.outletName}</strong> · {name}{' '}
-                      <span className="text-ink-muted">@{r.username}</span>
+                      <span className="text-fg-subtle">@{r.username}</span>
                     </p>
-                    <p className="flex flex-wrap gap-x-3 text-xs text-ink-secondary">
+                    <p className="flex flex-wrap gap-x-3 text-xs text-fg-muted">
                       <time dateTime={r.requestedAt}>{formatRelative(r.requestedAt)}</time>
                       {externalHref(r.portfolioUrl) && (
                         <a
                           href={externalHref(r.portfolioUrl) ?? undefined}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline"
+                          className="om-link inline-flex items-center gap-1 rounded-sm"
                         >
                           Portfolio
                           <ArrowSquareOut aria-hidden="true" className="h-3 w-3" />
@@ -118,7 +124,7 @@ export function PendingRequestsPanel() {
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant="danger"
+                    variant="ghost"
                     leadingIcon={<X />}
                     disabled={busy !== null}
                     loading={busy === r.userId}
@@ -129,6 +135,7 @@ export function PendingRequestsPanel() {
                   </Button>
                   <Button
                     size="sm"
+                    variant="outline"
                     leadingIcon={<Check weight="bold" />}
                     disabled={busy !== null}
                     loading={busy === r.userId}

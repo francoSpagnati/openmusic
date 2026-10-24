@@ -21,6 +21,7 @@ import {
   Card,
   CoverArt,
   EmptyState,
+  Enter,
   ErrorState,
   RatingStars,
   Skeleton,
@@ -62,7 +63,7 @@ export interface SocialProfileProps {
 function Stat({ label, value, onPress }: { label: string; value: number; onPress?: () => void }) {
   const content = (
     <>
-      <Text variant="mono" size="lg">
+      <Text variant="mono" size="xl">
         {value}
       </Text>
       <Text variant="eyebrow">{label}</Text>
@@ -94,7 +95,7 @@ function Stat({ label, value, onPress }: { label: string; value: number; onPress
  * / In rotazione. Posts are paged from `/api/users/:id/posts`.
  */
 export function SocialProfile({ userId, profile }: SocialProfileProps) {
-  const { colors, space, radii } = useTheme();
+  const { colors, space } = useTheme();
   const { user: me } = useAuth();
   const [tab, setTab] = useState<Tab>('posts');
   const posts = useCursorList<Post>(
@@ -132,7 +133,7 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
   if (profile.loading) {
     return (
       <View
-        style={{ padding: space[4], gap: space[3] }}
+        style={{ padding: space[5], gap: space[4] }}
         accessibilityLabel="Caricamento del profilo"
       >
         <View style={styles.row}>
@@ -147,7 +148,7 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
   }
   if (profile.error || !profile.data) {
     return (
-      <View style={{ padding: space[4] }}>
+      <View style={{ padding: space[5] }}>
         <ErrorState
           title="Profilo non disponibile"
           error={profile.error}
@@ -170,28 +171,27 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
         : heavyRotation.map((item) => ({ kind: 'rotation', item }));
 
   const header = (
-    <View style={{ gap: space[4], paddingBottom: space[4] }}>
+    <View style={{ gap: space[5], paddingBottom: space[2] }}>
       <View style={styles.row}>
         <Avatar name={name} src={user.avatarUrl} size="xl" decorative />
         <View style={styles.flex}>
           <Text variant="headline" numberOfLines={2} accessibilityRole="header">
             {name}
           </Text>
-          <Text variant="mono" size="sm" tone="secondary">
+          <Text size="sm" tone="secondary">
             @{user.username}
           </Text>
           {user.role === 'CRITIC' ? (
             <Badge
               label={user.criticOutlet ?? 'Critico'}
-              tone="accent"
               size="sm"
-              icon={<SealCheck size={12} color={colors.accent} weight="fill" />}
+              icon={<SealCheck size={12} color={colors.textMuted} weight="fill" />}
             />
           ) : null}
         </View>
       </View>
       {user.bio ? <Text tone="secondary">{user.bio}</Text> : null}
-      <View style={styles.stats}>
+      <View style={[styles.stats, { borderColor: colors.border }]}>
         <Stat
           label="Follower"
           value={social.followersCount}
@@ -236,7 +236,7 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
               social.isFollowedByMe ? (
                 <UserCheck size={18} color={colors.text} />
               ) : (
-                <UserPlus size={18} color={colors.onAccent} />
+                <UserPlus size={18} color={colors.accentContrast} />
               )
             }
             onPress={() => void follow.toggle(user.id, social.isFollowedByMe)}
@@ -253,7 +253,7 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
       )}
 
       <View
-        style={[styles.segment, { backgroundColor: colors.surface, borderRadius: radii.pill }]}
+        style={[styles.segment, { borderBottomColor: colors.border }]}
         accessibilityRole="tablist"
       >
         {TABS.map((t) => {
@@ -269,16 +269,13 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
               }}
               style={[
                 styles.segmentItem,
-                {
-                  borderRadius: radii.pill,
-                  backgroundColor: selected ? colors.elevated : 'transparent',
-                },
+                { borderBottomColor: selected ? colors.text : 'transparent' },
               ]}
             >
               <Text
-                variant="bodyStrong"
-                size="sm"
-                tone={selected ? 'accent' : 'secondary'}
+                variant="eyebrow"
+                size="base"
+                tone={selected ? 'primary' : 'secondary'}
                 numberOfLines={1}
               >
                 {t.label}
@@ -290,7 +287,11 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
     </View>
   );
 
-  const renderRow = ({ item }: { item: Row }) => {
+  const renderRow = ({ item, index }: { item: Row; index: number }) => (
+    <Enter index={index}>{renderRowBody(item)}</Enter>
+  );
+
+  const renderRowBody = (item: Row) => {
     if (item.kind === 'post') {
       return (
         <FeedPostCard
@@ -311,7 +312,7 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
           disabled={!r.releaseId}
           onPress={() => r.releaseId && router.push(`/release/${r.releaseId}`)}
         >
-          <Card variant="outline" padding="sm">
+          <Card variant="sleeve" padding="md">
             <View style={styles.reviewHead}>
               <RatingStars value={starsFromRating(r.rating)} size="sm" showValue />
               {r.isVerifiedListen ? (
@@ -323,7 +324,7 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
                 {r.content}
               </Text>
             ) : null}
-            <Text variant="mono" size="xs" tone="muted" style={styles.mt}>
+            <Text size="xs" tone="muted" style={styles.mt}>
               {formatRelative(r.createdAt)}
             </Text>
           </Card>
@@ -387,7 +388,12 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
       renderItem={renderRow}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
-      contentContainerStyle={{ padding: space[4], gap: space[3], paddingBottom: space[8] }}
+      contentContainerStyle={{
+        paddingHorizontal: space[5],
+        paddingTop: space[5],
+        gap: space[4],
+        paddingBottom: space[12],
+      }}
       onEndReached={() => {
         if (tab === 'posts') void posts.loadMore();
       }}
@@ -411,16 +417,21 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0, gap: 4 },
   row: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  stats: { flexDirection: 'row', justifyContent: 'space-between' },
+  stats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   stat: { alignItems: 'center', gap: 2, minHeight: 44, minWidth: 56, justifyContent: 'center' },
   actions: { flexDirection: 'row', gap: 8 },
-  segment: { flexDirection: 'row', padding: 4 },
+  segment: { flexDirection: 'row', gap: 24, borderBottomWidth: StyleSheet.hairlineWidth },
   segmentItem: {
-    flex: 1,
-    alignItems: 'center',
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    borderBottomWidth: 2,
+    marginBottom: -1,
   },
   reviewHead: {
     flexDirection: 'row',
@@ -428,6 +439,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  mt: { marginTop: 6 },
+  mt: { marginTop: 8 },
   rotation: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },
 });

@@ -28,17 +28,11 @@ export function NotificationRow({
       href={content.href}
       onClick={() => onOpen(notification)}
       className={cn(
-        'relative flex gap-3 px-4 py-4 transition-colors duration-fast sm:gap-4 sm:px-5',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus',
-        unread ? 'bg-accent/[0.06] hover:bg-accent/10' : 'hover:bg-surface'
+        'flex gap-4 rounded-lg px-3 py-3.5 transition-colors duration-fast ease-out',
+        'hover:bg-fg/[0.04]',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus'
       )}
     >
-      {unread && (
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-accent"
-        />
-      )}
       <span className="relative h-fit shrink-0">
         {actor ? (
           <Avatar name={name} src={actor.avatarUrl} size="md" decorative />
@@ -48,31 +42,34 @@ export function NotificationRow({
         <span
           aria-hidden="true"
           className={cn(
-            'absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-elevated ring-2 ring-canvas',
+            'absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-raised ring-2 ring-canvas',
             meta.className
           )}
         >
-          <TypeIcon weight="fill" className="h-3 w-3" />
+          <TypeIcon className="h-3 w-3" />
         </span>
       </span>
 
-      <span className="min-w-0 flex-1 space-y-1">
-        <span className="block text-sm leading-relaxed text-ink-secondary">
+      <span className="min-w-0 flex-1">
+        <span className={cn('block text-sm leading-relaxed', unread ? 'text-fg' : 'text-fg-muted')}>
           {unread && <span className="sr-only">Non letta: </span>}
-          {actor && <strong className="font-semibold text-ink">{name} </strong>}
+          {actor && <strong className="font-semibold text-fg">{name} </strong>}
           {content.text}
         </span>
         {content.quote && (
-          <span className="block border-l-2 border-line pl-3 font-editorial text-sm italic text-ink-secondary line-clamp-2">
+          <span className="mt-1.5 block border-l-2 border-line pl-3 font-editorial text-sm italic text-fg-muted line-clamp-2">
             “{content.quote}”
           </span>
         )}
-        <span className="flex items-center gap-2 font-mono text-xs text-ink-muted">
+        <span className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-fg-subtle">
           <span>{meta.label}</span>
-          <span aria-hidden="true">·</span>
-          <TimeAgo iso={notification.createdAt} className="tabular-nums" />
+          <TimeAgo iso={notification.createdAt} />
         </span>
       </span>
+
+      {unread && (
+        <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent" />
+      )}
     </Link>
   );
 }

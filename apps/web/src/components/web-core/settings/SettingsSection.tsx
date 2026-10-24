@@ -1,34 +1,33 @@
 import React from 'react';
-import { Card } from '@/components/ui';
 
-/** One titled block of the settings page; `id` is the in-page anchor. */
+/**
+ * One titled block of the settings page; `id` is the in-page anchor. Open layout: a hairline
+ * above, title and description on the left measure, controls below. No card chrome.
+ */
 export function SettingsSection({
   id,
-  eyebrow,
   title,
   description,
   children,
 }: {
   id: string;
-  eyebrow: string;
+  /** @deprecated No longer shown: section titles carry the context on their own. */
+  eyebrow?: string;
   title: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <Card
-      as="section"
+    <section
       aria-labelledby={`${id}-title`}
       id={id}
-      padding="lg"
-      className="scroll-mt-20"
+      className="scroll-mt-20 border-t border-line pb-4 pt-10"
     >
-      <p className="om-eyebrow">{eyebrow}</p>
-      <h2 id={`${id}-title`} className="om-headline mt-1 text-2xl text-ink">
+      <h2 id={`${id}-title`} className="om-headline text-2xl text-fg">
         {title}
       </h2>
-      {description && <p className="mt-1 max-w-prose text-sm text-ink-secondary">{description}</p>}
-      <div className="mt-6">{children}</div>
-    </Card>
+      {description && <p className="mt-2 max-w-prose text-sm text-fg-muted">{description}</p>}
+      <div className="mt-8">{children}</div>
+    </section>
   );
 }

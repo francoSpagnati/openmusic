@@ -7,12 +7,12 @@ export type CardVariant = 'surface' | 'sleeve' | 'outline' | 'sunken';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
 export interface CardProps extends ViewProps {
-  /** `sleeve` is the record-sleeve look: sleeve radius, open right edge, cardboard lift. */
+  /** `sleeve` is the hairline card on the raised paper layer (web `.om-sleeve`). */
   variant?: CardVariant;
   padding?: CardPadding;
 }
 
-const paddings: Record<CardPadding, number> = { none: 0, sm: 12, md: 16, lg: 24 };
+const paddings: Record<CardPadding, number> = { none: 0, sm: 12, md: 20, lg: 24 };
 
 export function Card({ variant = 'surface', padding = 'md', style, children, ...rest }: CardProps) {
   const { colors, radii } = useTheme();
@@ -20,22 +20,21 @@ export function Card({ variant = 'surface', padding = 'md', style, children, ...
     surface: {
       backgroundColor: colors.surface,
       borderColor: colors.border,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderRadius: radii.lg,
     },
     sleeve: {
-      backgroundColor: colors.surface,
+      // Hairline card (web `.om-sleeve`): structure from the border, no drop shadow.
+      backgroundColor: colors.surfaceRaised,
       borderColor: colors.border,
-      borderWidth: 1,
-      borderRightWidth: 0,
+      borderWidth: StyleSheet.hairlineWidth,
       borderRadius: radii.sleeve,
-      shadowColor: '#0A0805',
-      shadowOpacity: 0.5,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 4,
     },
-    outline: { borderColor: colors.border, borderWidth: 1, borderRadius: radii.lg },
+    outline: {
+      borderColor: colors.border,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: radii.lg,
+    },
     sunken: { backgroundColor: colors.sunken, borderRadius: radii.lg },
   }[variant];
   return (
@@ -46,7 +45,7 @@ export function Card({ variant = 'surface', padding = 'md', style, children, ...
 }
 
 export interface CardHeaderProps {
-  /** Small mono catalogue label above the title, e.g. "LATO A · 1997". */
+  /** Small sentence-case label above the title, e.g. "Lato A". */
   eyebrow?: string;
   title: string;
   action?: React.ReactNode;
@@ -57,7 +56,7 @@ export function CardHeader({ eyebrow, title, action }: CardHeaderProps) {
     <View style={styles.header}>
       <View style={styles.headerText}>
         {eyebrow ? <Text variant="eyebrow">{eyebrow}</Text> : null}
-        <Text variant="title" size="xl" numberOfLines={1} accessibilityRole="header">
+        <Text variant="title" size="lg" numberOfLines={1} accessibilityRole="header">
           {title}
         </Text>
       </View>

@@ -22,15 +22,11 @@ export function EditionChip({
     <View accessible accessibilityRole="text" accessibilityLabel={`Edizione: ${name}`}>
       <Badge
         label={name}
-        tone={label ? 'accent' : 'neutral'}
+        tone="neutral"
         variant="outline"
         size={size}
         icon={
-          <VinylRecord
-            size={size === 'sm' ? 12 : 14}
-            weight="duotone"
-            color={label ? colors.accent : colors.textSecondary}
-          />
+          <VinylRecord size={size === 'sm' ? 12 : 14} weight="regular" color={colors.textMuted} />
         }
       />
     </View>

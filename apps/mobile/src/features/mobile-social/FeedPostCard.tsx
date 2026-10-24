@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  useReducedMotion,
   withSequence,
   withSpring,
 } from 'react-native-reanimated';
@@ -35,6 +36,7 @@ export interface FeedPostCardProps {
 function LikeButton({ post, onPress }: { post: Post; onPress: () => void }) {
   const { colors } = useTheme();
   const scale = useSharedValue(1);
+  const reduced = useReducedMotion();
   const first = useRef(true);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -43,12 +45,13 @@ function LikeButton({ post, onPress }: { post: Post; onPress: () => void }) {
       first.current = false;
       return;
     }
-    if (post.isLikedByMe)
+    // A small, critically damped pulse: confirms the tap without bouncing.
+    if (post.isLikedByMe && !reduced)
       scale.value = withSequence(
-        withSpring(1.35, THEME.spring.snappy),
+        withSpring(1.12, THEME.spring.snappy),
         withSpring(1, THEME.spring.gentle)
       );
-  }, [post.isLikedByMe, scale]);
+  }, [post.isLikedByMe, scale, reduced]);
 
   return (
     <Pressable
@@ -63,7 +66,7 @@ function LikeButton({ post, onPress }: { post: Post; onPress: () => void }) {
         <Heart
           size={22}
           weight={post.isLikedByMe ? 'fill' : 'regular'}
-          color={post.isLikedByMe ? colors.accent : colors.textSecondary}
+          color={post.isLikedByMe ? colors.accent : colors.textMuted}
         />
       </Animated.View>
       <Text variant="mono" size="sm" tone={post.isLikedByMe ? 'accent' : 'secondary'}>
@@ -111,11 +114,11 @@ export function FeedPostCard({
           <Text variant="bodyStrong" size="sm" numberOfLines={1}>
             {author}
           </Text>
-          <Text variant="mono" size="xs" tone="muted">
+          <Text size="xs" tone="muted" numberOfLines={1}>
             @{post.author.username} · {formatRelative(post.createdAt)}
           </Text>
         </View>
-        {post.author.role === 'CRITIC' ? <Badge label="Critico" tone="accent" size="sm" /> : null}
+        {post.author.role === 'CRITIC' ? <Badge label="Critico" size="sm" /> : null}
       </Pressable>
 
       <Text style={styles.content}>{post.content}</Text>
@@ -135,14 +138,18 @@ export function FeedPostCard({
           onPress={() => attachmentTarget && router.push(`/release/${attachmentTarget}`)}
           style={[
             styles.attachment,
-            { backgroundColor: colors.sunken, borderRadius: radii.sleeve },
+            {
+              backgroundColor: colors.sunken,
+              borderColor: colors.border,
+              borderRadius: radii.sleeve,
+            },
           ]}
         >
           <CoverArt uri={release?.coverUrl ?? track?.coverUrl ?? null} size={56} />
           <View style={styles.flex}>
             {track && !release ? (
               <View style={styles.kind}>
-                <MusicNote size={12} color={colors.muted} weight="bold" />
+                <MusicNote size={12} color={colors.textSubtle} weight="regular" />
                 <Text variant="eyebrow">Brano</Text>
               </View>
             ) : null}
@@ -170,7 +177,7 @@ export function FeedPostCard({
       {post.vibeTags.length > 0 ? (
         <View style={styles.tags}>
           {post.vibeTags.map((tag) => (
-            <Badge key={tag} label={`#${tag}`} size="sm" mono />
+            <Badge key={tag} label={`#${tag}`} size="sm" />
           ))}
         </View>
       ) : null}
@@ -188,7 +195,7 @@ export function FeedPostCard({
           <BookmarkSimple
             size={22}
             weight={post.isSavedByMe ? 'fill' : 'regular'}
-            color={post.isSavedByMe ? colors.accent : colors.textSecondary}
+            color={post.isSavedByMe ? colors.text : colors.textMuted}
           />
         </Pressable>
         <View style={styles.flex} />
@@ -200,7 +207,7 @@ export function FeedPostCard({
             hitSlop={6}
             style={styles.action}
           >
-            <Trash size={20} color={colors.muted} />
+            <Trash size={20} color={colors.textSubtle} />
           </Pressable>
         ) : null}
       </View>
@@ -211,8 +218,15 @@ export function FeedPostCard({
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   flex: { flex: 1, minWidth: 0 },
-  content: { marginTop: 12 },
-  attachment: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, marginTop: 12 },
+  content: { marginTop: 14 },
+  attachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    marginTop: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   kind: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   rating: { marginTop: 12 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },

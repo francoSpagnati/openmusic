@@ -5,9 +5,10 @@ import type { NotificationItem } from './notifications';
 import type { ChatMessage } from './social';
 
 /**
- * Socket.io handshake. Browsers authenticate with the httpOnly `om_session` cookie
- * (`withCredentials: true`); native clients pass `auth: { token }`. Connections without a valid
- * session are rejected with a `connect_error` whose `message` is `UNAUTHORIZED`.
+ * Socket.io handshake. Native clients pass their session token as `auth: { token }`; the web app
+ * passes a short-lived socket token from `GET /api/auth/socket-token` (ADR-014). The httpOnly
+ * `om_session` cookie is still accepted when the browser sends it (API on the web app's site).
+ * Connections without a valid session are rejected with a `connect_error` `UNAUTHORIZED`.
  */
 export const SocketHandshakeAuthSchema = z.object({
   token: z.string().min(1).optional(),

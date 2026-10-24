@@ -50,12 +50,12 @@ function StarGlyph({ fill, className }: { fill: 0 | 0.5 | 1; className: string }
   if (fill === 0.5) {
     return (
       <span className="relative inline-flex">
-        <Star weight="regular" className={cn(className, 'text-ink-muted')} />
+        <Star weight="regular" className={cn(className, 'text-line-strong')} />
         <StarHalf weight="fill" className={cn(className, 'absolute inset-0 text-accent')} />
       </span>
     );
   }
-  return <Star weight="regular" className={cn(className, 'text-ink-muted')} />;
+  return <Star weight="regular" className={cn(className, 'text-line-strong')} />;
 }
 
 /**
@@ -118,7 +118,7 @@ export function RatingStars({
         className={cn(
           'inline-flex',
           interactive &&
-            'cursor-pointer transition-transform duration-fast ease-tonearm hover:scale-110'
+            'cursor-pointer transition-transform duration-fast ease-out hover:scale-105'
         )}
         onPointerMove={interactive ? (event) => setHover(starFromPointer(event, index)) : undefined}
         onClick={interactive ? (event) => commit(starFromPointer(event, index)) : undefined}
@@ -129,7 +129,7 @@ export function RatingStars({
   });
 
   const numeric = showValue && (
-    <span className="ml-2 font-mono text-sm font-semibold tabular-nums text-ink" aria-hidden="true">
+    <span className="ml-2 font-mono text-sm font-medium tabular-nums text-fg" aria-hidden="true">
       {current > 0 ? formatStars(current) : '–'}
     </span>
   );

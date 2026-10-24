@@ -24,6 +24,11 @@ export interface CoverArtProps {
   placeholderColor?: string | null;
   className?: string;
   imageClassName?: string;
+  /**
+   * Draw a 1px hairline over the edge (above the image), so pale sleeves do not melt into the
+   * paper background. Used by the editorial release, album, explore and reel layouts.
+   */
+  framed?: boolean;
 }
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -47,6 +52,7 @@ export function CoverArt({
   placeholderColor,
   className,
   imageClassName,
+  framed = false,
 }: CoverArtProps) {
   // Keyed by URL so a new cover gets a fresh attempt after a previous one failed.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -57,7 +63,12 @@ export function CoverArt({
 
   return (
     <span
-      className={cn('relative block overflow-hidden bg-sunken', className)}
+      className={cn(
+        'relative block overflow-hidden bg-sunken',
+        framed &&
+          "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-hairline after:content-['']",
+        className
+      )}
       style={showImage && background ? { backgroundColor: background } : undefined}
     >
       {showImage ? (

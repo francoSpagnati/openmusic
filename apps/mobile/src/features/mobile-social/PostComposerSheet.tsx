@@ -146,7 +146,7 @@ export function PostComposerSheet({ visible, onClose, onCreated }: PostComposerS
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={[styles.header, { paddingHorizontal: space[4], paddingTop: space[3] }]}>
+          <View style={[styles.header, { paddingHorizontal: space[5], paddingTop: space[3] }]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Annulla"
@@ -162,7 +162,7 @@ export function PostComposerSheet({ visible, onClose, onCreated }: PostComposerS
             <View style={styles.icon} />
           </View>
           <ScrollView
-            contentContainerStyle={{ padding: space[4], gap: space[4] }}
+            contentContainerStyle={{ padding: space[5], gap: space[4] }}
             keyboardShouldPersistTaps="handled"
           >
             <Field
@@ -207,7 +207,7 @@ export function PostComposerSheet({ visible, onClose, onCreated }: PostComposerS
                   }}
                   style={styles.icon}
                 >
-                  <X size={18} color={colors.textSecondary} />
+                  <X size={18} color={colors.textMuted} />
                 </Pressable>
               </View>
             ) : (
@@ -257,7 +257,7 @@ export function PostComposerSheet({ visible, onClose, onCreated }: PostComposerS
             ) : null}
           </ScrollView>
           {/* Primary action in the thumb zone, above the keyboard. */}
-          <View style={[styles.footer, { padding: space[4], borderTopColor: colors.border }]}>
+          <View style={[styles.footer, { padding: space[5], borderTopColor: colors.border }]}>
             <Button
               label="Pubblica"
               size="lg"

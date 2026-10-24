@@ -116,8 +116,9 @@ export function luminance(hex: string): number {
  */
 export function tintAlpha(hex: string, scheme: 'dark' | 'light'): number {
   const l = luminance(hex);
-  if (scheme === 'dark') return l > 0.5 ? 0.28 : l > 0.2 ? 0.42 : 0.6;
-  return l < 0.1 ? 0.18 : 0.3;
+  // Calm ambient tint (ADR-015): a hint of the record's colour, mostly felt in the dark theme.
+  if (scheme === 'dark') return l > 0.5 ? 0.12 : l > 0.2 ? 0.18 : 0.24;
+  return l < 0.1 ? 0.05 : 0.08;
 }
 
 /** "#Notturno, malinconico  pioggia" → ["Notturno", "malinconico", "pioggia"] (max 5, deduped). */

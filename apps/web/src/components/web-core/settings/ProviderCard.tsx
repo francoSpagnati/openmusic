@@ -77,17 +77,17 @@ export function ProviderCard({
   }
 
   return (
-    <div className="rounded-lg border border-line bg-sunken p-4">
+    <div className="rounded-lg border border-line p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <span
             aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-elevated text-xl text-ink"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-sunken text-xl text-fg"
           >
             {icon}
           </span>
           <div className="min-w-0">
-            <h3 className="flex flex-wrap items-center gap-2 font-semibold text-ink">
+            <h3 className="flex flex-wrap items-center gap-2 font-medium text-fg">
               {name}
               {account ? (
                 <Badge tone="fresh" size="sm" icon={<LinkSimple weight="bold" />}>
@@ -99,7 +99,7 @@ export function ProviderCard({
                 </Badge>
               )}
             </h3>
-            <p className="mt-0.5 text-sm text-ink-secondary">
+            <p className="mt-0.5 text-sm text-fg-muted">
               {account ? (
                 <>
                   Account <span className="font-mono">{account.providerId}</span>

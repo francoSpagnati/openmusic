@@ -9,6 +9,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  Enter,
   ErrorState,
   Field,
   Skeleton,
@@ -91,8 +92,8 @@ function ExploreContent() {
   const hasMore = searching ? search.hasMore : browse.hasMore;
 
   const header = (
-    <View style={{ gap: space[3], marginBottom: space[3] }}>
-      <Text variant="headline" accessibilityRole="header">
+    <View style={{ gap: space[5], marginBottom: space[4] }}>
+      <Text variant="headline" size="3xl" accessibilityRole="header">
         Esplora
       </Text>
       <Field
@@ -125,9 +126,8 @@ function ExploreContent() {
                 <Badge
                   key={s}
                   label={sourceLabel(s)}
-                  mono
                   size="sm"
-                  tone={s === 'LOCAL' ? 'accent' : 'neutral'}
+                  variant={s === 'LOCAL' ? 'soft' : 'outline'}
                 />
               ))}
             </View>
@@ -152,7 +152,11 @@ function ExploreContent() {
         keyExtractor={(row) =>
           row.kind === 'release' ? `r-${row.release.id}` : `t-${row.track.id}`
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{
+          paddingHorizontal: space[5],
+          paddingTop: space[4],
+          paddingBottom: space[12],
+        }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         onEndReachedThreshold={0.5}
@@ -167,13 +171,15 @@ function ExploreContent() {
           )
         }
         ListHeaderComponent={header}
-        renderItem={({ item }) =>
-          item.kind === 'release' ? (
-            <ReleaseResultRow release={item.release} editionCount={item.editionCount} />
-          ) : (
-            <TrackResultRow track={item.track} />
-          )
-        }
+        renderItem={({ item, index }) => (
+          <Enter index={index} kind="fade">
+            {item.kind === 'release' ? (
+              <ReleaseResultRow release={item.release} editionCount={item.editionCount} />
+            ) : (
+              <TrackResultRow track={item.track} />
+            )}
+          </Enter>
+        )}
         ListEmptyComponent={
           loading ? (
             <View

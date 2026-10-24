@@ -13,7 +13,7 @@ export interface SkeletonProps {
 /** Placeholder block with a slow "groove" pulse (disabled when the OS asks for reduced motion). */
 export function Skeleton({ width = '100%', height = 16, shape = 'rect' }: SkeletonProps) {
   const { colors, radii } = useTheme();
-  const opacity = useRef(new Animated.Value(0.55)).current;
+  const opacity = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
     let loop: Animated.CompositeAnimation | null = null;
@@ -24,7 +24,7 @@ export function Skeleton({ width = '100%', height = 16, shape = 'rect' }: Skelet
       loop = Animated.loop(
         Animated.sequence([
           Animated.timing(opacity, { toValue: 1, duration: half, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 0.55, duration: half, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.6, duration: half, useNativeDriver: true }),
         ])
       );
       loop.start();
@@ -44,7 +44,7 @@ export function Skeleton({ width = '100%', height = 16, shape = 'rect' }: Skelet
         width: shape === 'circle' ? size : width,
         height,
         borderRadius: shape === 'circle' ? size / 2 : shape === 'text' ? radii.xs : radii.sleeve,
-        backgroundColor: colors.elevated,
+        backgroundColor: colors.surface,
         opacity,
       }}
     />

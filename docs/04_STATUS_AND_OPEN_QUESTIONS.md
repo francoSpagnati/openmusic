@@ -1,9 +1,9 @@
 # 04 · Stato del progetto e questioni aperte
 
-> **Ultimo aggiornamento:** 2026-10-23, branch `ccr-8d035389-g64pel` (round: Fastify 5, fallback
-> del catalogo su query semplice e throttling dei 403 di iTunes, default locali su `127.0.0.1`,
-> lettura automatica di Spotify/Last.fm, ADR-013, più le correzioni della review avversariale
-> di questo round, §3 "Review avversariale del poller").
+> **Ultimo aggiornamento:** 2026-10-24, branch `ccr-8d035389-g64pel` (round: restyle "Carta e
+> argilla", ADR-015, su web e mobile, più la review avversariale del restyle, §3 "Restyle").
+> Round precedente: Fastify 5, fallback del catalogo, lettura automatica di Spotify/Last.fm
+> (ADR-013) e relativa review del poller.
 > Questo documento dice cosa **funziona davvero**, cosa è parziale e cosa manca. Le versioni
 > precedenti segnavano come "completate" milestone che erano solo componenti su dati mock: qui
 > una voce è "reale" solo se è collegata all'API, persiste su database ed è coperta da test o
@@ -16,12 +16,13 @@
 | `npm ci` (copia pulita dei manifest + lockfile)       | passa, lockfile allineato                                     |
 | `npm run lint`                                        | passa (api, db, shared, web + e2e)                            |
 | `npm run typecheck`                                   | passa su 5/5 pacchetti, mobile incluso                        |
-| `npm test` (dopo `db:test:prepare`)                   | shared 58/58, api 186/186 (catalogo su fixture), mobile 67/67 |
-| api con `CATALOG_EXTERNAL_ENABLED=false` esportata    | 186/186 (prima 23 test del catalogo fallivano)                |
+| `npm test` (dopo `db:test:prepare`)                   | shared 58/58, api 202/202 (catalogo su fixture), mobile 73/73 |
 | Build web (`next build`, Next 16.4.2)                 | passa                                                         |
-| `npm run e2e` (Playwright, 13 test)                   | passa sul DB di sviluppo e su un DB nuovo con seed offline    |
-| `expo export` iOS + Android (`EXPO_OFFLINE=1`)        | passa (bundle Hermes ~5 MB per piattaforma)                   |
-| CI GitHub (`ci.yml`, job `verify` + `mobile` + `e2e`) | round 1 verde su GitHub; questo round non ancora eseguito     |
+| `npm run e2e` (Playwright, 20 test)                   | passa (profilo locale)                                        |
+| `E2E_PROFILE=cross-site npm run e2e`                  | passa, 20/20 (build di produzione, `next start`, due siti)    |
+| `npx tsx scripts/check-contrast.ts`                   | tutte le coppie di token AA in chiaro e scuro                 |
+| `expo export` iOS + Android (`EXPO_OFFLINE=1`)        | non rieseguito in questo round                                |
+| CI GitHub (`ci.yml`, job `verify` + `mobile` + `e2e`) | questo round non ancora eseguito                              |
 
 ### 1.1 Verificato dal vivo o solo con fixture?
 
@@ -261,6 +262,46 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 - [ ] File `LICENSE` (MIT) assente.
 - [ ] Alcuni file preesistenti (mobile, 3 file API) non sono formattati con Prettier.
 
+### Restyle "Carta e argilla" (ADR-015, `docs/05_DESIGN_SYSTEM.md`)
+
+Fatto: token chiaro/scuro condivisi (`packages/shared/src/theme.ts`) con controllo di contrasto
+(`scripts/check-contrast.ts`), font aperti (Newsreader, Instrument Sans, Spline Sans Mono),
+primitive UI e tutte le pagine web e le schermate mobile ristilizzate, scelta del tema
+Chiaro/Scuro/Sistema (web: `localStorage` + script prima del paint; mobile: `expo-secure-store`).
+Nessun nome, logo o font di Anthropic/Claude nel codice o negli asset: l'ispirazione è citata
+solo nei documenti, con i limiti.
+
+Verificato in questo round (review avversariale):
+
+- axe-core (WCAG 2.1 A/AA + best practice) su 14 pagine web, chiaro e scuro, 1280 e 390 px:
+  **nessuna violazione di contrasto**; restano solo segnalazioni già presenti prima del restyle
+  (vedi sotto). Coppie con trasparenza (badge, righe selezionate) calcolate a mano: tutte >= 4.5:1
+  tranne testo `fg-subtle` su `accent` all'8% in chiaro (4.46:1), combinazione oggi non usata.
+- Tema: nessun flash e nessun avviso di idratazione con scelta salvata, `localStorage`
+  bloccato non rompe la pagina (nuovo `e2e/theme.spec.ts`). Corretto un `<meta name="color-scheme">`
+  duplicato da React nella build di produzione.
+- SSR: release e album con `<title>`, Open Graph e JSON-LD (release) invariati; id inesistenti
+  rispondono ancora 404 vero. `render.yaml`, proxy `/api/*` e avvio `next start` non toccati dal
+  restyle; e2e cross-site verde.
+- Mobile: il tema salvato viene letto prima del primo frame (lo splash resta su fino ad allora,
+  massimo 1,5 s), errori o eccezioni di SecureStore non bloccano l'app (test Jest), la roulette
+  dei generi non gira più con "riduci movimento".
+- Rifiniture: placeholder della ricerca in Esplora non più tagliato a 390 px, sezioni delle
+  Impostazioni che vanno a capo invece di scorrere di lato, frecce dei Reels su desktop leggibili.
+
+**Non verificato:** mai visto su dispositivi reali (iOS/Android, Safari), mai provato con screen
+reader (VoiceOver, TalkBack, NVDA), zoom 200% e modalità ad alto contrasto solo nel CSS, non
+provati; l'app mobile non è mai stata avviata dopo il restyle (solo typecheck e Jest).
+
+Da fare:
+
+- [ ] Prova con screen reader e su dispositivi reali (web mobile e app), anche con testo grande.
+- [ ] `theme-color` (colore della barra del browser) segue il sistema, non la scelta manuale.
+- [ ] Segnalazioni axe preesistenti: nome accessibile del logo e delle reazioni alle recensioni
+      diverso dal testo visibile (WCAG 2.5.3), `role="status"`/`"alert"` su `<ol>` nei toast,
+      nessun `<h1>` nei Reels, salto di livello dei titoli in profilo e video.
+- [ ] Mobile: componenti di `src/components/` non più usati (vedi §4) da rimuovere, non ristilizzati.
+
 ### Minori
 
 - [x] ~~Una release inesistente rispondeva 200~~: il controllo è in `releases/[id]/layout.tsx`
@@ -273,8 +314,8 @@ catalogo non risponde. Le immagini di avatar e copertine del seed puntano a Unsp
 Bearer in `expo-secure-store`, socket autenticato con `auth: { token }`, font e tema del design
 system. Home, Esplora, Reels (anteprime da 30 s con `expo-audio`), release (recensioni,
 reazioni, punteggi, edizioni), album (edizioni e voto complessivo), chat, notifiche, profili e impostazioni usano l'API reale; nessun dato mock.
-Verificato con typecheck, Jest (66 test, anche sull'albero di route reale con API finta) ed
-`expo export`; **mai provato su dispositivo, simulatore o Expo Go**, né contro un'API live.
+Verificato con typecheck, Jest (73 test, anche sull'albero di route reale con API finta) ed
+`expo export` (non rieseguito dopo il restyle); **mai provato su dispositivo, simulatore o Expo Go**, né contro un'API live.
 Richiede Node >= 22.13. Dettagli in `apps/mobile/README.md`.
 
 Mancano / da decidere:
@@ -309,7 +350,8 @@ Mancano / da decidere:
 3. **Media bayesiana:** attivarla ora (con `m` e `C` dell'ADR-001) o quando il catalogo ha abbastanza
    recensioni?
 4. **Chi può scrivere in chat e vedere l'ascolto live:** solo mutual? follow con approvazione?
-5. **Hosting (ADR-005):** confermare Vercel (web) + Railway/Fly (API con WebSocket) +
-   Neon/Supabase e Upstash; richiede web e API sullo stesso dominio registrabile per il cookie
-   (`COOKIE_DOMAIN`, vedi `06` §1).
+5. ~~**Hosting (ADR-005)**~~: primo hosting su Render free con un Blueprint (`render.yaml`,
+   ADR-014, `07_DEPLOY.md`). Il vincolo del dominio comune è caduto: il web fa da proxy per
+   `/api/*`. Mai provato davvero su Render; da rivalutare se il piano free non basta (sleep,
+   Postgres che scade dopo 30 giorni).
 6. **Licenza:** aggiungere `LICENSE` MIT con il titolare corretto.

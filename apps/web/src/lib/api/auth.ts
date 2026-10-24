@@ -3,12 +3,14 @@ import {
   ConnectedProviderSchema,
   MeResponseSchema,
   OAuthUrlResponseSchema,
+  SocketTokenResponseSchema,
   type AuthSessionResponse,
   type ChangePasswordInput,
   type ConnectedProvider,
   type LoginInput,
   type MeResponse,
   type RegisterInput,
+  type SocketTokenResponse,
   type UpdateProfileInput,
 } from '@openmusic/shared';
 import { apiRequest } from './client';
@@ -40,6 +42,10 @@ export const authApi = {
   /** The browser gets a fresh cookie; the `token` in the body is for native clients only. */
   changePassword: (input: ChangePasswordInput): Promise<void> =>
     apiRequest('/api/auth/password', { method: 'POST', body: input }),
+
+  /** Short-lived Socket.io handshake token and the API origin to connect to (ADR-014). */
+  socketToken: (signal?: AbortSignal): Promise<SocketTokenResponse> =>
+    apiRequest('/api/auth/socket-token', { schema: SocketTokenResponseSchema, signal }),
 
   /** Returns the Spotify consent URL; navigate the window to it (`window.location.assign`). */
   spotifyLoginUrl: (): Promise<string> =>

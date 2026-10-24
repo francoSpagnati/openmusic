@@ -39,23 +39,20 @@ export const LiveFriendsTicker: React.FC<LiveFriendsTickerProps> = ({
   return (
     <section
       aria-labelledby={titleId}
-      className={cn(
-        variant === 'band' ? 'border-y border-line bg-surface/60 py-3' : 'py-2',
-        className
-      )}
+      className={cn(variant === 'band' ? 'border-y border-line py-3' : 'py-2', className)}
     >
-      <div className={cn('flex items-center gap-3', variant === 'band' ? 'px-4 sm:px-6' : 'px-4')}>
-        <h2
-          id={titleId}
-          className="flex shrink-0 items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary"
-        >
+      <div className={cn('flex items-center gap-3', variant === 'band' ? 'px-4 sm:px-6' : 'px-5')}>
+        <h2 id={titleId} className="flex shrink-0 items-center gap-2 text-[13px] text-fg-muted">
           <span
             aria-hidden="true"
-            className={cn('h-2 w-2 rounded-full', connected ? 'bg-live' : 'bg-ink-muted')}
+            className={cn(
+              'h-1.5 w-1.5 rounded-full transition-colors duration-base',
+              connected && listeningCount > 0 ? 'bg-fresh' : 'bg-fg-subtle'
+            )}
           />
           In ascolto
-          {connected && (
-            <span className="tabular-nums text-ink-muted">
+          {connected && listeningCount > 0 && (
+            <span className="font-mono tabular-nums text-fg-subtle">
               {listeningCount}
               <span className="sr-only"> amici</span>
             </span>
@@ -64,22 +61,21 @@ export const LiveFriendsTicker: React.FC<LiveFriendsTickerProps> = ({
 
         {!connected ? (
           error ? (
-            <p className="text-xs text-ink-muted" role="status">
+            <p className="text-[13px] text-fg-subtle" role="status">
               Il live degli amici non è raggiungibile ora.
             </p>
           ) : (
             <div aria-busy="true" className="flex gap-2">
               <span className="sr-only">Collegamento al live…</span>
               <Skeleton shape="rect" className="h-8 w-28 rounded-full" />
-              <Skeleton shape="rect" className="h-8 w-24 rounded-full" />
             </div>
           )
         ) : visible.length === 0 ? (
-          <p className="truncate text-xs text-ink-muted">Nessun amico sta ascoltando ora.</p>
+          <p className="truncate text-[13px] text-fg-subtle">nessun amico, per ora</p>
         ) : (
           <ul className="[scrollbar-width:thin] -my-1 flex min-w-0 gap-2 overflow-x-auto py-1">
             {visible.map((friend) => (
-              <li key={friend.userId} className="shrink-0">
+              <li key={friend.userId} className="om-fade shrink-0">
                 <FriendChip friend={friend} onOpen={() => setOpen(friend)} />
               </li>
             ))}
@@ -101,11 +97,11 @@ function FriendChip({ friend, onOpen }: { friend: FriendPresence; onOpen: () => 
       type="button"
       onClick={onOpen}
       className={cn(
-        'flex max-w-[15rem] items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-left transition-colors duration-fast',
+        'flex max-w-[15rem] items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-left transition-colors duration-fast ease-out',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
         ghost
-          ? 'border-dashed border-line-strong text-ink-muted hover:text-ink-secondary'
-          : 'border-line bg-canvas hover:border-accent'
+          ? 'border-dashed border-line-strong text-fg-subtle hover:text-fg-muted'
+          : 'border-line bg-canvas hover:border-line-strong'
       )}
     >
       {ghost ? (
@@ -116,9 +112,12 @@ function FriendChip({ friend, onOpen }: { friend: FriendPresence; onOpen: () => 
         <Avatar name={name} src={friend.avatarUrl} size="xs" status="live" decorative />
       )}
       <span className="min-w-0 leading-tight">
-        <span className="block truncate text-xs font-semibold text-ink">{name}</span>
-        <span className="block truncate text-[11px] text-ink-secondary">
-          {ghost ? 'in Ghost Mode' : track ? `${track.title} · ${track.artistName}` : ''}
+        <span className="block truncate text-xs font-medium text-fg">{name}</span>
+        <span
+          key={track ? `${track.title}:${track.artistName}` : 'none'}
+          className="om-fade block truncate text-xs text-fg-muted"
+        >
+          {ghost ? 'in Ghost Mode' : track ? `${track.title}, ${track.artistName}` : ''}
         </span>
       </span>
     </button>

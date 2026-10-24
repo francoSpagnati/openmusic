@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from './cn';
 
+/** `mixed` renders with the `warning` token; `live` with `fresh`. */
 export type BadgeTone = 'neutral' | 'accent' | 'fresh' | 'mixed' | 'rotten' | 'live';
 export type BadgeVariant = 'soft' | 'outline' | 'solid';
 export type BadgeSize = 'sm' | 'md';
@@ -11,40 +12,41 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: BadgeSize;
   /** Phosphor icon. Pair colour with an icon or text, never colour alone. */
   icon?: React.ReactNode;
-  /** Monospace label, for catalogue numbers, genres-as-tags, counters. */
+  /** Monospace label, for catalogue numbers and counters (no forced caps). */
   mono?: boolean;
 }
 
+/* Soft tints stay at 8% so the tinted text keeps >= 4.5:1 (scripts/check-contrast.ts). */
 const tones: Record<BadgeTone, Record<BadgeVariant, string>> = {
   neutral: {
-    soft: 'bg-ink/[0.07] text-ink-secondary',
-    outline: 'border border-line-strong text-ink-secondary',
-    solid: 'bg-ink text-canvas',
+    soft: 'bg-fg/[0.06] text-fg-muted',
+    outline: 'border border-line-strong text-fg-muted',
+    solid: 'bg-fg text-canvas',
   },
   accent: {
-    soft: 'bg-accent/[0.14] text-accent',
-    outline: 'border border-accent/60 text-accent',
-    solid: 'bg-accent text-on-accent',
+    soft: 'bg-accent/[0.08] text-accent',
+    outline: 'border border-accent/50 text-accent',
+    solid: 'bg-accent text-accent-contrast',
   },
   fresh: {
-    soft: 'bg-fresh/[0.14] text-fresh',
-    outline: 'border border-fresh/60 text-fresh',
+    soft: 'bg-fresh/[0.08] text-fresh',
+    outline: 'border border-fresh/50 text-fresh',
     solid: 'bg-fresh text-canvas',
   },
   mixed: {
-    soft: 'bg-mixed/[0.14] text-mixed',
-    outline: 'border border-mixed/60 text-mixed',
-    solid: 'bg-mixed text-canvas',
+    soft: 'bg-warning/[0.08] text-warning',
+    outline: 'border border-warning/50 text-warning',
+    solid: 'bg-warning text-canvas',
   },
   rotten: {
-    soft: 'bg-rotten/[0.14] text-rotten',
-    outline: 'border border-rotten/60 text-rotten',
+    soft: 'bg-rotten/[0.08] text-rotten',
+    outline: 'border border-rotten/50 text-rotten',
     solid: 'bg-rotten text-canvas',
   },
   live: {
-    soft: 'bg-live/[0.14] text-live',
-    outline: 'border border-live/60 text-live',
-    solid: 'bg-live text-canvas',
+    soft: 'bg-fresh/[0.08] text-fresh',
+    outline: 'border border-fresh/50 text-fresh',
+    solid: 'bg-fresh text-canvas',
   },
 };
 
@@ -66,8 +68,8 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center whitespace-nowrap rounded-xs font-semibold leading-none',
-        mono ? 'font-mono uppercase tracking-wider tabular-nums' : 'font-sans',
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-sm font-medium leading-none',
+        mono ? 'font-mono tabular-nums' : 'font-sans',
         tones[tone][variant],
         sizes[size],
         className

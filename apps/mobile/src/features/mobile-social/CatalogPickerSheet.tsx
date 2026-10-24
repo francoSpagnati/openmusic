@@ -78,7 +78,7 @@ export function CatalogPickerSheet({
       onRequestClose={close}
     >
       <SafeAreaView edges={['top', 'bottom']} style={[styles.flex, { backgroundColor: colors.bg }]}>
-        <View style={[styles.header, { paddingHorizontal: space[4], paddingTop: space[3] }]}>
+        <View style={[styles.header, { paddingHorizontal: space[5], paddingTop: space[3] }]}>
           <Text variant="title" accessibilityRole="header">
             {title ?? (mode === 'tracks' ? 'Scegli un brano' : 'Allega un disco o un brano')}
           </Text>
@@ -92,7 +92,7 @@ export function CatalogPickerSheet({
             <X size={22} color={colors.text} />
           </Pressable>
         </View>
-        <View style={{ paddingHorizontal: space[4], paddingVertical: space[3] }}>
+        <View style={{ paddingHorizontal: space[5], paddingVertical: space[3] }}>
           <Field
             label="Cerca nel catalogo"
             placeholder="Titolo, artista…"
@@ -109,7 +109,7 @@ export function CatalogPickerSheet({
           keyExtractor={(r) => r.key}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
-            paddingHorizontal: space[4],
+            paddingHorizontal: space[5],
             paddingBottom: space[8],
             gap: space[2],
           }}
@@ -131,7 +131,7 @@ export function CatalogPickerSheet({
                   styles.row,
                   {
                     borderRadius: radii.md,
-                    backgroundColor: pressed ? colors.elevated : colors.surface,
+                    backgroundColor: pressed ? colors.surface : colors.surfaceRaised,
                   },
                 ]}
               >
@@ -150,9 +150,9 @@ export function CatalogPickerSheet({
                   size="sm"
                   icon={
                     p.kind === 'track' ? (
-                      <MusicNote size={12} color={colors.textSecondary} />
+                      <MusicNote size={12} color={colors.textMuted} />
                     ) : (
-                      <Disc size={12} color={colors.textSecondary} />
+                      <Disc size={12} color={colors.textMuted} />
                     )
                   }
                 />

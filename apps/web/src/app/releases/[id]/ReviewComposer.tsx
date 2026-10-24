@@ -221,7 +221,7 @@ export function ReviewComposer({
       aria-describedby={edition ? 'composer-edition' : undefined}
     >
       <div>
-        <h3 id="composer-heading" className="om-headline flex items-center gap-2 text-xl text-ink">
+        <h3 id="composer-heading" className="om-headline flex items-center gap-2 text-xl text-fg">
           {asCritic && (
             <SealCheck aria-hidden="true" weight="duotone" className="h-5 w-5 text-fresh" />
           )}
@@ -231,7 +231,7 @@ export function ReviewComposer({
               ? 'La tua recensione'
               : 'Com’è questo disco?'}
         </h3>
-        <p className="mt-1 text-sm text-ink-secondary">
+        <p className="mt-1 text-sm text-fg-muted">
           {asCritic
             ? 'Il tuo voto entra nel Critic Score con la firma della tua testata.'
             : `Il tuo voto conta nel voto del pubblico di ${releaseTitle}.`}
@@ -241,11 +241,11 @@ export function ReviewComposer({
       {edition && (
         <div
           id="composer-edition"
-          className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border border-line bg-sunken px-3 py-2 text-sm text-ink-secondary"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border border-line bg-sunken px-3 py-2 text-sm text-fg-muted"
         >
           <span>Stai recensendo</span>
           <EditionChip label={edition.label} size="sm" />
-          <span className="basis-full text-xs text-ink-muted">
+          <span className="basis-full text-xs text-fg-subtle">
             Il voto resta su questa edizione. Nel voto complessivo dell’album conti una volta sola:
             se recensisci più edizioni vale la recensione più recente.
           </span>
@@ -255,7 +255,7 @@ export function ReviewComposer({
       {restored && (
         <p
           role="status"
-          className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-sunken px-3 py-2 text-sm text-ink-secondary"
+          className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-sunken px-3 py-2 text-sm text-fg-muted"
         >
           Abbiamo ripreso la bozza che non avevi pubblicato.
           <button
@@ -269,7 +269,7 @@ export function ReviewComposer({
       )}
 
       <div className="space-y-1.5">
-        <p id="composer-rating-label" className="text-sm font-semibold text-ink">
+        <p id="composer-rating-label" className="text-sm font-semibold text-fg">
           Voto{' '}
           <span className="text-accent" aria-hidden="true">
             *
@@ -289,7 +289,7 @@ export function ReviewComposer({
             disabled={saving}
           />
         </div>
-        <p className="text-xs text-ink-muted">
+        <p className="text-xs text-fg-subtle">
           Frecce per mezze stelle, Pagina su/giù per stelle intere. Da 3,5 stelle il voto è
           “fresco”.
         </p>
@@ -351,7 +351,7 @@ export function ReviewComposer({
       {errors.form && (
         <p
           role="alert"
-          className="rounded-md border border-rotten/50 bg-rotten/10 px-3 py-2 text-sm text-ink"
+          className="rounded-md border border-rotten/50 bg-rotten/10 px-3 py-2 text-sm text-fg"
         >
           {errors.form}
         </p>
@@ -367,7 +367,7 @@ export function ReviewComposer({
           {existing ? 'Aggiorna recensione' : 'Pubblica'}
         </Button>
         {!existing && !asCritic && (
-          <span className="text-xs text-ink-muted">
+          <span className="text-xs text-fg-subtle">
             La bozza si salva da sola su questo dispositivo.
           </span>
         )}

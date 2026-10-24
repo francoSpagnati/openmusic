@@ -70,8 +70,8 @@ export function VideosClient({ initialVideos }: { initialVideos: MusicVideoItem[
                   className={cn(
                     'h-9 rounded-full border px-3.5 text-sm transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                     active
-                      ? 'border-accent bg-accent font-semibold text-on-accent'
-                      : 'border-line bg-surface text-ink-secondary hover:border-line-strong hover:text-ink'
+                      ? 'border-fg bg-fg font-medium text-canvas'
+                      : 'border-line text-fg-muted hover:border-line-strong hover:text-fg'
                   )}
                 >
                   {f.label}
@@ -91,7 +91,7 @@ export function VideosClient({ initialVideos }: { initialVideos: MusicVideoItem[
         )}
       </div>
 
-      <p role="status" className="font-mono text-xs tabular-nums text-ink-secondary">
+      <p role="status" className="text-sm text-fg-subtle">
         {feed.status === 'loading'
           ? 'Carico i video…'
           : feed.status === 'ready'
@@ -106,11 +106,11 @@ export function VideosClient({ initialVideos }: { initialVideos: MusicVideoItem[
           onRetry={() => setToken((t) => t + 1)}
         />
       ) : feed.status === 'loading' && feed.videos.length === 0 ? (
-        <div aria-busy="true" className="grid gap-5 sm:grid-cols-2">
+        <div aria-busy="true" className="grid gap-x-6 gap-y-10 sm:grid-cols-2">
           {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="om-sleeve space-y-3 pb-4">
+            <div key={i} className="space-y-3">
               <Skeleton className="aspect-video w-full" />
-              <div className="space-y-2 px-4">
+              <div className="space-y-2">
                 <Skeleton shape="text" lines={2} />
               </div>
             </div>
@@ -138,7 +138,7 @@ export function VideosClient({ initialVideos }: { initialVideos: MusicVideoItem[
       ) : (
         <ul
           className={cn(
-            'grid gap-5 sm:grid-cols-2 xl:grid-cols-3',
+            'om-stagger grid gap-x-6 gap-y-10 transition-opacity duration-base sm:grid-cols-2 xl:grid-cols-3',
             feed.status === 'loading' && 'opacity-60'
           )}
         >

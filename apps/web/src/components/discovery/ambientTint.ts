@@ -1,9 +1,11 @@
 /**
- * Design-system rule (docs/05 §3 "Ambient album tint"): a surface tinted with a cover's dominant
+ * Design-system rule (docs/05 §3 "Tinta ambientale della copertina"): a surface tinted with a cover's dominant
  * colour is clamped to HSL lightness 18–25% and saturation ≤ 45%, so text on it keeps contrast.
- * Returns an `hsl()` string, or null for an invalid hex.
+ * Returns an `hsl()` string, or null for an invalid hex. `alpha` (0–1) makes the tint
+ * translucent: the restyle (ADR-015) keeps it faint and dark-theme only, so the cover itself
+ * stays the main colour on the page.
  */
-export function ambientTint(hex: string | null | undefined): string | null {
+export function ambientTint(hex: string | null | undefined, alpha = 1): string | null {
   const match = /^#([0-9a-f]{6})$/i.exec(hex ?? '');
   if (!match?.[1]) return null;
   const n = parseInt(match[1], 16);
@@ -27,5 +29,7 @@ export function ambientTint(hex: string | null | undefined): string | null {
   const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
   const sat = clamp(s * 100, 0, 45);
   const light = clamp(l * 100, 18, 25);
-  return `hsl(${Math.round(h)} ${Math.round(sat)}% ${Math.round(light)}%)`;
+  const a = clamp(alpha, 0, 1);
+  const suffix = a < 1 ? ` / ${Math.round(a * 100) / 100}` : '';
+  return `hsl(${Math.round(h)} ${Math.round(sat)}% ${Math.round(light)}%${suffix})`;
 }
