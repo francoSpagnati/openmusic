@@ -4,6 +4,7 @@ import Animated, {
   Easing,
   cancelAnimation,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -42,6 +43,8 @@ export function GenreRoulette({
   const { colors, space, radii } = useTheme();
   const [state, setState] = useState<RouletteState>({ status: 'idle' });
   const rotation = useSharedValue(0);
+  // Under reduced motion the disc stays still: the button's spinner already says "working".
+  const reduceMotion = useReducedMotion();
   const mounted = useRef(true);
   useEffect(
     () => () => {
@@ -57,18 +60,22 @@ export function GenreRoulette({
   const onSpin = useCallback(async () => {
     haptics.tap();
     setState({ status: 'spinning', previous: current });
-    rotation.value = withRepeat(
-      withTiming(rotation.value + 360, { duration: 700, easing: Easing.linear }),
-      -1
-    );
+    if (!reduceMotion) {
+      rotation.value = withRepeat(
+        withTiming(rotation.value + 360, { duration: 700, easing: Easing.linear }),
+        -1
+      );
+    }
     try {
       const result = await spin();
       if (!mounted.current) return;
       cancelAnimation(rotation);
-      rotation.value = withTiming(Math.ceil(rotation.value / 360) * 360 + 540, {
-        duration: 900,
-        easing: Easing.out(Easing.cubic),
-      });
+      if (!reduceMotion) {
+        rotation.value = withTiming(Math.ceil(rotation.value / 360) * 360 + 540, {
+          duration: 900,
+          easing: Easing.out(Easing.cubic),
+        });
+      }
       haptics.thud();
       setState({ status: 'done', result });
     } catch (error) {
@@ -77,7 +84,7 @@ export function GenreRoulette({
       haptics.error();
       setState({ status: 'error', error, previous: current });
     }
-  }, [current, rotation, spin]);
+  }, [current, reduceMotion, rotation, spin]);
 
   const spinning = state.status === 'spinning';
 
