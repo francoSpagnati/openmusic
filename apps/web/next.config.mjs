@@ -3,11 +3,18 @@ import { fileURLToPath } from 'node:url';
 import nextEnv from '@next/env';
 import { IMAGE_REMOTE_PATTERNS } from './image-hosts.mjs';
 
+const MONOREPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
 // The monorepo keeps a single .env at the root; load it so NEXT_PUBLIC_API_URL reaches the web app.
-nextEnv.loadEnvConfig(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'));
+nextEnv.loadEnvConfig(MONOREPO_ROOT);
+
+// apps/web/Dockerfile builds with NEXT_OUTPUT=standalone: a self-contained server.js with only the
+// traced node_modules (docs/08_SELF_HOSTING.md, ADR-016). Render and local dev keep `next start`.
+const standalone = process.env.NEXT_OUTPUT === 'standalone';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...(standalone ? { output: 'standalone', outputFileTracingRoot: MONOREPO_ROOT } : {}),
   transpilePackages: ['@openmusic/shared'],
   // Local dev runs on http://127.0.0.1:3000 (Spotify rejects `localhost` redirect URIs, and the
   // web app must share the API's host for the session cookie). Next 16 only trusts `localhost`
