@@ -265,6 +265,10 @@ services:
         target: /usr/local/bin/openmusic-backup.sh
     volumes:
       - ${BACKUP_DIR:-./backups}:/backups
+    # The image declares a data VOLUME this container never uses: a tmpfs keeps `run --rm` from
+    # leaving an anonymous volume behind on every manual backup.
+    tmpfs:
+      - /var/lib/postgresql/data:size=1m
     mem_limit: 128m
     logging: *logging
 
