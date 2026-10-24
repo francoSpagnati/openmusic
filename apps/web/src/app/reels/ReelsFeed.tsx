@@ -244,7 +244,7 @@ export function ReelsFeed() {
         <IconButton
           label="Reel precedente"
           icon={<ArrowUp />}
-          variant="ghost"
+          variant="subtle"
           shape="round"
           disabled={active === 0}
           onClick={() => scrollTo(active - 1)}
@@ -252,7 +252,7 @@ export function ReelsFeed() {
         <IconButton
           label="Reel successivo"
           icon={<ArrowDown />}
-          variant="ghost"
+          variant="subtle"
           shape="round"
           disabled={active >= items.length}
           onClick={() => scrollTo(active + 1)}

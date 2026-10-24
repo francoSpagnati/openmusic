@@ -100,13 +100,14 @@ export function SettingsScreen() {
             </p>
           </header>
 
-          <nav aria-label="Sezioni delle impostazioni" className="-mx-2 mb-6 mt-8 overflow-x-auto">
-            <ul className="flex gap-1 px-2">
+          <nav aria-label="Sezioni delle impostazioni" className="-mx-2.5 mb-6 mt-8">
+            {/* Wraps instead of scrolling sideways: five short links fit in two lines at 390px. */}
+            <ul className="flex flex-wrap gap-x-1 gap-y-0.5">
               {SECTIONS.map((s) => (
                 <li key={s.id}>
                   <a
                     href={`#${s.id}`}
-                    className="inline-flex h-9 items-center whitespace-nowrap rounded-md px-2.5 text-sm text-fg-muted hover:bg-fg/[0.04] hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                    className="inline-flex h-10 items-center whitespace-nowrap rounded-md px-2.5 text-sm text-fg-muted hover:bg-fg/[0.04] hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     {s.label}
                   </a>

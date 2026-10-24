@@ -9,7 +9,7 @@ function scoreLabel(kind: ScoreKind, percentage: number | null, count: number): 
   const name = KIND_NAME[kind];
   if (percentage === null) return `Voto ${name.toLowerCase()}: pochi voti per un punteggio`;
   const verdict = scoreStatus(percentage) === 'FRESH' ? 'consigliato' : 'bocciato';
-  return `Voto ${name.toLowerCase()}: ${percentage}% su ${count} recensioni, ${verdict}`;
+  return `Voto ${name.toLowerCase()}: ${percentage}% su ${plural(count, 'recensione', 'recensioni')}, ${verdict}`;
 }
 
 /**

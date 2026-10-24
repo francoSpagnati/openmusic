@@ -57,7 +57,7 @@ export function ExploreClient({ initialParams, initialGenres, initialPage }: Exp
           autoComplete="off"
           enterKeyHint="search"
           maxLength={100}
-          placeholder="Cerca un album, un brano o un artista…"
+          placeholder="Album, brani o artisti…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
