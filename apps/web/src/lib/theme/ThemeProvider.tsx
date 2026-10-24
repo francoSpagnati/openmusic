@@ -49,9 +49,7 @@ function applyToDocument(next: ThemePreference) {
   const root = document.documentElement;
   if (next === 'system') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', next);
-  document
-    .querySelector('meta[name="color-scheme"]')
-    ?.setAttribute('content', next === 'system' ? 'light dark' : next);
+  // color-scheme follows from CSS on :root[data-theme]; the React-owned meta stays untouched.
 }
 
 function subscribePreference(onChange: () => void) {
