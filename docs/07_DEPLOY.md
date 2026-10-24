@@ -5,6 +5,8 @@ nulla. Non serve saper usare un server: Render legge il file [`render.yaml`](../
 repository (un **Blueprint**) e crea tutto da solo. Le scelte tecniche sono spiegate nell'ADR-014
 ([`decisioni_chiuse_adr_e_roadmap_di_sviluppo.md`](./decisioni_chiuse_adr_e_roadmap_di_sviluppo.md)).
 
+> Preferisci un server di casa (Docker, CasaOS, Tailscale)? Vedi [`08_SELF_HOSTING.md`](./08_SELF_HOSTING.md).
+
 > **Stato:** il Blueprint non è mai stato eseguito su Render (chi l'ha scritto non aveva un account
 > e la sandbox non raggiungeva `render.com`). È stato verificato in locale con gli stessi comandi
 > di avvio, `NODE_ENV=production` e web e API su due siti diversi (§11). Se qualcosa non torna, la

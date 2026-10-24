@@ -44,3 +44,6 @@ apps/web/playwright-report
 
 # Redis local dumps
 dump.rdb
+
+# Self-hosting (deploy/selfhost): database dumps
+deploy/selfhost/backups/

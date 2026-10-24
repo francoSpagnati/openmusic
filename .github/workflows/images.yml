@@ -1,0 +1,85 @@
+name: Images
+
+# Production images for self-hosting (deploy/selfhost, docs/08_SELF_HOSTING.md, ADR-016):
+#   ghcr.io/<owner>/openmusic-api and ghcr.io/<owner>/openmusic-web, tags `sha-<7>` and `latest`.
+# Pull requests only build (nothing is pushed); pushes to main build and push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    name: Build ${{ matrix.app }} image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, web]
+    env:
+      PUSH: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # GHCR image names must be lowercase (the owner is francoSpagnati).
+      - name: Image name
+        id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/openmusic-${{ matrix.app }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: env.PUSH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.name.outputs.image }}
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # amd64 only (the owner's server). For arm64 add `platforms: linux/amd64,linux/arm64` and
+      # docker/setup-qemu-action: the emulated web build takes several times longer.
+      - name: Build${{ env.PUSH == 'true' && ' and push' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          platforms: linux/amd64
+          push: ${{ env.PUSH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  compose:
+    name: Validate self-hosting compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose config (all profiles, example env)
+        working-directory: deploy/selfhost
+        run: |
+          cp .env.example .env
+          sed -i 's/^JWT_SECRET=.*/JWT_SECRET=ci-only-0123456789abcdef0123456789abcdef/; s/^PROXY_SECRET=.*/PROXY_SECRET=ci-only-0123456789abcdef0123456789abcdef/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci/' .env
+          docker compose --profile backup --profile tailscale config --quiet
+          docker compose -f docker-compose.yml -f compose.e2e.yml config --quiet

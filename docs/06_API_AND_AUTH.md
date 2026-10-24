@@ -213,6 +213,8 @@ Paginazione: `?cursor=<id>&limit=1..50` (default 20), risposta `{ items, nextCur
     del web, quindi a ogni connessione e riconnessione il client chiede
     `GET /api/auth/socket-token` e passa `token` come `auth.token`, all'`url` indicato
     (`PUBLIC_API_URL`, di default `RENDER_EXTERNAL_URL` dell'API o `http://127.0.0.1:<PORT>`).
+    In self-hosting (ADR-016) `PUBLIC_API_URL` è l'origine del sito stesso: Caddy manda
+    `/socket.io/*` all'API, e il flusso del token resta identico.
     Il token di socket (`typ: 'socket'`) scade in 60 s ma porta `sv`, l'hash e la scadenza della
     sessione da cui nasce: il socket resta aperto fino alla scadenza della **sessione**, e logout e
     cambio password lo chiudono come gli altri. Nessuna rotta HTTP lo accetta.

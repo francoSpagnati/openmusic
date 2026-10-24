@@ -1,0 +1,354 @@
+# OpenMusic self-hosted (production): docs/08_SELF_HOSTING.md, ADR-016.
+#
+#   browser / Expo Go ──▶ [Tailscale Serve/Funnel, or the LAN] ──▶ caddy :80 (host port 8380)
+#        caddy ── /socket.io/*, /health ──▶ api:4000 (Fastify + Socket.io + now-playing poller)
+#        caddy ── everything else ────────▶ web:3000 (Next.js; /api/* proxied to api:4000)
+#        api ──▶ postgres:5432 + redis:6379 (internal network only, no published ports)
+#
+# Web, API and socket share ONE origin (PUBLIC_URL): first-party cookies, no CORS, and the socket
+# token's URL is that same origin (PUBLIC_API_URL = PUBLIC_URL).
+#
+# Usage (from this folder, after `cp .env.example .env` and filling it in):
+#   docker compose pull && docker compose up -d       # prebuilt images from GHCR
+#   docker compose build && docker compose up -d      # or build them on this machine
+# Optional profiles: `--profile backup` (nightly pg_dump), `--profile tailscale` (sidecar).
+#
+# Memory limits are sized for an 8 GB host shared with other services (measured usage: §11 of
+# docs/08_SELF_HOSTING.md). Needs Docker Compose >= 2.23.1 (inline `configs.content`).
+
+name: openmusic
+
+# CasaOS app metadata (format of github.com/IceWhaleTech/CasaOS-AppStore; ignored by plain
+# Docker Compose). `main` + `port_map` make the CasaOS dashboard tile open Caddy's port.
+x-casaos:
+  id: io.github.francospagnati.openmusic
+  architectures:
+    - amd64
+  main: caddy
+  author: francoSpagnati
+  developer: francoSpagnati
+  category: Media
+  title:
+    en_US: OpenMusic
+  tagline:
+    en_US: Social music reviews, live listening and chat
+  description:
+    en_US: |
+      OpenMusic: reviews, feed, chat and live "now playing" with friends. Self-hosted with
+      Postgres, Redis, the API, the web app and Caddy as the single entrypoint.
+      Guide: docs/08_SELF_HOSTING.md in the repository.
+  index: /
+  port_map: '8380'
+  scheme: http
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: openmusic
+      POSTGRES_DB: openmusic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      TZ: ${TZ:-Europe/Rome}
+    # Small-box tuning: one app, a few dozen connections at most.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=40
+    shm_size: 128m
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U openmusic -d openmusic']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: 512m
+    logging: *logging
+    <<: *hardening
+
+  redis:
+    image: redis:7.4.11-alpine
+    restart: unless-stopped
+    # AOF persistence: presence and the poller schedule survive restarts. Caches, presence and
+    # leases carry a TTL and may be evicted first (volatile-lru, as on Render); the poller
+    # schedule has none.
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --maxmemory
+      - 96mb
+      - --maxmemory-policy
+      - volatile-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 128m
+    logging: *logging
+    <<: *hardening
+
+  api:
+    image: ${OPENMUSIC_IMAGE_PREFIX:-ghcr.io/francospagnati/openmusic}-api:${OPENMUSIC_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      HOST: 0.0.0.0
+      NODE_OPTIONS: --max-old-space-size=${API_MAX_OLD_SPACE_MB:-320}
+      DATABASE_URL: postgresql://openmusic:${POSTGRES_PASSWORD}@postgres:5432/openmusic?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      PROXY_SECRET: ${PROXY_SECRET:?set PROXY_SECRET in .env}
+      # One origin for everything: OAuth callbacks, CORS, and the URL of the socket.
+      WEB_APP_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
+      CORS_ORIGIN: ${PUBLIC_URL}
+      PUBLIC_API_URL: ${PUBLIC_URL}
+      # true with https (Tailscale Serve/Funnel); false ONLY for the plain-http LAN mode.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # Only Caddy and the web container can reach the API (no published port).
+      TRUST_PROXY: 'true'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
+      CATALOG_EXTERNAL_ENABLED: ${CATALOG_EXTERNAL_ENABLED:-true}
+      MUSICBRAINZ_CONTACT: ${MUSICBRAINZ_CONTACT:-https://github.com/francoSpagnati/openmusic}
+      NOW_PLAYING_POLLER_ENABLED: ${NOW_PLAYING_POLLER_ENABLED:-true}
+      # First start: import the curated real albums once (SystemMarker), plus the demo community
+      # when DEMO_PASSWORD is set.
+      SEED_ON_START: ${SEED_ON_START:-true}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+      LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+      LASTFM_SHARED_SECRET: ${LASTFM_SHARED_SECRET:-}
+      TZ: ${TZ:-Europe/Rome}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    mem_limit: 512m
+    logging: *logging
+    <<: *hardening
+
+  web:
+    image: ${OPENMUSIC_IMAGE_PREFIX:-ghcr.io/francospagnati/openmusic}-web:${OPENMUSIC_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      NODE_OPTIONS: --max-old-space-size=${WEB_MAX_OLD_SPACE_MB:-320}
+      # Server-only target of the /api/* proxy, over the internal network.
+      API_ORIGIN: http://api:4000
+      PROXY_SECRET: ${PROXY_SECRET:?set PROXY_SECRET in .env}
+      TZ: ${TZ:-Europe/Rome}
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m
+    volumes:
+      # Optimized cover images (next/image), kept across restarts.
+      - web_cache:/app/apps/web/.next/cache
+    cap_drop: [ALL]
+    mem_limit: 512m
+    logging: *logging
+    <<: *hardening
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      # 0.0.0.0 = reachable from the LAN too. With Tailscale on the host only, 127.0.0.1 is enough.
+      - '${OPENMUSIC_BIND:-0.0.0.0}:${OPENMUSIC_PORT:-8380}:80'
+    environment:
+      # Who may set X-Forwarded-For (rate limiting by client IP): the Docker networks, i.e. host
+      # processes such as tailscaled reaching the published port, and the tailscale sidecar.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12 127.0.0.1/8}
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:80/healthz']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+      start_interval: 2s
+    mem_limit: 64m
+    logging: *logging
+    <<: *hardening
+
+  # --- Optional: Tailscale sidecar (`--profile tailscale`), instead of Tailscale on the host. ---
+  tailscale:
+    profiles: [tailscale]
+    image: tailscale/tailscale:v1.104.2
+    restart: unless-stopped
+    hostname: ${TS_HOSTNAME:-openmusic}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_HOSTNAME: ${TS_HOSTNAME:-openmusic}
+      TS_STATE_DIR: /var/lib/tailscale
+      # Userspace networking: no /dev/net/tun or NET_ADMIN needed; Serve still works.
+      TS_USERSPACE: 'true'
+      TS_SERVE_CONFIG: /config/serve.json
+    configs:
+      - source: tailscale_serve
+        target: /config/serve.json
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+    depends_on:
+      - caddy
+    mem_limit: 128m
+    logging: *logging
+
+  # --- Optional: nightly pg_dump (`--profile backup`). Manual run: see docs §10. ---
+  backup:
+    profiles: [backup]
+    image: postgres:16.15-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: openmusic
+      PGDATABASE: openmusic
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_TIME: ${BACKUP_TIME:-03:30}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: ${TZ:-Europe/Rome}
+    entrypoint: ['sh', '/usr/local/bin/openmusic-backup.sh']
+    command: ['schedule']
+    configs:
+      - source: backup_script
+        target: /usr/local/bin/openmusic-backup.sh
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups
+    # The image declares a data VOLUME this container never uses: a tmpfs keeps `run --rm` from
+    # leaving an anonymous volume behind on every manual backup.
+    tmpfs:
+      - /var/lib/postgresql/data:size=1m
+    mem_limit: 128m
+    logging: *logging
+
+configs:
+  caddyfile:
+    content: |
+      {
+        admin off
+        auto_https off
+        servers {
+          trusted_proxies static {$$TRUSTED_PROXIES}
+        }
+      }
+
+      :80 {
+        # Caddy's own liveness probe.
+        handle /healthz {
+          respond "ok" 200
+        }
+        # Socket.io (websocket) and the API health check go straight to the API; every other
+        # path, /api/* included, goes to the web app (its proxy keeps cookies first-party).
+        @api path /socket.io/* /health
+        handle @api {
+          reverse_proxy api:4000
+        }
+        handle {
+          reverse_proxy web:3000
+        }
+      }
+
+  # Tailscale Serve config for the sidecar. ${TS_CERT_DOMAIN} is filled in by the container
+  # (escaped as $$ so Compose leaves it alone); TS_FUNNEL=true makes it public (Funnel).
+  tailscale_serve:
+    content: |
+      {
+        "TCP": { "443": { "HTTPS": true } },
+        "Web": {
+          "$${TS_CERT_DOMAIN}:443": {
+            "Handlers": { "/": { "Proxy": "http://caddy:80" } }
+          }
+        },
+        "AllowFunnel": { "$${TS_CERT_DOMAIN}:443": ${TS_FUNNEL:-false} }
+      }
+
+  backup_script:
+    content: |
+      #!/bin/sh
+      # openmusic-backup.sh [schedule|now]: pg_dump (custom format) into /backups, keeping
+      # BACKUP_KEEP_DAYS days. `schedule` runs once a day at BACKUP_TIME (HH:MM, container TZ).
+      set -eu
+      dump() {
+        file="/backups/openmusic-$$(date +%Y%m%d-%H%M%S).dump"
+        echo "[backup] $$(date -Iseconds) dumping to $$file"
+        pg_dump --format=custom --no-owner --file="$$file.partial"
+        mv "$$file.partial" "$$file"
+        echo "[backup] done: $$(du -h "$$file" | cut -f1)"
+        find /backups -name 'openmusic-*.dump' -type f -mtime +"$${BACKUP_KEEP_DAYS:-14}" \
+          -print -delete
+      }
+      case "$${1:-schedule}" in
+        now) dump ;;
+        schedule)
+          echo "[backup] daily at $${BACKUP_TIME:-03:30} ($$(date +%Z)), keeping $${BACKUP_KEEP_DAYS:-14} days"
+          last=""
+          while true; do
+            today="$$(date +%Y-%m-%d)"
+            if [ "$$(date +%H:%M)" = "$${BACKUP_TIME:-03:30}" ] && [ "$$last" != "$$today" ]; then
+              dump || echo "[backup] FAILED (retried tomorrow)"
+              last="$$today"
+            fi
+            sleep 30
+          done
+          ;;
+        *) echo "usage: openmusic-backup.sh [schedule|now]" >&2; exit 2 ;;
+      esac
+
+volumes:
+  postgres_data:
+  redis_data:
+  web_cache:
+  caddy_data:
+  caddy_config:
+  tailscale_state:

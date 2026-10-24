@@ -15,7 +15,8 @@ l'altro va corretto.
 | [`05_DESIGN_SYSTEM.md`](./05_DESIGN_SYSTEM.md) (in inglese)                                        | Tipografia, colori, token, primitive UI                                     |
 | [`06_API_AND_AUTH.md`](./06_API_AND_AUTH.md)                                                       | Sessione e auth, formato errori, elenco endpoint, Socket.io, client web     |
 | [`07_DEPLOY.md`](./07_DEPLOY.md)                                                                   | Deploy online su Render (Blueprint `render.yaml`), limiti del piano free    |
-| [`decisioni_chiuse_adr_e_roadmap_di_sviluppo.md`](./decisioni_chiuse_adr_e_roadmap_di_sviluppo.md) | ADR-001…014 e roadmap per milestone                                         |
+| [`08_SELF_HOSTING.md`](./08_SELF_HOSTING.md)                                                       | Self-hosting con Docker (CasaOS), Caddy, Tailscale, backup e aggiornamenti  |
+| [`decisioni_chiuse_adr_e_roadmap_di_sviluppo.md`](./decisioni_chiuse_adr_e_roadmap_di_sviluppo.md) | ADR-001…016 e roadmap per milestone                                         |
 
 Fonti nel codice che prevalgono sempre sui documenti:
 

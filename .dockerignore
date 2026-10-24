@@ -1,0 +1,31 @@
+# Build context for apps/api/Dockerfile and apps/web/Dockerfile (both built from the repo root).
+# Keep it small and free of secrets: no dependencies, build outputs, local env files or dumps.
+**/node_modules
+**/.next
+**/.turbo
+**/.expo
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/next-env.d.ts
+.git
+.github
+.vscode
+.idea
+
+# Secrets and local state: never baked into an image.
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+dump.rdb
+**/dump.rdb
+
+# Self-hosting: env, backups and Tailscale state live on the server, not in the image.
+deploy/selfhost/.env
+deploy/selfhost/backups
+deploy/selfhost/tailscale-state
+
+# Test artifacts.
+apps/web/playwright-report
+apps/web/e2e/.results
