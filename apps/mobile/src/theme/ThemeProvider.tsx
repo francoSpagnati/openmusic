@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useColorScheme } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { THEME, type ColorScheme, type ColorSchemeName } from '@openmusic/shared';
@@ -10,6 +18,7 @@ export type ThemePreference = ColorSchemeName | 'system';
 export const THEME_PREFERENCES: readonly ThemePreference[] = ['light', 'dark', 'system'];
 
 const PREFERENCE_KEY = 'om_theme_preference';
+const RESTORE_TIMEOUT_MS = 1500;
 
 export interface AppTheme {
   name: ColorSchemeName;
@@ -67,26 +76,45 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function AppThemeProvider({ children }: { children: React.ReactNode }) {
   const os = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  // Children wait for the stored choice (one fast keychain read) so a "Scuro" user never sees a
+  // light first frame. The root layout keeps the splash screen up until then.
+  const [restored, setRestored] = useState(false);
+  // A choice made before the read resolves wins over the stored value.
+  const chosen = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    SecureStore.getItemAsync(PREFERENCE_KEY)
-      .then((stored) => {
-        if (!cancelled && isPreference(stored)) setPreferenceState(stored);
-      })
-      .catch(() => {
-        // Unreadable store: keep following the system.
-      });
+    let settled = false;
+    const done = (stored: string | null) => {
+      if (cancelled || settled) return;
+      settled = true;
+      if (!chosen.current && isPreference(stored)) setPreferenceState(stored);
+      setRestored(true);
+    };
+    // Never hold the app on the splash screen for a slow keychain: follow the system instead.
+    const timeout = setTimeout(() => done(null), RESTORE_TIMEOUT_MS);
+    try {
+      SecureStore.getItemAsync(PREFERENCE_KEY).then(done, () => done(null));
+    } catch {
+      // Store unavailable (native module missing, keychain locked): follow the system.
+      done(null);
+    }
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
   }, []);
 
   const setPreference = useCallback((next: ThemePreference) => {
+    chosen.current = true;
     setPreferenceState(next);
-    SecureStore.setItemAsync(PREFERENCE_KEY, next).catch(() => {
-      // Not persisted: the choice still applies for this session.
-    });
+    try {
+      SecureStore.setItemAsync(PREFERENCE_KEY, next).catch(() => {
+        // Not persisted: the choice still applies for this session.
+      });
+    } catch {
+      // Same: keep the in-memory choice.
+    }
   }, []);
 
   const value = useMemo<ThemeContextValue>(
@@ -99,7 +127,7 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
     [preference, os, setPreference]
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={value}>{restored ? children : null}</ThemeContext.Provider>;
 }
 
 /**

@@ -50,4 +50,45 @@ describe('theme', () => {
       expect(screen.getByTestId('probe').props.children).toBe(`dark ${THEME.dark.bg}`)
     );
   });
+
+  it('shows nothing until the stored choice is read, so there is no wrong-theme first frame', async () => {
+    await SecureStore.setItemAsync('om_theme_preference', 'dark');
+    let release: (value: string | null) => void = () => undefined;
+    (SecureStore.getItemAsync as jest.Mock).mockImplementationOnce(
+      () => new Promise<string | null>((resolve) => (release = resolve))
+    );
+    await render(
+      <AppThemeProvider>
+        <SchemeProbe />
+      </AppThemeProvider>
+    );
+    expect(screen.queryByTestId('probe')).toBeNull();
+    release('dark');
+    await waitFor(() =>
+      expect(screen.getByTestId('probe').props.children).toBe(`dark ${THEME.dark.bg}`)
+    );
+  });
+
+  it.each([
+    ['rejects', () => Promise.reject(new Error('keychain locked'))],
+    [
+      'throws',
+      () => {
+        throw new Error('native module missing');
+      },
+    ],
+  ])('follows the system when the secure store %s', async (_label, impl) => {
+    (SecureStore.getItemAsync as jest.Mock).mockImplementationOnce(impl);
+    (SecureStore.setItemAsync as jest.Mock).mockImplementationOnce(impl);
+    await render(
+      <AppThemeProvider>
+        <SchemeProbe />
+        <ThemeToggle />
+      </AppThemeProvider>
+    );
+    await waitFor(() => expect(screen.getByTestId('probe')).toBeTruthy());
+    // The choice still applies for this session even though it cannot be saved.
+    await fireEvent.press(screen.getByRole('radio', { name: 'Scuro' }));
+    expect(screen.getByTestId('probe').props.children).toBe(`dark ${THEME.dark.bg}`);
+  });
 });

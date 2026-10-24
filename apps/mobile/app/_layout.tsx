@@ -86,21 +86,26 @@ function RootNavigator() {
   );
 }
 
+function HideSplash() {
+  useEffect(() => {
+    void SplashScreen.hideAsync();
+  }, []);
+  return null;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
   const ready = fontsLoaded || fontError !== null;
 
-  useEffect(() => {
-    // If a font fails we still render with the system font rather than block the app.
-    if (ready) void SplashScreen.hideAsync();
-  }, [ready]);
-
+  // If a font fails we still render with the system font rather than block the app.
   if (!ready) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AppThemeProvider>
+          {/* Mounts only once fonts and the stored theme are ready: no wrong-theme first frame. */}
+          <HideSplash />
           <AuthProvider>
             <RootNavigator />
           </AuthProvider>
