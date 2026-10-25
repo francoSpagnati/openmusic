@@ -10,7 +10,8 @@ chat pensata per consigliarsi brani.
 > registrate**: le chiamate live non sono mai state eseguite (vedi [Catalogo musicale](#catalogo-musicale-esterno)).
 > L'app mobile (Expo SDK 58) usa l'API reale, ma non è mai stata provata su dispositivo o in
 > Expo Go. Dettagli in [`docs/04_STATUS_AND_OPEN_QUESTIONS.md`](./docs/04_STATUS_AND_OPEN_QUESTIONS.md).
-> Si può mettere online gratis su Render con un Blueprint: [Deploy su Render](#deploy-su-render-gratis).
+> Si può mettere online gratis su Render con un Blueprint: [Deploy su Render](#deploy-su-render-gratis),
+> oppure far girare su un server di casa con Docker e Tailscale: [Self-hosting](#self-hosting-docker-casaos-tailscale).
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/francoSpagnati/openmusic)
 
@@ -150,6 +151,20 @@ l'API applica le migrazioni e importa i dischi reali curati; poi ti registri dal
 Guida passo passo in italiano, limiti del piano gratuito, Spotify/Last.fm in produzione, Expo Go
 contro l'API online e problemi frequenti: [`docs/07_DEPLOY.md`](./docs/07_DEPLOY.md).
 Ogni merge su `main` ripubblica in automatico.
+
+## Self-hosting (Docker, CasaOS, Tailscale)
+
+Tutto lo stack (Postgres, Redis, API, web e Caddy come unico ingresso) in un solo
+`docker compose`, pensato per un server di casa con 8 GB di RAM e accesso via Tailscale:
+
+```bash
+cd deploy/selfhost && cp .env.example .env   # segreti con openssl rand, PUBLIC_URL
+docker compose pull && docker compose up -d   # immagini da GHCR (o `docker compose build`)
+sudo tailscale serve --bg --https=443 http://127.0.0.1:8380
+```
+
+Guida passo passo in italiano (Tailscale Serve/Funnel, modalità LAN, Spotify, Expo Go,
+aggiornamenti, backup e ripristino, consumi misurati): [`docs/08_SELF_HOSTING.md`](./docs/08_SELF_HOSTING.md).
 
 ## Collegare Spotify e Last.fm (facoltativo)
 

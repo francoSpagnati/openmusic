@@ -1,0 +1,26 @@
+# VERIFICATION ONLY (never on the server): runs the Playwright suite against the Caddy entrypoint,
+# like CI does against `npm run start:*` (docs/08_SELF_HOSTING.md §13).
+#
+#   docker compose -f docker-compose.yml -f compose.e2e.yml up -d     (fresh volumes)
+#   cd ../.. && E2E_WEB_URL=http://127.0.0.1:8380 E2E_API_URL=http://127.0.0.1:8380 \
+#     DATABASE_URL=postgresql://openmusic:<POSTGRES_PASSWORD>@127.0.0.1:55432/openmusic \
+#     npm run e2e
+#
+# Deterministic data as in CI: the demo seed (offline catalog), no live catalog or poller, a high
+# auth rate limit (one IP registers many users), plain http, and Postgres on loopback for the
+# suite's own setup/teardown queries.
+services:
+  postgres:
+    ports:
+      - '127.0.0.1:55432:5432'
+  api:
+    environment:
+      WEB_APP_URL: http://127.0.0.1:8380
+      CORS_ORIGIN: http://127.0.0.1:8380
+      PUBLIC_API_URL: http://127.0.0.1:8380
+      COOKIE_SECURE: 'false'
+      SEED_ON_START: 'true'
+      DEMO_PASSWORD: e2e-demo-password-not-secret
+      CATALOG_EXTERNAL_ENABLED: 'false'
+      NOW_PLAYING_POLLER_ENABLED: 'false'
+      AUTH_RATE_LIMIT_MAX: '1000'

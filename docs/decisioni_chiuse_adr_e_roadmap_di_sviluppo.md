@@ -24,6 +24,7 @@
 | 013 | Lettura automatica di Spotify e Last.fm (polling)   | Accettata                      | Sì, solo su fixture   |
 | 014 | Deploy su Render e same-origin proxy                | Accettata                      | Sì, mai su Render     |
 | 015 | Restyling: direzione visiva calda e minimale        | Accettata                      | Token e primitive web |
+| 016 | Self-hosting con Docker, Caddy e Tailscale          | Accettata                      | Sì, mai su Tailscale  |
 
 ---
 
@@ -555,6 +556,64 @@ e2e`, anche in CI). `render.yaml` validato come YAML e contro i campi documentat
     prima/dopo in entrambi i temi a 1280 e 390 px.
 - **Dettagli:** [`05_DESIGN_SYSTEM.md`](./05_DESIGN_SYSTEM.md).
 
+### ADR-016: Self-hosting con Docker Compose, Caddy e Tailscale
+
+- **Data:** 2026-10.
+- **Contesto:** prima dei servizi esterni il proprietario vuole far girare tutto su un server di
+  casa: un portatile x86_64 (Intel Core Ultra) con **8 GB di RAM** condivisi con altri container,
+  CasaOS, accesso da fuori casa con **Tailscale**. Render (ADR-014) resta il piano di riserva e non
+  deve cambiare.
+- **Decisione:**
+  1. **Due Dockerfile** (`apps/api/Dockerfile`, `apps/web/Dockerfile`) costruiti dalla radice del
+     monorepo, invece di un Dockerfile unico con target: dipendenze, cache e workflow CI restano
+     separati per app e ognuno si legge da solo. Entrambi partono da `turbo prune --docker`
+     (lockfile ridotto: niente Expo/React Native nel build), multi-stage, utente `node`,
+     `HEALTHCHECK`, base fissata `node:22.23.4-alpine3.24`. **Alpine** perché contiene già
+     `libssl.so.3` richiesta dal motore Prisma (la `bookworm-slim` no, e servirebbe `apt` al
+     build); Prisma la cerca solo in `/lib`, quindi l'immagine la collega lì e genera il motore
+     `linux-musl-openssl-3.0.x`.
+  2. **API come oggi** (ADR-014 §6): `prisma migrate deploy` e poi `node --import tsx`, ma lanciati
+     direttamente e non tramite `npm run start:api`, risparmiando i due processi npm. Solo
+     dipendenze di produzione; filesystem in sola lettura con `/tmp` in RAM.
+  3. **Web in `output: 'standalone'`**, attivato solo da `NEXT_OUTPUT=standalone` nel Dockerfile:
+     Render e lo sviluppo continuano con `next start`. Il proxy `/api/*` legge `API_ORIGIN` e
+     `PROXY_SECRET` a runtime, quindi un'immagine vale per ogni installazione.
+  4. **Un solo ingresso, una sola origine:** Caddy serve il web su `/` e manda `/socket.io/*` (e
+     `/health`) all'API. Con `PUBLIC_API_URL = WEB_APP_URL = CORS_ORIGIN = PUBLIC_URL` il token
+     del socket indica la stessa origine del sito: cookie di prima parte, nessuna modifica al
+     codice. `/api/*` passa ancora dal proxy del web (stesso percorso di Render e della suite).
+  5. **Tailscale per l'HTTPS:** `tailscale serve` sull'host (o un container `tailscale/tailscale`
+     opzionale con `TS_SERVE_CONFIG`) termina TLS con il certificato `*.ts.net` e inoltra a Caddy
+     in http. **Serve** (solo tailnet) è il modo consigliato; **Funnel** lo rende pubblico. Senza
+     Tailscale resta la modalità LAN in http con `COOKIE_SECURE=false`, documentata come rischiosa.
+  6. **Compose di produzione** `deploy/selfhost/docker-compose.yml`: Postgres 16 e Redis 7 (AOF)
+     su volumi, nessuna porta del database pubblicata, limiti di memoria (512/128/512/512/64 MB),
+     `restart: unless-stopped`, log a rotazione, configurazioni di Caddy, Tailscale e backup
+     **inline** (`configs.content`) perché il file sia copiabile da solo; metadati `x-casaos`.
+  7. **Immagini su GHCR** (`.github/workflows/images.yml`): build a ogni PR, push con tag `sha-*` e
+     `latest` su `main`, solo amd64. In alternativa il server le costruisce da sé (misurato: ~1,5 GB
+     di RAM di picco).
+  8. **Aggiornamenti manuali** (`update.sh`: backup, `pull`, `up -d`) e **backup** `pg_dump`
+     notturno con rotazione (profilo `backup`). Watchtower scartato: archiviato a monte e, provato,
+     incompatibile con Docker 29 senza `DOCKER_API_VERSION`; aggiornerebbe senza backup.
+- **Alternative scartate:**
+  - **Next `rewrites` o `/api/*` diretto all'API da Caddy:** il primo è fissato al build; il secondo
+    funzionerebbe ma creerebbe un secondo percorso per i cookie e il rate limit diverso da Render.
+  - **HTTPS gestito da Caddy** (Let's Encrypt): richiede un dominio e porte aperte sul router.
+  - **Immagine unica API+web** (un solo processo supervisor): meno container ma limiti di memoria,
+    healthcheck e riavvii non più separati.
+  - **Compilare l'API in JS o fare un bundle:** stesso motivo dell'ADR-014 §6.
+- **Conseguenze:**
+  - Un solo `PUBLIC_URL` per volta: aprendo l'app da un indirizzo diverso il socket non si connette
+    e i redirect OAuth tornano all'altro.
+  - Dietro Tailscale l'IP reale arriva solo se Serve lo mette in `X-Forwarded-For` (Caddy si fida
+    solo delle reti Docker); altrimenti il rate limit è condiviso.
+  - **Stato di verifica:** immagini costruite, stack avviato da zero, migrazioni, import curato
+    (tentato nello stack; riuscito, 45/46, con lo stesso container e rete dell'host), suite
+    Playwright completa contro Caddy, `docker stats`, riavvio con dati persistenti, backup e
+    ripristino. **Mai** provati Tailscale Serve/Funnel reali, l'import da CasaOS, il push su GHCR.
+- **Dettagli:** [`08_SELF_HOSTING.md`](./08_SELF_HOSTING.md).
+
 ---
 
 ## Roadmap
@@ -623,4 +682,6 @@ Legenda: **[x]** reale (API + web, su DB, testato) · **[~]** parziale · **[ ]*
 
 - [~] Hosting (ADR-005, ADR-014): Blueprint Render free pronto (`render.yaml`, `07_DEPLOY.md`),
   verificato in locale in modalità cross-site, mai eseguito su Render.
+- [~] Self-hosting (ADR-016): immagini Docker, compose con Caddy, Tailscale e backup
+  (`deploy/selfhost`, `08_SELF_HOSTING.md`); verificato con Docker, mai su Tailscale reale.
 - [ ] File `LICENSE`, reset password, moderazione e limiti anti-abuso.
