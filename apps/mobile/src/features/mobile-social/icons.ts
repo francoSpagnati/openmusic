@@ -11,6 +11,7 @@ export { Checks } from 'phosphor-react-native/src/icons/Checks';
 export { Fire } from 'phosphor-react-native/src/icons/Fire';
 export { GearSix } from 'phosphor-react-native/src/icons/GearSix';
 export { Ghost } from 'phosphor-react-native/src/icons/Ghost';
+export { Headphones } from 'phosphor-react-native/src/icons/Headphones';
 export { MagnifyingGlass } from 'phosphor-react-native/src/icons/MagnifyingGlass';
 export { MusicNote } from 'phosphor-react-native/src/icons/MusicNote';
 export { PaperPlaneRight } from 'phosphor-react-native/src/icons/PaperPlaneRight';

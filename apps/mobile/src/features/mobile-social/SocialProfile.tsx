@@ -33,6 +33,7 @@ import { SealCheck } from '../../components/icons';
 import { FeedPostCard } from './FeedPostCard';
 import { ChatText, GearSix, UserCheck, UserPlus } from './icons';
 import { haptics } from './haptics';
+import { ProfileNowPlaying } from './ProfileNowPlaying';
 import { useCursorList } from './useCursorList';
 import { useFollow } from './useFollow';
 import { usePostActions } from './usePostActions';
@@ -191,6 +192,7 @@ export function SocialProfile({ userId, profile }: SocialProfileProps) {
         </View>
       </View>
       {user.bio ? <Text tone="secondary">{user.bio}</Text> : null}
+      <ProfileNowPlaying userId={user.id} name={name} />
       <View style={[styles.stats, { borderColor: colors.border }]}>
         <Stat
           label="Follower"
