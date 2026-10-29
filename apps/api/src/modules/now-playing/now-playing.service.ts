@@ -37,6 +37,8 @@ export class NowPlayingService {
   private async publish(presence: FriendPresence): Promise<void> {
     const followers = await followerIdsOf(this.prisma, presence.userId);
     this.realtime.toUsers(followers, 'now_playing:friend_presence_changed', presence);
+    // The user never follows themselves: their own sockets (profile card) get a separate event.
+    this.realtime.toUsers([presence.userId], 'now_playing:self_presence_changed', presence);
   }
 
   private async loadUser(userId: string) {
@@ -136,6 +138,36 @@ export class NowPlayingService {
       isGhostMode: user.isGhostMode,
       currentlyPlaying: null,
     });
+  }
+
+  /**
+   * Presence of one user for the profile card. Same audience as the socket (the user and their
+   * followers); anyone else gets 404 so the existence of a live session is not leaked. Ghost
+   * Mode hides the track from everyone but the user.
+   */
+  async getUserPresence(viewerId: string, userId: string): Promise<FriendPresence> {
+    if (viewerId !== userId) {
+      const follow = await this.prisma.follows.findUnique({
+        where: { followerId_followingId: { followerId: viewerId, followingId: userId } },
+        select: { followerId: true },
+      });
+      if (!follow) throw new NotFoundError('Utente non trovato');
+    }
+    const user = await this.loadUser(userId);
+
+    const raw = await this.redis.get(this.getKey(userId));
+    const stored = raw ? FriendPresenceSchema.safeParse(JSON.parse(raw)) : null;
+    const presence: FriendPresence = {
+      userId: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      isOnline: stored?.success ?? false,
+      isGhostMode: user.isGhostMode,
+      currentlyPlaying: stored?.success ? stored.data.currentlyPlaying : null,
+    };
+    if (user.isGhostMode && viewerId !== userId) presence.currentlyPlaying = null;
+    return presence;
   }
 
   /** Live presence of everyone the user follows, in one Redis MGET. */

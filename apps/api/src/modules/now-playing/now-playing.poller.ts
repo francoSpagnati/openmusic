@@ -117,6 +117,9 @@ export function choosePlayback(
   return spotify ?? lastfm;
 }
 
+/** Progress drift (ms) beyond which a same-track read counts as a seek and is published. */
+const SEEK_THRESHOLD_MS = 5_000;
+
 /** Last thing seen for a user, in Redis so any instance can continue from it. */
 const PollStateSchema = z.object({
   key: z.string().nullable(),
@@ -125,6 +128,10 @@ const PollStateSchema = z.object({
   firstSeenAt: z.number(),
   lastPlayingAt: z.number(),
   scrobbled: z.boolean(),
+  /** Provider progress at the last read (Spotify only), to spot a seek between two reads. */
+  progressMs: z.number().nullable().optional(),
+  /** When that progress was read (poller clock). */
+  observedAt: z.number().optional(),
 });
 type PollState = z.infer<typeof PollStateSchema>;
 
@@ -456,7 +463,8 @@ export class NowPlayingPoller {
     }
 
     const sameTrack = prev?.key === chosen.key;
-    const changed = !sameTrack || prev?.isPlaying !== chosen.isPlaying;
+    const changed =
+      !sameTrack || prev?.isPlaying !== chosen.isPlaying || this.isSeek(prev, chosen, now);
     const firstSeenAt = sameTrack && prev ? prev.firstSeenAt : now;
 
     // Ghost Mode (Nielsen #3): nothing is written to presence or sent to followers.
@@ -506,6 +514,8 @@ export class NowPlayingPoller {
       firstSeenAt,
       lastPlayingAt: chosen.isPlaying ? now : (prev?.lastPlayingAt ?? 0),
       scrobbled,
+      progressMs: chosen.progressMs,
+      observedAt: now,
     };
     await this.saveState(userId, next);
     return next;
@@ -698,6 +708,27 @@ export class NowPlayingPoller {
   }
 
   // -- Helpers -------------------------------------------------------------------------------
+
+  /**
+   * Same track, still playing, but the progress is not where the previous read plus the elapsed
+   * time puts it: the user jumped in the track. Clients extrapolate the bar from the last
+   * published progress, so they need a fresh one. Last.fm has no progress: never a seek.
+   */
+  private isSeek(prev: PollState | null, chosen: Observation, now: number): boolean {
+    if (
+      !prev ||
+      prev.key !== chosen.key ||
+      !prev.isPlaying ||
+      !chosen.isPlaying ||
+      prev.progressMs == null ||
+      prev.observedAt === undefined ||
+      chosen.progressMs === null
+    ) {
+      return false;
+    }
+    const expected = prev.progressMs + (now - prev.observedAt);
+    return Math.abs(chosen.progressMs - expected) > SEEK_THRESHOLD_MS;
+  }
 
   private toNowPlaying(obs: Observation, now: number): NowPlayingTrack {
     const { listened } = obs;

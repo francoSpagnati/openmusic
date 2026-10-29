@@ -41,6 +41,8 @@ export interface ServerToClientEvents {
   'now_playing:initial_friends_state': (friends: FriendPresence[]) => void;
   /** Sent only to users who follow the changed user. `isOnline: false` means they left. */
   'now_playing:friend_presence_changed': (friend: FriendPresence) => void;
+  /** Sent to the changed user's own sockets (the profile "In ascolto ora" card). */
+  'now_playing:self_presence_changed': (me: FriendPresence) => void;
   'notification:new': (notification: NotificationItem) => void;
   'chat:message': (message: ChatMessage) => void;
   'session:revoked': (payload: SessionRevoked) => void;

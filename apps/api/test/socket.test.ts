@@ -145,6 +145,29 @@ describe('Socket.io gateway', () => {
     await expect(ready(open({ cookie: `${SESSION_COOKIE_NAME}=${token}` }))).resolves.toEqual([]);
   });
 
+  it('echoes the own presence back to the own sockets, not to strangers', async () => {
+    const dj = await createUser({ username: 'djself' });
+    const stranger = await createUser({ username: 'strangerself' });
+    const djSocket = open({ token: tokenFor(ctx, dj.id) });
+    const strangerSocket = open({ token: tokenFor(ctx, stranger.id) });
+    await Promise.all([ready(djSocket), ready(strangerSocket)]);
+
+    let strangerReceived = false;
+    strangerSocket.on(WS_EVENTS.SERVER_SELF_PRESENCE_CHANGED, () => {
+      strangerReceived = true;
+    });
+
+    const received = next(djSocket, WS_EVENTS.SERVER_SELF_PRESENCE_CHANGED);
+    expect(await emitWithAck(djSocket, WS_EVENTS.CLIENT_UPDATE_TRACK, TRACK)).toEqual({ ok: true });
+    expect(await received).toMatchObject({
+      userId: dj.id,
+      currentlyPlaying: { title: TRACK.title },
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+    expect(strangerReceived).toBe(false);
+  });
+
   it('sends presence only to followers, never to other sockets', async () => {
     const dj = await createUser({ username: 'dj' });
     const follower = await createUser({ username: 'follower' });

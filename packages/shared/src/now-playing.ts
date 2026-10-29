@@ -51,6 +51,7 @@ export const WS_EVENTS = {
   CLIENT_UPDATE_TRACK: 'now_playing:update_track',
   CLIENT_TOGGLE_GHOST: 'now_playing:toggle_ghost',
   SERVER_FRIEND_PRESENCE_CHANGED: 'now_playing:friend_presence_changed',
+  SERVER_SELF_PRESENCE_CHANGED: 'now_playing:self_presence_changed',
   SERVER_INITIAL_FRIENDS_STATE: 'now_playing:initial_friends_state',
   SERVER_NOTIFICATION: 'notification:new',
   SERVER_CHAT_MESSAGE: 'chat:message',

@@ -269,6 +269,70 @@ describe('Now-playing poller (ADR-013)', () => {
     expect((await presenceOf(user.id))?.currentlyPlaying?.isPlaying).toBe(false);
   });
 
+  it('publishes a seek within the same track, but not normal progress', async () => {
+    const user = await createUser();
+    await linkSpotify(user.id);
+    route(
+      SPOTIFY_NOW,
+      { body: spotifyTrack('track01', { progressMs: 45_000 }) },
+      // 25 s later: where playback should be, no seek.
+      { body: spotifyTrack('track01', { progressMs: 70_000 }) },
+      // 25 s later it should be at ~95 s: jumped back to 10 s.
+      { body: spotifyTrack('track01', { progressMs: 10_000 }) }
+    );
+    const spy = spyPresence();
+
+    await poll(user.id);
+    await clock.sleep(ACTIVE_MS);
+    await poll(user.id);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    await clock.sleep(ACTIVE_MS);
+    await poll(user.id);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect((await presenceOf(user.id))?.currentlyPlaying?.progressMs).toBe(10_000);
+    // A seek is not a new listen.
+    expect(await prisma.scrobbleLog.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it('GET /api/now-playing/users/:userId: self and followers see it, strangers get 404, Ghost Mode hides', async () => {
+    const owner = await createUser();
+    const follower = await createUser();
+    const stranger = await createUser();
+    await prisma.follows.create({ data: { followerId: follower.id, followingId: owner.id } });
+    await linkSpotify(owner.id);
+    route(SPOTIFY_NOW, { body: spotifyTrack('track01') });
+    await poll(owner.id);
+
+    const get = (viewer: string, target: string) =>
+      ctx.app.inject({
+        method: 'GET',
+        url: `/api/now-playing/users/${target}`,
+        headers: bearer(ctx, viewer),
+      });
+
+    const anon = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/now-playing/users/${owner.id}`,
+    });
+    expect(anon.statusCode).toBe(401);
+
+    const self = await get(owner.id, owner.id);
+    expect(self.statusCode).toBe(200);
+    expect(FriendPresenceSchema.parse(self.json()).currentlyPlaying?.title).toBe('Song track01');
+
+    const seen = await get(follower.id, owner.id);
+    expect(seen.statusCode).toBe(200);
+    expect(FriendPresenceSchema.parse(seen.json()).currentlyPlaying?.title).toBe('Song track01');
+
+    expect((await get(stranger.id, owner.id)).statusCode).toBe(404);
+
+    await prisma.user.update({ where: { id: owner.id }, data: { isGhostMode: true } });
+    const hidden = FriendPresenceSchema.parse((await get(follower.id, owner.id)).json());
+    expect(hidden.isGhostMode).toBe(true);
+    expect(hidden.currentlyPlaying).toBeNull();
+  });
+
   it('treats Spotify 204 and Last.fm without @attr.nowplaying as nothing playing', async () => {
     const user = await createUser();
     await linkSpotify(user.id);
