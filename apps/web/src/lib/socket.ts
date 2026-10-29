@@ -257,6 +257,55 @@ export function useFriendsPresence(): FriendsPresenceState {
 }
 
 /**
+ * Live presence of one user, for the profile "In ascolto ora" card. Seeds from
+ * `GET /api/now-playing/users/:userId` (404 when the viewer neither is nor follows them: `null`),
+ * then applies `friend_presence_changed` for that user and, on the own profile,
+ * `self_presence_changed` (the user never receives their own presence as a friend).
+ */
+export function useUserPresence(userId: string | null): FriendPresence | null {
+  const { user } = useAuth();
+  const { connected } = useSocket();
+  const [presence, setPresence] = useState<FriendPresence | null>(null);
+  const isMe = userId !== null && user?.id === userId;
+  // A socket update already applied is newer than whatever the REST call returns later.
+  const liveRef = useRef(false);
+
+  useEffect(() => {
+    liveRef.current = false;
+    setPresence(null);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !user) return;
+    let cancelled = false;
+    nowPlayingApi
+      .user(userId)
+      .then((p) => {
+        if (!cancelled && !liveRef.current) setPresence(p);
+      })
+      .catch(() => {
+        // Not allowed (404) or transient failure: the card simply stays hidden.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Refetch after a reconnect: events sent while offline are lost.
+  }, [userId, user, connected]);
+
+  const apply = (p: FriendPresence) => {
+    if (p.userId !== userId) return;
+    liveRef.current = true;
+    setPresence(p);
+  };
+  useSocketEvent(WS_EVENTS.SERVER_FRIEND_PRESENCE_CHANGED, apply);
+  useSocketEvent(WS_EVENTS.SERVER_SELF_PRESENCE_CHANGED, (p) => {
+    if (isMe) apply(p);
+  });
+
+  return presence;
+}
+
+/**
  * Reacts to `session:revoked`, sent right before the server closes the socket. socket.io does
  * not reconnect after a server-side disconnect, so once the old socket is closed:
  * - `PASSWORD_CHANGED`: reconnect. If the password was changed here this browser already has a

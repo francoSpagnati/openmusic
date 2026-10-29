@@ -12,6 +12,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { displayNameOf, errorMessage, isUuid } from '../format';
 import { useApiResource, type ApiResource } from '../useApiResource';
 import { ProfileHeader } from './ProfileHeader';
+import { ProfileNowPlaying } from './ProfileNowPlaying';
 import { ProfilePosts, ProfileReviews, ProfileRotation } from './ProfileSections';
 import { ProfileStats } from './ProfileStats';
 
@@ -99,6 +100,7 @@ function ProfileBody({
   return (
     <>
       <ProfileHeader profile={data} onFollowersChange={onFollowersChange} />
+      <ProfileNowPlaying userId={data.user.id} name={name} />
       <ProfileStats stats={data.stats} />
       <Tabs
         label={`Contenuti di ${name}`}

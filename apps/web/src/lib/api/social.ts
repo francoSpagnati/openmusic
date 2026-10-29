@@ -156,6 +156,12 @@ export const nowPlayingApi = {
   friends: (): Promise<FriendPresence[]> =>
     apiRequest('/api/now-playing/friends', { schema: z.array(FriendPresenceSchema) }),
 
+  /** Presence of one user (own profile or a followed user); 404 for anyone else. */
+  user: (userId: string): Promise<FriendPresence> =>
+    apiRequest(`/api/now-playing/users/${encodeURIComponent(userId)}`, {
+      schema: FriendPresenceSchema,
+    }),
+
   /** ADR-013: automatic Spotify / Last.fm sync state of the signed-in user. */
   syncStatus: (): Promise<NowPlayingSyncStatus> =>
     apiRequest('/api/now-playing/sync-status', { schema: NowPlayingSyncStatusSchema }),
