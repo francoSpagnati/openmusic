@@ -2,6 +2,7 @@
 // Creates (if missing) and resets the `openmusic_test` database by replaying all Prisma
 // migrations from scratch. Never touches the development database.
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { repoRoot, testEnv } from './test-env.mjs';
 
@@ -12,8 +13,12 @@ if (!dbName.endsWith('_test')) {
   process.exit(1);
 }
 
-execFileSync('npx', ['prisma', 'migrate', 'reset', '--force', '--skip-seed', '--skip-generate'], {
-  cwd: path.join(repoRoot, 'packages/db'),
+// The Prisma CLI runs under this same node: spawning `npx` needs a shell on Windows (npx.cmd).
+const dbDir = path.join(repoRoot, 'packages/db');
+const prismaCli = createRequire(path.join(dbDir, 'package.json')).resolve('prisma/build/index.js');
+const args = ['migrate', 'reset', '--force', '--skip-seed', '--skip-generate'];
+execFileSync(process.execPath, [prismaCli, ...args], {
+  cwd: dbDir,
   env,
   stdio: process.env.CI ? 'inherit' : 'pipe',
 });

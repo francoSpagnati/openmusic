@@ -1,4 +1,4 @@
-import { UpstreamError } from '../../lib/errors';
+import { NotConfiguredError, UpstreamError } from '../../lib/errors';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { env } from '../../config/env';
@@ -79,6 +79,7 @@ export class LastFmService {
 
   /** `state` is appended to the callback URL; Last.fm sends it back next to the token. */
   getAuthorizationUrl(state?: string): string {
+    if (!env.LASTFM_API_KEY || !env.LASTFM_SHARED_SECRET) throw new NotConfiguredError('Last.fm');
     const cb = new URL(env.LASTFM_CALLBACK_URL);
     if (state) cb.searchParams.set('state', state);
     const params = new URLSearchParams({

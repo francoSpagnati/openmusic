@@ -2,7 +2,7 @@ import type { FastifyError, FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { Prisma } from '@openmusic/db';
 import type { ApiErrorBody, ApiErrorCode } from '@openmusic/shared';
-import { AppError, UpstreamError } from './errors';
+import { AppError, NotConfiguredError, UpstreamError } from './errors';
 
 function zodFieldErrors(error: ZodError): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -77,7 +77,10 @@ export function toApiError(error: unknown): ApiErrorBody {
 export function registerErrorHandling(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
     const body = toApiError(error);
-    if (body.statusCode >= 500) {
+    if (error instanceof NotConfiguredError) {
+      // Expected on servers without optional credentials: not a crash.
+      request.log.warn(error.message);
+    } else if (body.statusCode >= 500) {
       request.log.error({ err: error }, 'Unhandled error');
     } else if (error instanceof UpstreamError) {
       request.log.warn({ provider: error.provider, detail: error.detail }, 'Upstream error');

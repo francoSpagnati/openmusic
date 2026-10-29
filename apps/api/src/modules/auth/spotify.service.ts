@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConflictError, UpstreamError } from '../../lib/errors';
+import { ConflictError, NotConfiguredError, UpstreamError } from '../../lib/errors';
 import { env } from '../../config/env';
 import type {
   SpotifyCurrentlyPlaying,
@@ -101,6 +101,10 @@ export class SpotifyService {
   ];
 
   getAuthorizationUrl(state?: string): string {
+    // Without a client id Spotify only shows "client_id: Not present", with no way back.
+    if (!env.SPOTIFY_CLIENT_ID || !env.SPOTIFY_CLIENT_SECRET) {
+      throw new NotConfiguredError('Spotify');
+    }
     const params = new URLSearchParams({
       client_id: env.SPOTIFY_CLIENT_ID,
       response_type: 'code',
