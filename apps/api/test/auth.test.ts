@@ -8,6 +8,7 @@ import {
 } from '@openmusic/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { AppContext } from '../src/app';
+import { env } from '../src/config/env';
 import { closeTestApp, createTestApp, resetTestState } from './helpers/test-app';
 
 const PASSWORD = 'correct horse battery';
@@ -293,6 +294,25 @@ describe('auth: local accounts', () => {
     expect(anonymous.headers.location).toBe(
       'http://localhost:3000/settings?oauth=lastfm&status=error&code=UNAUTHORIZED'
     );
+  });
+
+  it('refuses to start an OAuth flow for a provider without credentials (503 NOT_CONFIGURED)', async () => {
+    const saved = { ...env };
+    Object.assign(env, {
+      SPOTIFY_CLIENT_ID: '',
+      SPOTIFY_CLIENT_SECRET: '',
+      LASTFM_API_KEY: '',
+      LASTFM_SHARED_SECRET: '',
+    });
+    try {
+      for (const provider of ['spotify', 'lastfm']) {
+        const res = await ctx.app.inject({ method: 'GET', url: `/api/auth/${provider}/login` });
+        expect(res.statusCode).toBe(503);
+        expect(ApiErrorBodySchema.parse(res.json()).code).toBe('NOT_CONFIGURED');
+      }
+    } finally {
+      Object.assign(env, saved);
+    }
   });
 
   it('sends security headers and never leaks internals on unknown errors', async () => {

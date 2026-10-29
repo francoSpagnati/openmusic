@@ -55,6 +55,13 @@ export class ConflictError extends AppError {
  * A third-party provider (Spotify, Last.fm) failed. `detail` is logged server-side only; the
  * client sees a generic message.
  */
+/** An optional integration (Spotify, Last.fm) has no credentials on this server. */
+export class NotConfiguredError extends AppError {
+  constructor(provider: string) {
+    super(503, 'NOT_CONFIGURED', `${provider} non è configurato su questo server`);
+  }
+}
+
 export class UpstreamError extends AppError {
   constructor(
     readonly provider: string,

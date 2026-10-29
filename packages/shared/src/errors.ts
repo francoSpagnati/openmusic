@@ -11,6 +11,7 @@ export const ApiErrorCodeSchema = z.enum([
   'CONFLICT', // 409: e.g. email/username already taken
   'RATE_LIMITED', // 429
   'UPSTREAM_ERROR', // 502: Spotify/Last.fm/Deezer failure
+  'NOT_CONFIGURED', // 503: optional integration without credentials on this server
   'INTERNAL_ERROR', // 500: never carries internal details
 ]);
 
