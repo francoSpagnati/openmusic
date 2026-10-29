@@ -16,7 +16,9 @@
 # Memory limits are sized for an 8 GB host shared with other services (measured usage: §11 of
 # docs/08_SELF_HOSTING.md). Needs Docker Compose >= 2.23.1 (inline `configs.content`).
 
-name: openmusic
+# Not `openmusic`: that is the project name of the dev stack in the repo root (its folder name),
+# and sharing it would mount the dev database volume here (and `down -v` would wipe both).
+name: openmusic-selfhost
 
 # CasaOS app metadata (format of github.com/IceWhaleTech/CasaOS-AppStore; ignored by plain
 # Docker Compose). `main` + `port_map` make the CasaOS dashboard tile open Caddy's port.
