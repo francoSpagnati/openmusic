@@ -3,7 +3,7 @@ import type {
   AudioPreviewResult,
   AudioPreviewSource,
 } from '@openmusic/shared';
-import { api } from '../../lib/api';
+import { api, resolveApiUrl } from '../../lib/api';
 
 /** The fields of a `CatalogTrack` needed to find its 30s clip. */
 export interface PreviewTrack {
@@ -48,7 +48,9 @@ export function createPreviewResolver(lookup: PreviewLookup): PreviewResolver {
 
   return {
     resolve(track) {
-      if (track.previewUrl) return Promise.resolve({ url: track.previewUrl, source: 'CATALOG' });
+      if (track.previewUrl) {
+        return Promise.resolve({ url: resolveApiUrl(track.previewUrl), source: 'CATALOG' });
+      }
       const key = cacheKey(track);
       const known = settled.get(key);
       if (known) return Promise.resolve(known);
@@ -70,7 +72,7 @@ export function createPreviewResolver(lookup: PreviewLookup): PreviewResolver {
       return request;
     },
     peek(track) {
-      if (track.previewUrl) return { url: track.previewUrl, source: 'CATALOG' };
+      if (track.previewUrl) return { url: resolveApiUrl(track.previewUrl), source: 'CATALOG' };
       return settled.get(cacheKey(track));
     },
     clear() {

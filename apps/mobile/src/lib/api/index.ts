@@ -1,4 +1,4 @@
-export { API_URL } from './config';
+export { API_URL, resolveApiUrl } from './config';
 export {
   apiRequest,
   configureApiClient,

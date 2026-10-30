@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PreviewUrlSchema } from './common';
 
 export const ReleaseTypeSchema = z.enum(['ALBUM', 'SINGLE', 'EP']);
 
@@ -51,7 +52,7 @@ export const CatalogTrackSchema = z.object({
   title: z.string().min(1),
   artistName: z.string().min(1),
   durationMs: z.number().int().positive(),
-  previewUrl: z.string().url().nullable().optional(),
+  previewUrl: PreviewUrlSchema.nullable().optional(),
   releaseId: z.string().optional(),
   coverUrl: z.string().url().nullable().optional(),
   trackNumber: z.number().int().positive().nullable().optional(),

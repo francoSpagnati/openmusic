@@ -226,7 +226,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<AppContex
     catalogEnrichmentService,
     catalogBackground,
     app.log,
-    { externalEnabled: catalogExternalEnabled }
+    { externalEnabled: catalogExternalEnabled, previewCache: new RedisResponseCache(redis) }
   );
   const reviewsService = new ReviewsService(prisma, notificationsService);
   const profileService = new ProfileService(prisma);

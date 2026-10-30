@@ -10,3 +10,12 @@ export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:400
 
 /** Requests that take longer than this are aborted and reported as NETWORK_ERROR. */
 export const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * Playable URL for an audio/image link returned by the API. The API serves Deezer previews as a
+ * root-relative path (`/api/catalog/tracks/<id>/preview`, a redirect to a fresh signed URL):
+ * native players need an absolute URL, so it is resolved against `API_URL`. Absolute URLs pass.
+ */
+export function resolveApiUrl(url: string): string {
+  return url.startsWith('/') && !url.startsWith('//') ? `${API_URL}${url}` : url;
+}

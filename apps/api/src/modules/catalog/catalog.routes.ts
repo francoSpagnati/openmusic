@@ -6,8 +6,11 @@ import {
   CatalogSearchQuerySchema,
   IdParamSchema,
 } from '@openmusic/shared';
+import { z } from 'zod';
 import { NotFoundError } from '../../lib/errors';
 import type { CatalogService } from './catalog.service';
+
+const TrackIdParamSchema = z.object({ trackId: z.string().uuid() });
 
 /**
  * Search and preview call third-party APIs (and search may write imported releases), so they are
@@ -52,6 +55,15 @@ export function createCatalogRoutes(catalogService: CatalogService): FastifyPlug
       const group = await catalogService.getReleaseGroup(id);
       if (!group) throw new NotFoundError('Album non trovato');
       return group;
+    });
+
+    // Public (native audio players send no Bearer header): redirects to a playable 30s clip,
+    // refreshing Deezer's signed URLs, which expire after ~15 minutes.
+    fastify.get('/tracks/:trackId/preview', upstreamRateLimit, async (request, reply) => {
+      const { trackId } = TrackIdParamSchema.parse(request.params);
+      const url = await catalogService.getTrackPreviewUrl(trackId);
+      if (!url) throw new NotFoundError('Anteprima non disponibile');
+      return reply.redirect(url, 302);
     });
 
     // ADR-003: 30s audio preview resolver.

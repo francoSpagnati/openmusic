@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PreviewUrlSchema } from './common';
 
 export const MusicProviderSchema = z.enum([
   'SPOTIFY',
@@ -21,7 +22,7 @@ export const NowPlayingTrackSchema = z.object({
   /** 0 = unknown (Last.fm "now playing" has no duration): clients hide the progress bar. */
   durationMs: z.number().int().nonnegative(),
   progressMs: z.number().int().nonnegative(),
-  previewUrl: z.string().url().optional(), // Clip 30s (Spotify -> Deezer -> iTunes fallback)
+  previewUrl: PreviewUrlSchema.optional(), // Clip 30s (Spotify -> Deezer -> iTunes fallback)
   provider: MusicProviderSchema,
   isPlaying: z.boolean(),
   updatedAt: z.number(), // Unix timestamp ms

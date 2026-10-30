@@ -10,6 +10,7 @@ import {
   type ReleaseGroupRef,
   type UserSummary,
 } from '@openmusic/shared';
+import { publicPreviewUrl } from './preview-url';
 
 export function toAuthUser(user: User): AuthUser {
   return {
@@ -71,7 +72,7 @@ export function toCatalogTrack(
     title: track.title,
     artistName: track.artistName,
     durationMs: track.durationMs,
-    previewUrl: track.previewUrl,
+    previewUrl: publicPreviewUrl(track.id, track.previewUrl),
     releaseId: track.releaseId,
     coverUrl: track.release.coverUrl,
     trackNumber: track.trackNumber,

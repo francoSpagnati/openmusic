@@ -15,6 +15,16 @@ export const HttpUrlSchema = z
   });
 
 /**
+ * A 30s preview URL as served by the API: an absolute URL (iTunes clips, which do not expire) or
+ * a root-relative path (`/api/catalog/tracks/<id>/preview`, a redirect to a fresh Deezer URL,
+ * whose signed links expire after ~15 minutes). Clients resolve the path against the API base.
+ */
+export const PreviewUrlSchema = z.union([
+  z.string().url(),
+  z.string().regex(/^\/(?!\/)/, 'Percorso o URL non valido'),
+]);
+
+/**
  * A vibe tag as stored: without the leading `#` (the UI adds it when rendering), so `#Notturno`
  * and `Notturno` are the same tag.
  */

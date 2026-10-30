@@ -25,7 +25,8 @@ import {
 } from '../../lib/mappers';
 import { aggregateScore } from '../reviews/score';
 import { mergeGenres } from './catalog-import.service';
-import { UpstreamRequestError } from '../../lib/upstream';
+import { deezerPreviewExpiry } from '../../lib/preview-url';
+import { UpstreamRequestError, type ResponseCache } from '../../lib/upstream';
 import type { AudioPreviewResolverService } from './audio-preview-resolver.service';
 import type { CatalogEnrichmentService } from './catalog-enrichment.service';
 import type { CatalogImportService } from './catalog-import.service';
@@ -85,7 +86,12 @@ const PROVIDER_LABEL = { deezer: 'Deezer', itunes: 'iTunes', musicbrainz: 'Music
 export interface CatalogServiceOptions {
   /** false = never call external databases (search and open use the local catalog only). */
   externalEnabled: boolean;
+  /** Holds refreshed signed preview URLs until they expire. Omitted = no caching. */
+  previewCache?: ResponseCache;
 }
+
+/** A signed preview URL is refreshed (and no longer cached) this long before it expires. */
+const PREVIEW_EXPIRY_MARGIN_SECONDS = 60;
 
 interface ExternalHits {
   source: CatalogSource;
@@ -676,6 +682,60 @@ export class CatalogService {
 
   async resolveTrackPreview(title: string, artist: string, isrc?: string) {
     return this.previewResolver.resolvePreview(title, artist, isrc);
+  }
+
+  /**
+   * Playable URL of a track's 30s preview, or null when none exists. Deezer URLs are signed and
+   * expire (~15 min): the stored one is used while it has time left, otherwise a fresh one comes
+   * from Deezer (by the track's Deezer id), then from the preview resolver, and is persisted.
+   */
+  async getTrackPreviewUrl(trackId: string): Promise<string | null> {
+    const track = await this.prisma.track.findUnique({
+      where: { id: trackId },
+      select: { previewUrl: true, deezerId: true, title: true, artistName: true, isrc: true },
+    });
+    if (!track) throw new NotFoundError('Traccia non trovata');
+
+    const nowSeconds = () => Math.floor(Date.now() / 1000);
+    const stored = track.previewUrl;
+    if (stored) {
+      const exp = deezerPreviewExpiry(stored);
+      if (exp === null || exp - nowSeconds() > PREVIEW_EXPIRY_MARGIN_SECONDS) return stored;
+    }
+
+    const cacheKey = `preview:track:${trackId}`;
+    const cached = await this.options.previewCache?.get(cacheKey);
+    if (cached) return cached;
+    if (!this.options.externalEnabled) return null;
+
+    let fresh: string | null = null;
+    if (track.deezerId) {
+      try {
+        fresh =
+          (await this.providers.deezer.getTrack(track.deezerId, { fresh: true }))?.previewUrl ??
+          null;
+      } catch (err) {
+        this.logUpstream('Deezer track lookup for a fresh preview failed', err);
+      }
+    }
+    fresh ??= (
+      await this.previewResolver.resolvePreview(
+        track.title,
+        track.artistName,
+        track.isrc ?? undefined
+      )
+    ).previewUrl;
+    if (!fresh) return null;
+
+    const exp = deezerPreviewExpiry(fresh);
+    if (exp !== null) {
+      const ttl = exp - PREVIEW_EXPIRY_MARGIN_SECONDS - nowSeconds();
+      if (ttl > 0) await this.options.previewCache?.set(cacheKey, fresh, ttl);
+    }
+    await this.prisma.track
+      .update({ where: { id: trackId }, data: { previewUrl: fresh } })
+      .catch((err: unknown) => this.logUpstream('Persisting the refreshed preview failed', err));
+    return fresh;
   }
 
   private logUpstream(message: string, err: unknown): void {

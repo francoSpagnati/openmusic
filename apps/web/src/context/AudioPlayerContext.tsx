@@ -124,7 +124,11 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [attach]);
 
   const resolvePreviewUrl = useCallback((track: PlayingTrack): Promise<string | null> => {
-    if (track.previewUrl) return Promise.resolve(track.previewUrl);
+    // A root-relative URL (`/api/catalog/tracks/<id>/preview`) is made absolute so it compares
+    // equal to `audio.src`, which the browser always reports resolved.
+    if (track.previewUrl) {
+      return Promise.resolve(new URL(track.previewUrl, window.location.origin).href);
+    }
     const cached = previewCache.current.get(track.id);
     if (cached) return cached;
     const pending = api.catalog

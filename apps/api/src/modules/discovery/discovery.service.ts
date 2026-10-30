@@ -5,6 +5,7 @@ import type {
   GenreRouletteResult,
   CatalogTrack,
 } from '@openmusic/shared';
+import { publicPreviewUrl } from '../../lib/preview-url';
 import type { AudioPreviewResolverService } from '../catalog/audio-preview-resolver.service';
 
 interface CuratedGenre {
@@ -127,7 +128,7 @@ export class DiscoveryService {
           title: t.title,
           artistName: t.artistName,
           durationMs: t.durationMs,
-          previewUrl: t.previewUrl,
+          previewUrl: publicPreviewUrl(t.id, t.previewUrl),
           releaseId: t.releaseId,
           coverUrl: t.release.coverUrl,
         },

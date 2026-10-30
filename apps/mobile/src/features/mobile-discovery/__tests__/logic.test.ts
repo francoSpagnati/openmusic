@@ -12,6 +12,7 @@ import {
   splitSides,
   tintAlpha,
 } from '../catalog';
+import { API_URL } from '../../../lib/api';
 import { createPreviewResolver, lookaheadIndices, previewSourceLabel } from '../preview';
 import { applyReaction, myReactions } from '../reactions';
 import { initialReelsState, reelsReducer } from '../reels/reelsState';
@@ -42,6 +43,14 @@ describe('createPreviewResolver', () => {
       source: 'CATALOG',
     });
     expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it('resolves a root-relative previewUrl against the API base', async () => {
+    const resolver = createPreviewResolver(jest.fn());
+    const t = track(3, { previewUrl: '/api/catalog/tracks/abc/preview' });
+    const expected = `${API_URL}/api/catalog/tracks/abc/preview`;
+    await expect(resolver.resolve(t)).resolves.toEqual({ url: expected, source: 'CATALOG' });
+    expect(resolver.peek(t)?.url).toBe(expected);
   });
 
   it('shares in-flight lookups, caches answers (also "no preview") and sends the ISRC', async () => {

@@ -241,6 +241,8 @@ export interface GetJsonOptions {
   ttlSeconds?: number;
   /** Cache the absence of a resource (404) for this many seconds. Default: 1 hour. */
   notFoundTtlSeconds?: number;
+  /** Skip the cached copy (the fresh response still replaces it). For short-lived signed URLs. */
+  bypassCache?: boolean;
 }
 
 const NOT_FOUND_SENTINEL = '__openmusic_not_found__';
@@ -303,7 +305,7 @@ export class UpstreamClient {
     options: GetJsonOptions = {}
   ): Promise<z.output<S> | null> {
     const cacheKey = `upstream:${this.provider}:${createHash('sha1').update(url).digest('hex')}`;
-    const cached = this.cache ? await this.cache.get(cacheKey) : null;
+    const cached = this.cache && !options.bypassCache ? await this.cache.get(cacheKey) : null;
     if (cached === NOT_FOUND_SENTINEL) return null;
     if (cached !== null) {
       const parsed = this.parseBody(cached, schema);

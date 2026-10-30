@@ -231,13 +231,19 @@ export class DeezerProvider {
     return album ? this.getAlbum(String(album.id)) : null;
   }
 
-  async getTrack(id: string): Promise<ProviderTrack | null> {
+  /**
+   * `fresh` skips the cache and keeps the response briefly: the `preview` URL is signed and
+   * expires after ~15 minutes, so a day-old cached copy would hand out a dead link.
+   */
+  async getTrack(id: string, options: { fresh?: boolean } = {}): Promise<ProviderTrack | null> {
     const track = await this.http.getJson(
       `${DEEZER_API}/track/${encodeURIComponent(id)}`,
       TrackDetailSchema,
-      {
-        ttlSeconds: 24 * 60 * 60,
-      }
+      options.fresh
+        ? { ttlSeconds: 60, bypassCache: true }
+        : {
+            ttlSeconds: 24 * 60 * 60,
+          }
     );
     return track ? this.mapTrackDetail(track) : null;
   }

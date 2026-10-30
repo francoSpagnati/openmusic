@@ -161,7 +161,10 @@ describe('Catalog import from external databases', () => {
     };
     const release = await open();
     expect(release.tracks).toHaveLength(10);
-    expect(release.tracks?.every((t) => t.isrc && t.previewUrl?.startsWith('https://'))).toBe(true);
+    // Deezer's signed preview URLs expire: the API exposes the redirecting endpoint instead.
+    expect(
+      release.tracks?.every((t) => t.isrc && t.previewUrl === `/api/catalog/tracks/${t.id}/preview`)
+    ).toBe(true);
 
     await ctx.catalogBackground.idle();
     const again = await open();

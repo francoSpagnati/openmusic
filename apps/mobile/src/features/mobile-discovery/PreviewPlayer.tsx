@@ -138,11 +138,13 @@ export function PreviewPlayerProvider({
         case 'error':
           return 'error';
         case 'ready':
+          // A dead link (expired URL, offline) surfaces as the button's retry state.
+          if (status.playbackState === 'error') return 'error';
           if (status.playing) return 'playing';
           return status.isBuffering || !status.isLoaded ? 'loading' : 'paused';
       }
     },
-    [current, status.playing, status.isBuffering, status.isLoaded]
+    [current, status.playing, status.playbackState, status.isBuffering, status.isLoaded]
   );
 
   const toggle = useCallback(
